@@ -2,5 +2,24 @@
   <Folder Name="/Solution Items/">
     <File Path="compose.yaml" />
   </Folder>
-  <Project Path="Amuse.Api/Amuse.Api.csproj" />
+  <Project Path="src/Amuse.Messaging.Contracts/Amuse.Messaging.Contracts.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Amuse.Api.IntegrationTests/Amuse.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Amuse.Domain.Tests/Amuse.Domain.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Billing.Tests/Amuse.Modules.Billing.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Catalog.Tests/Amuse.Modules.Catalog.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Discovery.Tests/Amuse.Modules.Discovery.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Identity.Tests/Amuse.Modules.Identity.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Ingestion.Tests/Amuse.Modules.Ingestion.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Moderation.Tests/Amuse.Modules.Moderation.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Playback.Tests/Amuse.Modules.Playback.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Recommendation.Tests/Amuse.Modules.Recommendation.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Telemetry.Tests/Amuse.Modules.Telemetry.Tests.csproj" />
+    <Project Path="tests/Amuse.Modules.Tenancy.Tests/Amuse.Modules.Tenancy.Tests.csproj" />
+    <Project Path="tests/Amuse.Worker.Transcoder.Tests/Amuse.Worker.Transcoder.Tests.csproj" />
+  </Folder>
+  <Project Path="src/Amuse.Api/Amuse.Api.csproj" />
+  <Project Path="src/Amuse.Domain/Amuse.Domain.csproj" />
+  <Project Path="src/Amuse.Modules/Amuse.Modules.csproj" />
+  <Project Path="src/Amuse.Worker.Transcoder/Amuse.Worker.Transcoder.csproj" />
 </Solution>
