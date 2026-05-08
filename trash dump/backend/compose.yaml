@@ -3,5 +3,5 @@
     image: amuse.api
     build:
       context: .
-      dockerfile: Amuse.Api/Dockerfile
+      dockerfile: Dockerfile
 
