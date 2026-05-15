@@ -8,7 +8,7 @@ An `Account` is a separate, standalone entity representing a single `sign-in-abl
 
 The actual authentication is done by a separate identity provider, this is to allow multiple sign-in options like social OAuth, passkeys, multi-factor authentication, and of course ordinary username/password. The `Account` entity itself does **NOT** hold any data about these, and will be provided by the identity provider to keep the auth solution abstract and implementation-agnostic.
 
-To actually make `Account` do something useful, we would need to create an actual role-representing entity from this, which will be described next.
+To actually make `Account` do something useful, we would need to create an actual role-representing entity from this called **persona**. There are 3 types of persona - Organization member, listener, and platform operators; all of which will be described next.
 
 ## Organization
 
@@ -33,5 +33,14 @@ However, to simplify member management, there will be "preset roles" available t
 
 Also, there is NO GUARANTEE that a "preset role" will not change. If later on, the presets are updated, existing members' claims will **NOT get updated**. These are purely presets.
 
-## Auditing
+## Listener
 
+All `Account` entities can have a `Listener` linked to it, which represents a listener profile. This is the main subject of the B2C flow. This is pretty straight forward, and should be automatically created (by the frontend?) when going to the public-facing listener web/app.
+
+## Platform operators
+
+This represent all platform operators for Amuse platform as a whole, this includes Admins, moderators, agents, etc. This also uses the same claims-based model as org member and preset "roles" that are only preset-like and are not persisted too, but this time there is no multiple tenant and there's only a single tenant - ours, which is implicit so should not be represented. This persona is only used on the platform operation portal.
+
+Platform operator account uses a counting-up system instead of UUID like other tables. (Also a fun way to track our company's employees history, imagine having account number 67.)
+
+Only exception to the default claims-based system is the root account, which **only one will exists ever**, with its Platform operators table record's `id` as `1`, call it `player one` or something to keep it cool (lmao), and will have control over all endpoints. This account may be seeded along with migrations.

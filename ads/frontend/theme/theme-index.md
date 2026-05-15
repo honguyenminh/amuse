@@ -1,0 +1,3 @@
+Must have a consistent user interface language (a design system per-se), itself is a brutalism/retro-inspired aesthetic (similar style to original ZenlessZoneZero banners, etc.) consisting of straight slim lines border, minimalist but decorated buttons, prefer mostly solid shade instead of blurred shadows but not completely void of them, and app-wide (highly saturated) dynamic colors picked from album cover art for the app, a bold style like material design 3 expressive bold.
+
+Prefer OKLCH, or at least HSL color.
