@@ -1,0 +1,24 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Amuse.Modules.Common.Authorization;
+
+public static class PersonaAuthorizationExtensions
+{
+    public static IServiceCollection AddPersonaAuthorization(this IServiceCollection services)
+    {
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(PersonaPolicies.RequireOrgPersona, policy =>
+                policy.RequireClaim("ctx", "org").RequireClaim("org_id"));
+
+            options.AddPolicy(PersonaPolicies.RequireListenerPersona, policy =>
+                policy.RequireClaim("ctx", "listener").RequireClaim("listener_id"));
+
+            options.AddPolicy(PersonaPolicies.RequirePlatformPersona, policy =>
+                policy.RequireClaim("ctx", "platform"));
+        });
+
+        return services;
+    }
+}

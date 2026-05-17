@@ -1,6 +1,24 @@
 ﻿services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: amuse_development
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d amuse_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   amuse.api:
     image: amuse.api
     build:
       context: src/Amuse.Api
-
+    profiles:
+      - full
+    depends_on:
+      postgres:
+        condition: service_healthy

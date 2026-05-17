@@ -1,41 +1,40 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Amuse.Modules.Audit;
+using Amuse.Modules.Common.Authorization;
+using Amuse.Modules.Identity;
+using Amuse.Modules.Listener;
+using Amuse.Modules.Platform;
+using Amuse.Modules.Tenancy;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+});
+
+// TODO: configure OpenAPI and scalar
 builder.Services.AddOpenApi();
+builder.Services.AddIdentityModule(builder.Configuration);
+builder.Services.AddTenancyModule(builder.Configuration);
+builder.Services.AddListenerModule(builder.Configuration);
+builder.Services.AddPlatformModule(builder.Configuration);
+builder.Services.AddAuditModule(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseMiddleware<TenantGuardMiddleware>();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast");
+app.MapIdentityModule();
+app.MapGet("/demo", () => "Hello, World!").RequireAuthorization();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
