@@ -1,0 +1,43 @@
+using Amuse.Domain.Catalog;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Amuse.Modules.Catalog.Persistence.Configurations;
+
+internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
+{
+    public void Configure(EntityTypeBuilder<Track> builder)
+    {
+        builder.ToTable("track");
+
+        builder.HasKey(t => t.Id);
+
+        builder.Property(t => t.Id)
+            .HasColumnName("id")
+            .HasConversion(id => id.Value, value => TrackId.From(value));
+
+        builder.Property(t => t.AlbumId)
+            .HasColumnName("album_id")
+            .HasConversion(id => id.Value, value => AlbumId.From(value));
+
+        builder.Property(t => t.Title)
+            .HasColumnName("title")
+            .HasMaxLength(Track.MaxTitleLength)
+            .IsRequired();
+
+        builder.Property(t => t.TrackNumber)
+            .HasColumnName("track_number");
+
+        builder.Property(t => t.Duration)
+            .HasColumnName("duration_ms")
+            .HasConversion(
+                d => d.Milliseconds,
+                ms => TrackDuration.FromMilliseconds(ms));
+
+        builder.Property(t => t.AudioUrl)
+            .HasColumnName("audio_url")
+            .HasMaxLength(Track.MaxUrlLength);
+
+        builder.HasIndex(t => new { t.AlbumId, t.TrackNumber }).IsUnique();
+    }
+}

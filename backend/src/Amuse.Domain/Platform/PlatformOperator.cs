@@ -32,5 +32,13 @@ public sealed class PlatformOperator
         AccountId accountId,
         IReadOnlyList<string> claims,
         DateTimeOffset createdAt) =>
-        new(id, accountId, claims, createdAt);
+        new(id, accountId, Normalize(claims), createdAt);
+
+    private static IReadOnlyList<string> Normalize(IReadOnlyList<string> claims) =>
+        claims
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(c => c, StringComparer.Ordinal)
+            .ToArray();
 }

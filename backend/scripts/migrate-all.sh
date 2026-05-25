@@ -12,6 +12,7 @@ contexts=(
   TenancyDbContext
   ListenerDbContext
   PlatformDbContext
+  CatalogDbContext
   AuditDbContext
 )
 

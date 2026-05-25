@@ -32,6 +32,64 @@ export type EnsureListenerProfileResponse = {
   created: boolean;
 };
 
+export type ReleaseType = "single" | "ep" | "album" | "compilation";
+
+export type ArtistSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+};
+
+export type AlbumSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  artistId: string;
+  artistName: string;
+  artistSlug: string;
+  releaseType: ReleaseType;
+  releaseDate: string;
+  coverArtUrl: string | null;
+};
+
+export type TrackResponse = {
+  id: string;
+  title: string;
+  trackNumber: number;
+  durationMs: number;
+  audioUrl: string | null;
+};
+
+export type BrowseHomeResponse = {
+  recentAlbums: AlbumSummary[];
+  featuredArtists: ArtistSummary[];
+};
+
+export type GetArtistDetailResponse = {
+  id: string;
+  slug: string;
+  name: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  albums: AlbumSummary[];
+};
+
+export type GetAlbumDetailResponse = {
+  id: string;
+  slug: string;
+  title: string;
+  artistId: string;
+  artistName: string;
+  artistSlug: string;
+  releaseType: ReleaseType;
+  releaseDate: string;
+  coverArtUrl: string | null;
+  tracks: TrackResponse[];
+};
+
 export type ApiProblem = {
   title?: string;
   detail?: string;

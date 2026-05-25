@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Amuse.Domain.Identity;
 using Amuse.Domain.Platform;
+using Amuse.Modules.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -28,9 +28,7 @@ internal sealed class PlatformOperatorConfiguration : IEntityTypeConfiguration<P
         builder.Property(o => o.Claims)
             .HasColumnName("claims")
             .HasColumnType("jsonb")
-            .HasConversion(
-                claims => JsonSerializer.Serialize(claims, (JsonSerializerOptions?)null),
-                json => JsonSerializer.Deserialize<List<string>>(json, (JsonSerializerOptions?)null) ?? new List<string>());
+            .HasConversion(JsonStringListConverter.Converter, JsonStringListConverter.Comparer);
 
         builder.Property(o => o.CreatedAt)
             .HasColumnName("created_at")

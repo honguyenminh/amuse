@@ -43,7 +43,7 @@ cd backend
 ./scripts/migrate-all.sh
 ```
 
-Order: Identity → Tenancy → Listener → Platform (runs EF seed for root operator) → Audit.
+Order: Identity → Tenancy → Listener → Platform → Catalog → Audit.
 
 **First run on an empty database:** EF Core may log `Failed executing DbCommand` when selecting from `__EFMigrationsHistory_*` because those tables do not exist yet. That probe is normal. Treat the run as successful when each context ends with `Done.` and the script exits `0`. Re-runs are idempotent (only pending migrations apply).
 
@@ -67,19 +67,19 @@ Development opens OpenAPI at `/openapi/v1.json` when `ASPNETCORE_ENVIRONMENT=Dev
 
 HTTPS redirection is enabled; for local HTTP testing use the HTTP port from `launchSettings.json` or disable redirection in dev if needed.
 
-## Seeded dev account
+## Seeded dev data
 
-Seeding is **not** part of `migrate-all.sh`. The dotnet-ef CLI uses the design-time `DbContextFactory` and does not invoke `UseAsyncSeeding`. The root account is created on **API startup in Development only** (idempotent call to `PlatformRootSeeding.SeedAsync`).
+Seeding is **not** part of `migrate-all.sh`. The dotnet-ef CLI uses the design-time `DbContextFactory` and does not invoke `UseAsyncSeeding`. Two idempotent seeds run at **API startup in Development only**:
+
+1. `PlatformRootSeeding.SeedAsync` — creates the root account, identity user, and platform operator.
+2. `CatalogDevSeeding.SeedAsync` — populates a small fixture of artists/albums/tracks so the listener app has something to render.
 
 Flow for a fresh DB:
 
-1. `./scripts/migrate-all.sh` — applies schema (Identity, Tenancy, Listener, Platform, Audit).
-2. `dotnet run --project src/Amuse.Api` — in Development environment, seeds:
-   - `identity.account` row (root account)
-   - `identity."AspNetUsers"` row with hashed password (used by `UserManager`/`SignInManager`)
-   - `platform.platform_operator` row mapping the account to the platform persona
+1. `./scripts/migrate-all.sh` — applies schema for every bounded context.
+2. `dotnet run --project src/Amuse.Api` — in Development environment, seeds the rows listed above.
 
-Production/staging never auto-seed — operators provision the root account through a separate ops procedure.
+Production/staging never auto-seed — operators provision the root account through a separate ops procedure and catalog data through normal write paths.
 
 | Field | Value |
 |-------|--------|

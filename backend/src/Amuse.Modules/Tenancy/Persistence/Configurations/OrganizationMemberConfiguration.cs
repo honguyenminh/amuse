@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Amuse.Domain.Identity;
 using Amuse.Domain.Tenancy;
+using Amuse.Modules.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -37,9 +37,7 @@ internal sealed class OrganizationMemberConfiguration : IEntityTypeConfiguration
         builder.Property(m => m.Claims)
             .HasColumnName("claims")
             .HasColumnType("jsonb")
-            .HasConversion(
-                claims => JsonSerializer.Serialize(claims, (JsonSerializerOptions?)null),
-                json => JsonSerializer.Deserialize<List<string>>(json, (JsonSerializerOptions?)null) ?? new List<string>());
+            .HasConversion(JsonStringListConverter.Converter, JsonStringListConverter.Comparer);
 
         builder.Property(m => m.IsOwner)
             .HasColumnName("is_owner");

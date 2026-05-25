@@ -1,7 +1,10 @@
+using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Catalog.Seeding;
 using Amuse.Modules.Common.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 
 namespace Amuse.Api.IntegrationTests;
@@ -22,6 +25,10 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
         await _postgres.StartAsync();
         _connectionString = _postgres.GetConnectionString();
         await ModuleDatabaseInitializer.MigrateAllAsync(Services);
+
+        await using var scope = Services.CreateAsyncScope();
+        var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        await CatalogDevSeeding.SeedAsync(catalogDb, CancellationToken.None);
     }
 
     public override async ValueTask DisposeAsync()
