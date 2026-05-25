@@ -5,6 +5,8 @@ using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Identity;
 using Amuse.Modules.Listener;
 using Amuse.Modules.Platform;
+using Amuse.Modules.Platform.Persistence;
+using Amuse.Modules.Platform.Seeding;
 using Amuse.Modules.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +18,16 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 // TODO: configure OpenAPI and scalar
 builder.Services.AddOpenApi();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddTenancyModule(builder.Configuration);
 builder.Services.AddListenerModule(builder.Configuration);
@@ -27,6 +39,15 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseCors("DevFrontend");
+
+    // Dev-only idempotent seed of the platform root account and operator. NOT a migration.
+    // Schema changes still live in EF migrations applied by scripts/migrate-all.sh or the deploy pipeline.
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var platformDb = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
+        await PlatformRootSeeding.SeedAsync(platformDb, scope.ServiceProvider, CancellationToken.None);
+    }
 }
 
 app.UseHttpsRedirection();
@@ -35,6 +56,7 @@ app.UseAuthorization();
 app.UseMiddleware<TenantGuardMiddleware>();
 
 app.MapIdentityModule();
+app.MapListenerModule();
 app.MapGet("/demo", () => "Hello, World!").RequireAuthorization();
 
 app.Run();

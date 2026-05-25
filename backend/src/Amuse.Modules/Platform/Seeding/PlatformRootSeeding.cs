@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Amuse.Modules.Platform.Seeding;
 
-internal static class PlatformRootSeeding
+public static class PlatformRootSeeding
 {
     public static async Task SeedAsync(
         PlatformDbContext platformDb,

@@ -1,6 +1,8 @@
 using Amuse.Modules.Identity.Contracts;
+using Amuse.Modules.Listener.Features.EnsureListenerProfile;
 using Amuse.Modules.Listener.Persistence;
 using Amuse.Modules.Listener.Services;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +25,10 @@ public static class ListenerModule
 
         services.AddScoped<IListenerPersonaReadModel, ListenerPersonaReadModel>();
         services.AddScoped<EnsureListenerProfileService>();
+        services.AddScoped<EnsureListenerProfileHandler>();
         return services;
     }
+
+    public static IEndpointRouteBuilder MapListenerModule(this IEndpointRouteBuilder endpoints) =>
+        endpoints.MapEnsureListenerProfileEndpoint();
 }

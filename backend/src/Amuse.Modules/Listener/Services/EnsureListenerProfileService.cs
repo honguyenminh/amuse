@@ -8,6 +8,17 @@ namespace Amuse.Modules.Listener.Services;
 
 internal sealed class EnsureListenerProfileService(ListenerDbContext dbContext, IClock clock)
 {
+    public async Task<ListenerProfileId?> GetProfileIdForAccountAsync(
+        AccountId accountId,
+        CancellationToken cancellationToken)
+    {
+        var existing = await dbContext.ListenerProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.AccountId == accountId, cancellationToken);
+
+        return existing?.Id;
+    }
+
     public async Task<ListenerProfile> EnsureAsync(AccountId accountId, CancellationToken cancellationToken)
     {
         var existing = await dbContext.ListenerProfiles

@@ -38,14 +38,19 @@ public static class IdentityModule
                 connectionString,
                 npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_identity", "identity")));
 
+        // AddIdentityCore (not AddIdentity) avoids registering cookie authentication and
+        // overriding the default challenge scheme. JWT bearer (see AddAmuseJwtAuthentication
+        // below) is the only authentication scheme for this API.
         services
-            .AddIdentity<ApplicationUser, IdentityRole<Guid>>(identity =>
+            .AddIdentityCore<ApplicationUser>(identity =>
             {
                 identity.User.RequireUniqueEmail = true;
                 identity.Password.RequireDigit = true;
                 identity.Password.RequiredLength = 10;
             })
+            .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<IdentityDbContext>()
+            .AddSignInManager()
             .AddDefaultTokenProviders();
 
         services.AddHttpClient();

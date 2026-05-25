@@ -15,12 +15,21 @@ contexts=(
   AuditDbContext
 )
 
+echo "Migrating: ${ConnectionStrings__DefaultConnection}"
+echo "If you see history-table errors on first run, ignore them when followed by 'Done.'"
+echo
+
+dotnet build "$API" -v q
+
 for context in "${contexts[@]}"; do
-  echo "Applying migrations for ${context}..."
+  echo "==> ${context}"
   dotnet ef database update \
     --project "$MODULES" \
     --startup-project "$API" \
-    --context "$context"
+    --context "$context" \
+    --no-build
+  echo "    OK"
+  echo
 done
 
-echo "All bounded-context migrations applied."
+echo "All bounded-context migrations applied successfully."

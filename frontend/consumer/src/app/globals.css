@@ -1,26 +1,172 @@
 @import "tailwindcss";
 
+/* Runtime palette — updated by ThemeProvider via applyThemeVariables */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --amuse-primary: oklch(0.520 0.220 285.0);
+  --amuse-on-primary: oklch(0.970 0.010 285.0);
+  --amuse-primary-container: oklch(0.640 0.121 285.0);
+  --amuse-on-primary-container: oklch(0.180 0.020 285.0);
+  --amuse-secondary: oklch(0.470 0.165 315.0);
+  --amuse-on-secondary: oklch(0.970 0.010 315.0);
+  --amuse-surface: oklch(0.980 0.009 285.0);
+  --amuse-on-surface: oklch(0.150 0.020 285.0);
+  --amuse-surface-variant: oklch(0.930 0.018 285.0);
+  --amuse-on-surface-variant: oklch(0.280 0.030 285.0);
+  --amuse-outline: oklch(0.550 0.026 285.0);
+  --amuse-error: oklch(0.550 0.220 25.0);
+  --amuse-on-error: oklch(0.990 0.010 25.0);
+  --amuse-background: oklch(0.990 0.007 285.0);
+  --amuse-on-background: oklch(0.120 0.020 285.0);
+
+  --amuse-focus-ring: var(--amuse-primary);
+  --amuse-border-width: 2px;
+
+  --font-display-large-size: 3.5625rem;
+  --font-display-large-line: 4rem;
+  --font-display-large-tracking: -0.015em;
+  --font-display-large-weight: 700;
+
+  --font-headline-large-size: 2rem;
+  --font-headline-large-line: 2.5rem;
+  --font-headline-large-tracking: -0.01em;
+  --font-headline-large-weight: 700;
+
+  --font-headline-medium-size: 1.75rem;
+  --font-headline-medium-line: 2.25rem;
+  --font-headline-medium-tracking: -0.005em;
+  --font-headline-medium-weight: 600;
+
+  --font-title-large-size: 1.375rem;
+  --font-title-large-line: 1.75rem;
+  --font-title-large-tracking: 0;
+  --font-title-large-weight: 600;
+
+  --font-title-medium-size: 1rem;
+  --font-title-medium-line: 1.5rem;
+  --font-title-medium-tracking: 0.01em;
+  --font-title-medium-weight: 600;
+
+  --font-body-large-size: 1rem;
+  --font-body-large-line: 1.5rem;
+  --font-body-large-tracking: 0.02em;
+  --font-body-large-weight: 400;
+
+  --font-body-medium-size: 0.875rem;
+  --font-body-medium-line: 1.25rem;
+  --font-body-medium-tracking: 0.02em;
+  --font-body-medium-weight: 400;
+
+  --font-label-large-size: 0.875rem;
+  --font-label-large-line: 1.25rem;
+  --font-label-large-tracking: 0.04em;
+  --font-label-large-weight: 600;
+
+  --font-label-medium-size: 0.75rem;
+  --font-label-medium-line: 1rem;
+  --font-label-medium-tracking: 0.05em;
+  --font-label-medium-weight: 600;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-primary: var(--amuse-primary);
+  --color-on-primary: var(--amuse-on-primary);
+  --color-primary-container: var(--amuse-primary-container);
+  --color-on-primary-container: var(--amuse-on-primary-container);
+  --color-secondary: var(--amuse-secondary);
+  --color-on-secondary: var(--amuse-on-secondary);
+  --color-surface: var(--amuse-surface);
+  --color-on-surface: var(--amuse-on-surface);
+  --color-surface-variant: var(--amuse-surface-variant);
+  --color-on-surface-variant: var(--amuse-on-surface-variant);
+  --color-outline: var(--amuse-outline);
+  --color-error: var(--amuse-error);
+  --color-on-error: var(--amuse-on-error);
+  --color-background: var(--amuse-background);
+  --color-on-background: var(--amuse-on-background);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@utility text-display-large {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-display-large-size);
+  line-height: var(--font-display-large-line);
+  letter-spacing: var(--font-display-large-tracking);
+  font-weight: var(--font-display-large-weight);
+}
+
+@utility text-headline-large {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-headline-large-size);
+  line-height: var(--font-headline-large-line);
+  letter-spacing: var(--font-headline-large-tracking);
+  font-weight: var(--font-headline-large-weight);
+}
+
+@utility text-headline-medium {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-headline-medium-size);
+  line-height: var(--font-headline-medium-line);
+  letter-spacing: var(--font-headline-medium-tracking);
+  font-weight: var(--font-headline-medium-weight);
+}
+
+@utility text-title-large {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-title-large-size);
+  line-height: var(--font-title-large-line);
+  letter-spacing: var(--font-title-large-tracking);
+  font-weight: var(--font-title-large-weight);
+}
+
+@utility text-title-medium {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-title-medium-size);
+  line-height: var(--font-title-medium-line);
+  letter-spacing: var(--font-title-medium-tracking);
+  font-weight: var(--font-title-medium-weight);
+}
+
+@utility text-body-large {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-body-large-size);
+  line-height: var(--font-body-large-line);
+  letter-spacing: var(--font-body-large-tracking);
+  font-weight: var(--font-body-large-weight);
+}
+
+@utility text-body-medium {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-body-medium-size);
+  line-height: var(--font-body-medium-line);
+  letter-spacing: var(--font-body-medium-tracking);
+  font-weight: var(--font-body-medium-weight);
+}
+
+@utility text-label-large {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-label-large-size);
+  line-height: var(--font-label-large-line);
+  letter-spacing: var(--font-label-large-tracking);
+  font-weight: var(--font-label-large-weight);
+}
+
+@utility text-label-medium {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-label-medium-size);
+  line-height: var(--font-label-medium-line);
+  letter-spacing: var(--font-label-medium-tracking);
+  font-weight: var(--font-label-medium-weight);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--amuse-background);
+  color: var(--amuse-on-background);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+*:focus-visible {
+  outline: var(--amuse-border-width) solid var(--amuse-focus-ring);
+  outline-offset: 2px;
 }

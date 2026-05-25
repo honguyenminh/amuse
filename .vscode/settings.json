@@ -1,0 +1,4 @@
+{
+    "dotnet.automaticallyCreateSolutionInWorkspace": false,
+    "dotnet.defaultSolution": "backend"
+}
