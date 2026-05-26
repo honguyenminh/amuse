@@ -2,6 +2,7 @@ using Amuse.Domain.Catalog;
 using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.GetAlbumDetail;
 using Amuse.Modules.Catalog.Features.GetArtistDetail;
+using Amuse.Modules.Catalog.Features.GetTrackStreamInfo;
 using Amuse.Modules.Catalog.Persistence;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ public static class CatalogModule
         services.AddScoped<BrowseHomeHandler>();
         services.AddScoped<GetArtistDetailHandler>();
         services.AddScoped<GetAlbumDetailHandler>();
+        services.AddScoped<GetTrackStreamInfoHandler>();
 
         return services;
     }
@@ -40,6 +42,7 @@ public static class CatalogModule
         endpoints.MapBrowseHomeEndpoint();
         endpoints.MapGetArtistDetailEndpoint();
         endpoints.MapGetAlbumDetailEndpoint();
+        endpoints.MapGetTrackStreamInfoEndpoint();
         return endpoints;
     }
 }

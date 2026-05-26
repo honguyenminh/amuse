@@ -3,7 +3,7 @@ namespace Amuse.Domain.Catalog;
 public sealed class Album
 {
     public const int MaxTitleLength = 300;
-    public const int MaxUrlLength = 1024;
+    public const int MaxKeyLength = 512;
 
     public AlbumId Id { get; private set; }
     public ArtistId ArtistId { get; private set; }
@@ -11,7 +11,7 @@ public sealed class Album
     public Slug Slug { get; private set; }
     public ReleaseType ReleaseType { get; private set; }
     public DateTimeOffset ReleaseDate { get; private set; }
-    public string? CoverArtUrl { get; private set; }
+    public string? CoverArtKey { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
     private readonly List<Track> _tracks = [];
@@ -28,7 +28,7 @@ public sealed class Album
         Slug slug,
         ReleaseType releaseType,
         DateTimeOffset releaseDate,
-        string? coverArtUrl,
+        string? coverArtKey,
         DateTimeOffset createdAt)
     {
         Id = id;
@@ -37,7 +37,7 @@ public sealed class Album
         Slug = slug;
         ReleaseType = releaseType;
         ReleaseDate = releaseDate;
-        CoverArtUrl = coverArtUrl;
+        CoverArtKey = coverArtKey;
         CreatedAt = createdAt;
     }
 
@@ -49,7 +49,7 @@ public sealed class Album
         ReleaseType releaseType,
         DateTimeOffset releaseDate,
         DateTimeOffset createdAt,
-        string? coverArtUrl = null)
+        string? coverArtKey = null)
     {
         var trimmedTitle = (title ?? throw new ArgumentNullException(nameof(title))).Trim();
         if (trimmedTitle.Length is 0 or > MaxTitleLength)
@@ -62,12 +62,12 @@ public sealed class Album
                 "Release date must be expressed in UTC (offset 0).",
                 nameof(releaseDate));
 
-        if (coverArtUrl is { Length: > MaxUrlLength })
+        if (coverArtKey is { Length: > MaxKeyLength })
             throw new ArgumentException(
-                $"Cover art url exceeds {MaxUrlLength} characters.",
-                nameof(coverArtUrl));
+                $"Cover art key exceeds {MaxKeyLength} characters.",
+                nameof(coverArtKey));
 
-        return new Album(id, artistId, trimmedTitle, slug, releaseType, releaseDate, coverArtUrl, createdAt);
+        return new Album(id, artistId, trimmedTitle, slug, releaseType, releaseDate, coverArtKey, createdAt);
     }
 
     public Track AddTrack(
@@ -75,13 +75,13 @@ public sealed class Album
         string title,
         int trackNumber,
         TrackDuration duration,
-        string? audioUrl = null)
+        string? audioMasterKey = null)
     {
         if (_tracks.Any(t => t.TrackNumber == trackNumber))
             throw new InvalidOperationException(
                 $"Track number {trackNumber} already exists on album '{Id.Value}'.");
 
-        var track = new Track(id, Id, title, trackNumber, duration, audioUrl);
+        var track = new Track(id, Id, title, trackNumber, duration, audioMasterKey);
         _tracks.Add(track);
         return track;
     }

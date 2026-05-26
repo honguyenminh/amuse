@@ -3,14 +3,14 @@ namespace Amuse.Domain.Catalog;
 public sealed class Track
 {
     public const int MaxTitleLength = 300;
-    public const int MaxUrlLength = 1024;
+    public const int MaxKeyLength = 512;
 
     public TrackId Id { get; private set; }
     public AlbumId AlbumId { get; private set; }
     public string Title { get; private set; } = null!;
     public int TrackNumber { get; private set; }
     public TrackDuration Duration { get; private set; }
-    public string? AudioUrl { get; private set; }
+    public string? AudioMasterKey { get; private set; }
 
     private Track()
     {
@@ -22,7 +22,7 @@ public sealed class Track
         string title,
         int trackNumber,
         TrackDuration duration,
-        string? audioUrl)
+        string? audioMasterKey)
     {
         var trimmedTitle = (title ?? throw new ArgumentNullException(nameof(title))).Trim();
         if (trimmedTitle.Length is 0 or > MaxTitleLength)
@@ -36,14 +36,16 @@ public sealed class Track
                 trackNumber,
                 "Track number must be positive.");
 
-        if (audioUrl is { Length: > MaxUrlLength })
-            throw new ArgumentException($"Audio url exceeds {MaxUrlLength} characters.", nameof(audioUrl));
+        if (audioMasterKey is { Length: > MaxKeyLength })
+            throw new ArgumentException(
+                $"Audio master key exceeds {MaxKeyLength} characters.",
+                nameof(audioMasterKey));
 
         Id = id;
         AlbumId = albumId;
         Title = trimmedTitle;
         TrackNumber = trackNumber;
         Duration = duration;
-        AudioUrl = audioUrl;
+        AudioMasterKey = audioMasterKey;
     }
 }

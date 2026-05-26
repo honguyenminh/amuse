@@ -5,12 +5,16 @@ const variantClass = {
   "display-large": "text-display-large",
   "headline-large": "text-headline-large",
   "headline-medium": "text-headline-medium",
+  "headline-small": "text-headline-small",
   "title-large": "text-title-large",
   "title-medium": "text-title-medium",
+  "title-small": "text-title-small",
   "body-large": "text-body-large",
   "body-medium": "text-body-medium",
+  "body-small": "text-body-small",
   "label-large": "text-label-large",
   "label-medium": "text-label-medium",
+  "label-small": "text-label-small",
 } as const;
 
 export type TextVariant = keyof typeof variantClass;

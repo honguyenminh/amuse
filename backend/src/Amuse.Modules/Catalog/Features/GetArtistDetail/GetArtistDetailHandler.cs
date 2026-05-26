@@ -1,12 +1,14 @@
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
+using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Media;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.GetArtistDetail;
 
-internal sealed class GetArtistDetailHandler(CatalogDbContext db)
+internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage storage)
 {
     public async Task<Result<GetArtistDetailResponse>> HandleAsync(
         Guid artistId,
@@ -26,37 +28,50 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db)
                 a.Slug,
                 a.Name,
                 a.Bio,
-                a.AvatarUrl,
-                a.CoverUrl,
+                a.AvatarKey,
+                a.CoverKey,
             })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (artist is null)
             return Result<GetArtistDetailResponse>.Failure(CatalogErrors.ArtistNotFound);
 
-        var albums = await db.Albums
+        var albumRows = await db.Albums
             .AsNoTracking()
             .Where(a => a.ArtistId == typedId)
             .OrderByDescending(a => a.ReleaseDate)
-            .Select(a => new AlbumSummary(
-                a.Id.Value,
-                a.Slug.Value,
+            .Select(a => new
+            {
+                AlbumId = a.Id.Value,
+                AlbumSlug = a.Slug.Value,
                 a.Title,
-                a.ArtistId.Value,
+                ArtistId = a.ArtistId.Value,
+                a.ReleaseType,
+                a.ReleaseDate,
+                a.CoverArtKey,
+            })
+            .ToListAsync(cancellationToken);
+
+        var albums = albumRows
+            .Select(a => new AlbumSummary(
+                a.AlbumId,
+                a.AlbumSlug,
+                a.Title,
+                a.ArtistId,
                 artist.Name,
                 artist.Slug.Value,
                 a.ReleaseType,
                 a.ReleaseDate,
-                a.CoverArtUrl))
-            .ToListAsync(cancellationToken);
+                BrowseHomeHandler.CoverArtUrlFor(storage, a.CoverArtKey)))
+            .ToArray();
 
         var response = new GetArtistDetailResponse(
             artist.Id.Value,
             artist.Slug.Value,
             artist.Name,
             artist.Bio,
-            artist.AvatarUrl,
-            artist.CoverUrl,
+            BrowseHomeHandler.CoverArtUrlFor(storage, artist.AvatarKey),
+            BrowseHomeHandler.CoverArtUrlFor(storage, artist.CoverKey),
             albums);
 
         return Result<GetArtistDetailResponse>.Success(response);

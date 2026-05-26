@@ -3,6 +3,7 @@ import type {
   BrowseHomeResponse,
   GetAlbumDetailResponse,
   GetArtistDetailResponse,
+  TrackStreamInfoResponse,
 } from "./types";
 
 export function browseCatalogHome(): Promise<BrowseHomeResponse> {
@@ -19,6 +20,13 @@ export function getCatalogArtist(artistId: string): Promise<GetArtistDetailRespo
 export function getCatalogAlbum(albumId: string): Promise<GetAlbumDetailResponse> {
   return authFetch<GetAlbumDetailResponse>(
     `/api/v1/catalog/albums/${encodeURIComponent(albumId)}`,
+    { method: "GET" },
+  );
+}
+
+export function getTrackStreamInfo(trackId: string): Promise<TrackStreamInfoResponse> {
+  return authFetch<TrackStreamInfoResponse>(
+    `/api/v1/catalog/tracks/${encodeURIComponent(trackId)}/stream-info`,
     { method: "GET" },
   );
 }

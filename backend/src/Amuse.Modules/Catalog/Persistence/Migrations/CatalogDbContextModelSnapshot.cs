@@ -35,10 +35,10 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("artist_id");
 
-                    b.Property<string>("CoverArtUrl")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
-                        .HasColumnName("cover_art_url");
+                    b.Property<string>("CoverArtKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("cover_art_key");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
@@ -80,20 +80,20 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("AvatarUrl")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
-                        .HasColumnName("avatar_url");
+                    b.Property<string>("AvatarKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("avatar_key");
 
                     b.Property<string>("Bio")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("bio");
 
-                    b.Property<string>("CoverUrl")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
-                        .HasColumnName("cover_url");
+                    b.Property<string>("CoverKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("cover_key");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
@@ -129,10 +129,10 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("album_id");
 
-                    b.Property<string>("AudioUrl")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
-                        .HasColumnName("audio_url");
+                    b.Property<string>("AudioMasterKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("audio_master_key");
 
                     b.Property<int>("Duration")
                         .HasColumnType("integer")

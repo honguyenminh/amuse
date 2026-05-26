@@ -80,6 +80,46 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Stream_info_returns_signed_url_for_seeded_track()
+    {
+        using var client = fixture.CreateClient();
+        await AuthorizeAsync(client);
+
+        var home = await client.GetFromJsonAsync<JsonElement>("/api/v1/catalog/home", JsonOptions);
+        var albumId = home.GetProperty("recentAlbums")[0].GetProperty("id").GetString();
+
+        var album = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/catalog/albums/{albumId}",
+            JsonOptions);
+        var trackId = album.GetProperty("tracks")[0].GetProperty("id").GetString();
+
+        var response = await client.GetAsync($"/api/v1/catalog/tracks/{trackId}/stream-info");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        Assert.Equal(trackId, payload.GetProperty("trackId").GetString());
+        var url = payload.GetProperty("url").GetString();
+        Assert.False(string.IsNullOrEmpty(url), "Signed URL must not be empty.");
+        Assert.Contains("amuse-audio", url, StringComparison.Ordinal);
+        Assert.True(payload.GetProperty("durationMs").GetInt32() > 0);
+        Assert.True(payload.GetProperty("expiresAt").GetDateTimeOffset() > DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task Stream_info_unknown_track_returns_problem()
+    {
+        using var client = fixture.CreateClient();
+        await AuthorizeAsync(client);
+
+        var response = await client.GetAsync(
+            "/api/v1/catalog/tracks/00000000-0000-0000-0000-000000000099/stream-info");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        Assert.Equal("catalog.track_not_found", problem.GetProperty("title").GetString());
+    }
+
     private static async Task AuthorizeAsync(HttpClient client)
     {
         var login = new HttpRequestMessage(HttpMethod.Post, "/api/v1/identity/login/password")

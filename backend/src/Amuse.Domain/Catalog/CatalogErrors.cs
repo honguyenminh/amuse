@@ -10,6 +10,12 @@ public static class CatalogErrors
     public static readonly DomainError AlbumNotFound =
         new("catalog.album_not_found", "Album was not found.");
 
+    public static readonly DomainError TrackNotFound =
+        new("catalog.track_not_found", "Track was not found.");
+
+    public static readonly DomainError TrackHasNoAudio =
+        new("catalog.track_has_no_audio", "Track does not have an audio master assigned yet.");
+
     public static readonly DomainError InvalidSlug =
         new("catalog.invalid_slug", "Slug must be lowercase alphanumerics with single hyphens.");
 

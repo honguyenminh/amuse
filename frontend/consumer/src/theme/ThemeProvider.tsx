@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -80,15 +79,4 @@ export function usePageSeed(seed: ColorSeed | null): void {
     setPageSeed(seed);
     return () => setPageSeed(null);
   }, [seed, setPageSeed]);
-}
-
-export function usePlaybackControls() {
-  const { setPlayingSeed, setPaused, isPaused, playingSeed } = useTheme();
-  const play = useCallback((seed: ColorSeed) => {
-    setPlayingSeed(seed);
-    setPaused(false);
-  }, [setPlayingSeed, setPaused]);
-  const pause = useCallback(() => setPaused(true), [setPaused]);
-  const resume = useCallback(() => setPaused(false), [setPaused]);
-  return { play, pause, resume, isPaused, playingSeed };
 }

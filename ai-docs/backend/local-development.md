@@ -45,6 +45,23 @@ cd backend
 
 Order: Identity → Tenancy → Listener → Platform → Catalog → Audit.
 
+## Object storage (MinIO)
+
+Catalog cover art and audio masters are served from S3-compatible object storage. The
+local stack ships a MinIO instance under `backend/compose.yaml`:
+
+```bash
+cd backend
+docker compose up -d minio minio-init   # also starts postgres if you've not already
+```
+
+`minio-init` is a one-shot job that creates the `amuse-covers` (public-read) and
+`amuse-audio` (private) buckets. Web console: <http://localhost:9001> (creds:
+`amuse` / `amuse_dev_secret`).
+
+The dev API seeds both buckets at startup with deterministic content (BMP gradient
+covers + sine-wave WAV audio). See `ai-docs/backend/media.md`.
+
 **First run on an empty database:** EF Core may log `Failed executing DbCommand` when selecting from `__EFMigrationsHistory_*` because those tables do not exist yet. That probe is normal. Treat the run as successful when each context ends with `Done.` and the script exits `0`. Re-runs are idempotent (only pending migrations apply).
 
 Equivalent manual command per context:

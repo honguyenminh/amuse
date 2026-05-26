@@ -31,13 +31,13 @@ internal sealed class ArtistConfiguration : IEntityTypeConfiguration<Artist>
             .HasColumnName("bio")
             .HasMaxLength(Artist.MaxBioLength);
 
-        builder.Property(a => a.AvatarUrl)
-            .HasColumnName("avatar_url")
-            .HasMaxLength(Artist.MaxUrlLength);
+        builder.Property(a => a.AvatarKey)
+            .HasColumnName("avatar_key")
+            .HasMaxLength(Artist.MaxKeyLength);
 
-        builder.Property(a => a.CoverUrl)
-            .HasColumnName("cover_url")
-            .HasMaxLength(Artist.MaxUrlLength);
+        builder.Property(a => a.CoverKey)
+            .HasColumnName("cover_key")
+            .HasMaxLength(Artist.MaxKeyLength);
 
         builder.Property(a => a.CreatedAt)
             .HasColumnName("created_at")

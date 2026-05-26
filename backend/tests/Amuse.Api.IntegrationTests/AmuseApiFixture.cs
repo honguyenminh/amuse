@@ -1,10 +1,12 @@
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Seeding;
 using Amuse.Modules.Common.Persistence;
+using Amuse.Modules.Media;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 
 namespace Amuse.Api.IntegrationTests;
@@ -18,7 +20,11 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
         .WithPassword("postgres")
         .Build();
 
+    private readonly InMemoryObjectStorage _objectStorage = new();
+
     private string? _connectionString;
+
+    public InMemoryObjectStorage ObjectStorage => _objectStorage;
 
     public async Task InitializeAsync()
     {
@@ -28,7 +34,8 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
 
         await using var scope = Services.CreateAsyncScope();
         var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-        await CatalogDevSeeding.SeedAsync(catalogDb, CancellationToken.None);
+        var storage = scope.ServiceProvider.GetRequiredService<IObjectStorage>();
+        await CatalogDevSeeding.SeedAsync(catalogDb, storage, CancellationToken.None);
     }
 
     public override async ValueTask DisposeAsync()
@@ -57,6 +64,17 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
                     ["ConnectionStrings:DefaultConnection"] = _connectionString,
                 });
             }
+        });
+
+        builder.ConfigureServices(services =>
+        {
+            // Replace the real S3-backed storage with the in-memory fake so tests
+            // don't depend on a running MinIO. Both the AWS S3 client and the storage
+            // service registrations must be cleared, since the real client tries to
+            // contact MinIO on first call even if storage itself is replaced.
+            services.RemoveAll<Amazon.S3.IAmazonS3>();
+            services.RemoveAll<IObjectStorage>();
+            services.AddSingleton<IObjectStorage>(_objectStorage);
         });
     }
 

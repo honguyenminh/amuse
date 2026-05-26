@@ -29,7 +29,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     slug = table.Column<string>(type: "character varying(96)", maxLength: 96, nullable: false),
                     release_type = table.Column<ReleaseType>(type: "catalog.release_type", nullable: false),
                     release_date = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false),
-                    cover_art_url = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    cover_art_key = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false)
                 },
                 constraints: table =>
@@ -46,8 +46,8 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     slug = table.Column<string>(type: "character varying(96)", maxLength: 96, nullable: false),
                     bio = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
-                    avatar_url = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
-                    cover_url = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    avatar_key = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    cover_key = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false)
                 },
                 constraints: table =>
@@ -65,7 +65,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     title = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
                     track_number = table.Column<int>(type: "integer", nullable: false),
                     duration_ms = table.Column<int>(type: "integer", nullable: false),
-                    audio_url = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true)
+                    audio_master_key = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true)
                 },
                 constraints: table =>
                 {

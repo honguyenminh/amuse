@@ -59,7 +59,15 @@ export type TrackResponse = {
   title: string;
   trackNumber: number;
   durationMs: number;
-  audioUrl: string | null;
+  hasAudio: boolean;
+};
+
+export type TrackStreamInfoResponse = {
+  trackId: string;
+  url: string;
+  contentType: string;
+  durationMs: number;
+  expiresAt: string;
 };
 
 export type BrowseHomeResponse = {

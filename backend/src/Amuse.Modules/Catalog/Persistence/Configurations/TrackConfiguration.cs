@@ -34,9 +34,9 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
                 d => d.Milliseconds,
                 ms => TrackDuration.FromMilliseconds(ms));
 
-        builder.Property(t => t.AudioUrl)
-            .HasColumnName("audio_url")
-            .HasMaxLength(Track.MaxUrlLength);
+        builder.Property(t => t.AudioMasterKey)
+            .HasColumnName("audio_master_key")
+            .HasMaxLength(Track.MaxKeyLength);
 
         builder.HasIndex(t => new { t.AlbumId, t.TrackNumber }).IsUnique();
     }

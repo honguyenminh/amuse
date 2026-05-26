@@ -1,12 +1,14 @@
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
+using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Media;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.GetAlbumDetail;
 
-internal sealed class GetAlbumDetailHandler(CatalogDbContext db)
+internal sealed class GetAlbumDetailHandler(CatalogDbContext db, IObjectStorage storage)
 {
     public async Task<Result<GetAlbumDetailResponse>> HandleAsync(
         Guid albumId,
@@ -42,7 +44,7 @@ internal sealed class GetAlbumDetailHandler(CatalogDbContext db)
                 t.Title,
                 t.TrackNumber,
                 t.Duration.Milliseconds,
-                t.AudioUrl))
+                HasAudio: !string.IsNullOrEmpty(t.AudioMasterKey)))
             .ToArray();
 
         var response = new GetAlbumDetailResponse(
@@ -54,7 +56,7 @@ internal sealed class GetAlbumDetailHandler(CatalogDbContext db)
             artist.Slug.Value,
             album.ReleaseType,
             album.ReleaseDate,
-            album.CoverArtUrl,
+            BrowseHomeHandler.CoverArtUrlFor(storage, album.CoverArtKey),
             tracks);
 
         return Result<GetAlbumDetailResponse>.Success(response);

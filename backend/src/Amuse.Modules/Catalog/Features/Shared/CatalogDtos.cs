@@ -25,4 +25,4 @@ public sealed record TrackResponse(
     string Title,
     int TrackNumber,
     int DurationMs,
-    string? AudioUrl);
+    bool HasAudio);

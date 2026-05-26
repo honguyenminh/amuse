@@ -7,6 +7,7 @@ using Amuse.Modules.Catalog.Seeding;
 using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Identity;
 using Amuse.Modules.Listener;
+using Amuse.Modules.Media;
 using Amuse.Modules.Platform;
 using Amuse.Modules.Platform.Persistence;
 using Amuse.Modules.Platform.Seeding;
@@ -36,6 +37,7 @@ builder.Services.AddTenancyModule(builder.Configuration);
 builder.Services.AddListenerModule(builder.Configuration);
 builder.Services.AddPlatformModule(builder.Configuration);
 builder.Services.AddCatalogModule(builder.Configuration);
+builder.Services.AddMediaModule(builder.Configuration);
 builder.Services.AddAuditModule(builder.Configuration);
 
 var app = builder.Build();
@@ -53,7 +55,8 @@ if (app.Environment.IsDevelopment())
         await PlatformRootSeeding.SeedAsync(platformDb, scope.ServiceProvider, CancellationToken.None);
 
         var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-        await CatalogDevSeeding.SeedAsync(catalogDb, CancellationToken.None);
+        var objectStorage = scope.ServiceProvider.GetRequiredService<IObjectStorage>();
+        await CatalogDevSeeding.SeedAsync(catalogDb, objectStorage, CancellationToken.None);
     }
 }
 

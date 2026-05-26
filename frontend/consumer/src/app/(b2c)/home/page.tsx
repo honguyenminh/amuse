@@ -3,6 +3,7 @@
 import { AppShell } from "@/components/ui/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { browseCatalogHome } from "@/lib/api/catalogClient";
 import type {
@@ -62,7 +63,20 @@ export default function HomePage() {
           </Text>
         </Card>
 
-        {loading && <Text variant="body-medium">Loading catalog…</Text>}
+        {loading && (
+          <section className="flex flex-col gap-3">
+            <Skeleton className="h-6 w-40" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 6 }, (_, i) => (
+                <Card key={i}>
+                  <Skeleton className="aspect-square w-full rounded-md" />
+                  <Skeleton className="mt-2 h-5 w-3/4" />
+                  <Skeleton className="mt-1 h-4 w-1/2" />
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
         {error && (
           <Card>
             <Text variant="title-large">Could not load catalog</Text>

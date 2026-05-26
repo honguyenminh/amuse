@@ -39,9 +39,9 @@ internal sealed class AlbumConfiguration : IEntityTypeConfiguration<Album>
             .HasColumnName("release_date")
             .HasColumnType("timestamptz");
 
-        builder.Property(a => a.CoverArtUrl)
-            .HasColumnName("cover_art_url")
-            .HasMaxLength(Album.MaxUrlLength);
+        builder.Property(a => a.CoverArtKey)
+            .HasColumnName("cover_art_key")
+            .HasMaxLength(Album.MaxKeyLength);
 
         builder.Property(a => a.CreatedAt)
             .HasColumnName("created_at")

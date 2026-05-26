@@ -13,6 +13,40 @@
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: amuse
+      MINIO_ROOT_PASSWORD: amuse_dev_secret
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot init: ensures the public covers bucket and the private audio bucket
+  # exist with the correct anonymous-read policy on covers. Idempotent.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 amuse amuse_dev_secret &&
+      mc mb --ignore-existing local/amuse-covers &&
+      mc mb --ignore-existing local/amuse-audio &&
+      mc anonymous set download local/amuse-covers &&
+      echo 'minio buckets ready.'
+      "
+    restart: "no"
+
   amuse.api:
     image: amuse.api
     build:
@@ -22,3 +56,8 @@
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+
+volumes:
+  minio-data:
