@@ -3,9 +3,11 @@
 Frontend playback is owned by a single `PlaybackProvider` sibling to `ThemeProvider` and
 `AuthProvider`. It encapsulates:
 
-- A single `HTMLAudioElement` instance.
+- A single `HTMLAudioElement` wrapped by `createPlaybackOutput()` (gain / volume fades).
 - A pure reducer over a `PlaybackState` (queue, position, volume, repeat, shuffle).
-- The fetch for short-lived signed stream URLs (`/api/v1/catalog/tracks/{id}/stream-info`).
+- The fetch for playback discovery (`/api/v1/catalog/tracks/{id}/stream-info`) — returns a **relative** DASH manifest path when ready, or `catalog.track_stream_not_ready` until the worker sets `audio_stream_key`.
+- **DASH playback** via `dashjs` (`src/lib/playback/dashPlayer.ts`): manifest + catalog-backed segment URLs are resolved against `NEXT_PUBLIC_API_BASE_URL` (`resolveApiUrl`); dash.js **v5** uses `addRequestInterceptor` to attach `Authorization` + `X-Amuse-Client` (the old `RequestModifier` extension is a no-op in v5).
+- **Output path** (`src/lib/playback/playbackOutput.ts`): optional Web Audio `GainNode` for short fade-in on play and fade-out before pause (reduces clicks); pause restores `currentTime` after fade so the seekbar does not drift.
 - The bridge into `ThemeProvider`'s `playingSeed` / `isPaused` precedence.
 - A login redirect guard: anonymous visitors can browse, but attempting to play
   bounces them through `/login?next=<current path>`.
@@ -94,59 +96,56 @@ The fix has three parts:
 2. **No CSS transition on the fill** (`Slider.tsx`). The colored bar updates synchronously
    with the input's `value` change, so it can never trail the thumb.
 3. **`usePlaybackPosition()` hook** (`PlaybackContext.tsx`). While `isPlaying` is true a
-   `requestAnimationFrame` loop reads `audio.currentTime` directly into a local `useState`,
-   re-rendering only the components that subscribe (currently `MiniPlayer` and `/playing`)
-   at ~60 Hz. The reducer's `state.positionMs` continues to tick at the slower cadence and
-   is used for non-visual concerns (e.g. `previous` boundary detection).
+   `requestAnimationFrame` loop reads `audio.currentTime` into local `useState` for the
+   slider (~60 Hz). On **resume after pause**, the first frame seeds from reducer
+   `positionMs` so the bar does not jump ahead of the frozen pause position. While paused,
+   the slider follows `state.positionMs`. `timeupdate` reducer ticks are suppressed while
+   `!isPlaying` so the pause fade cannot advance the stored position.
 
 While the user is dragging the thumb, the parent component overrides the displayed value
 with a local `scrubMs` state populated from `onScrubStart`/`onChange`. Audio element
 push-back (rAF or `timeupdate`) can't fight the user because the slider isn't reading
 either source during scrubbing. On `onScrubEnd` the final value is committed via
-`seek(positionMs)`, `scrubMs` is cleared, and the audio sync effect (>0.5 s delta) seeks
-the audio element to the chosen position.
+`seek(positionMs)`, `scrubMs` is cleared, and the audio sync effect seeks the element via
+`syncAudioTime` (see `syncAudioTime.ts`).
 
 ## Side effects in the provider
 
 The provider runs these effects, each driven by a single piece of state:
 
-1. **Once**: create the `<audio>` element on the client (guarded against SSR). Wire up
-   `timeupdate`, `ended`, and `loadedmetadata` listeners that dispatch reducer actions.
-2. **On `currentTrack.id` change**: fetch `stream-info`, set `audio.src`, call `play()`
-   if `isPlaying`. A failed fetch dispatches `pause`; a 401 additionally dispatches
-   `clear` and redirects to `/login?next=...`.
-3. **On `isPlaying` change**: call `audio.play()` or `audio.pause()` to match state.
-4. **On `volume` change**: write through to `audio.volume`.
-5. **On `currentTrack` change**: seed the theme with the cover art. First applies a
-   deterministic fallback (instant), then asynchronously refines with
-   `extractSeedFromImage` if CORS permits.
-6. **On `isPlaying` + `currentIndex` change**: set `theme.isPaused` to fade the palette
-   when a track is loaded but paused.
-7. **On `positionMs` change**: write through to `audio.currentTime` when the delta is
-   greater than 0.5 s (so we don't fight the natural `timeupdate` tick).
+1. **Once**: create playback output + `HTMLAudioElement` on the client. Wire `timeupdate`
+   (dispatches `tick` only while playing), `ended`, `loadedmetadata`.
+2. **On `currentTrack.id` change**: fetch `stream-info`, attach DASH (`attachDashToAudio`) or set `audio.src` for non-DASH; reset DASH session when switching tracks.
+3. **On `isPlaying` change**: `output.playSmooth()` / `output.pauseSmooth()` — not raw
+   `audio.play`/`pause` alone (gain ramps).
+4. **On `volume` change**: `output.setVolume`.
+5. **On `currentTrack` change**: theme `playingSeed` bridge (unchanged).
+6. **On `isPlaying` + `currentIndex`**: theme paused palette.
+7. **Seek / scrub**: `syncAudioTime` + `pauseImmediate` on the output path when jumping position.
 
-## Stream URL lifecycle
+## Stream URL lifecycle (DASH)
 
 ```text
-PlaybackProvider              Catalog API                      MinIO
-       │                           │                              │
-       │  GET /tracks/{id}/stream  │                              │
-       ├──────────────────────────▶│                              │
-       │                           │  GetSignedUrl (30 min TTL)   │
-       │                           ├─────────────────────────────▶│
-       │                           │◀── signed URL                │
-       │◀── { url, contentType, durationMs, expiresAt }            │
-       │                                                          │
-audio.src = url                                                   │
-audio.play()                                                      │
-       ├──────────────────────────── GET (Range)  ───────────────▶│
-       │◀──── audio bytes ────────────────────────────────────────│
+PlaybackProvider          Catalog API (auth)              Object storage (MinIO / R2)
+       │                         │                                    │
+       │  GET .../stream-info    │                                    │
+       ├────────────────────────▶│  returns { url: "/api/.../manifest.mpd", contentType } │
+       │                         │                                    │
+       │  dashjs GET manifest    │  reads MPD from bucket (GetAsync)  │
+       ├────────────────────────▶│◀──────────────────────────────────│
+       │                         │                                    │
+       │  dashjs GET segment     │  302 → presigned GET URL           │
+       ├────────────────────────▶├───────────────────────────────────▶│
+       │  browser follows redirect (bytes from storage / CDN)         │
 ```
 
-Signed URLs expire (30 minutes by default). If a track is paused at minute 29 and
-resumed at minute 31 the audio element will start emitting errors; the current strategy
-is "tolerate the failure, user reloads the track". A future improvement: re-fetch
-`stream-info` automatically when an `error` event fires.
+Configure `NEXT_PUBLIC_API_BASE_URL` in `frontend/consumer` so relative `/api/...` paths resolve to the real API host (not the Next.js origin).
+
+Signed **segment** URLs expire (see `Media:SignedUrlMinutes`). Re-fetch `stream-info` / restart track if playback errors after long pause — same class of problem as expiring a single signed file URL.
+
+## Legacy direct file URL (non-DASH)
+
+If the API ever returned a fully qualified presigned URL to a single file, the client would set `audio.crossOrigin = "anonymous"` and `audio.src = url`. The **catalog path today is DASH-only** once a stream exists; masters are not exposed for listener playback via `stream-info`.
 
 ## Theme bridge
 
@@ -186,19 +185,15 @@ UI primitives introduced earlier and still in use:
 
 ## Testing
 
-- `src/lib/playback/__tests__/reducer.test.ts` — 14 cases covering queue ops, transport,
-  boundary conditions, repeat modes, and misc helpers.
-- `src/lib/playback/__tests__/formatDuration.test.ts` — 4 cases covering edge values,
-  minute / hour formatting, and `0:00` for invalid input.
-- Run with `pnpm test` from `frontend/consumer`. All 23 frontend tests pass.
+- `src/lib/playback/__tests__/reducer.test.ts` — queue ops, transport, repeat, etc.
+- `src/lib/playback/__tests__/formatDuration.test.ts` — duration formatting.
+- Run with `pnpm test` from `frontend/consumer`.
 
-Backend integration coverage for the stream-info endpoint lives in
-`CatalogEndpointsTests` (`Stream_info_returns_signed_url_for_seeded_track`,
-`Stream_info_requires_authentication`, `Stream_info_unknown_track_returns_problem`).
+Backend integration: `CatalogEndpointsTests` includes `stream-info` expectations for **DASH-only** behavior (`Stream_info_returns_track_stream_not_ready_until_ingested`, auth, unknown track).
 
 ## Known follow-ups
 
-- Auto-refresh stream URLs when the audio element emits an `error` after URL expiry.
+- Auto-refresh / re-attach when `stream-info` URLs or signed segment redirects expire (listen for `error` on the media element).
 - Wire `usePlayback` into a global keyboard shortcut layer (space = toggle, ← / → =
   seek, ↑ / ↓ = volume).
 - Persist queue + position to `localStorage` so a refresh keeps you where you were —
@@ -208,3 +203,4 @@ Backend integration coverage for the stream-info endpoint lives in
   seed instead of falling back to the deterministic hash.
 - Replace `<img>` with `next/image` + `images.remotePatterns` for the configured media
   host once the CORS story is firmed up.
+- Token refresh on **long** DASH sessions: today interceptors read the token at request time; if access JWT expires mid-playback, consider refreshing inside the interceptor or re-attaching the source after refresh.

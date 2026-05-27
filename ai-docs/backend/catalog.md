@@ -40,7 +40,7 @@ The three browse endpoints are **public** (`.AllowAnonymous()`); a Spotify/YouTu
 | `GET`  | `/api/v1/catalog/home`                          | Anonymous     | `BrowseHomeHandler`         | Returns 8 most-recent releases + 6 featured artists. |
 | `GET`  | `/api/v1/catalog/artists/{artistId:guid}`       | Anonymous     | `GetArtistDetailHandler`    | Returns artist + discography. `400 catalog.artist_not_found` if missing. |
 | `GET`  | `/api/v1/catalog/releases/{releaseId:guid}`     | Anonymous     | `GetReleaseDetailHandler`   | Returns release + ordered tracks. `400 catalog.release_not_found` if missing. |
-| `GET`  | `/api/v1/catalog/tracks/{trackId:guid}/stream-info` | Bearer JWT | `GetTrackStreamInfoHandler` | Returns playback URL. If DASH is ready, URL points to authenticated catalog DASH endpoint; otherwise falls back to signed master URL. |
+| `GET`  | `/api/v1/catalog/tracks/{trackId:guid}/stream-info` | Bearer JWT | `GetTrackStreamInfoHandler` | **DASH-only playback:** returns a relative manifest path `/api/v1/catalog/tracks/{id}/dash/{manifestId}/manifest.mpd` when `track.audio_stream_key` is set. If the worker has not produced a stream yet, returns `400` with `catalog.track_stream_not_ready` (no presigned master fallback). |
 | `POST` | `/api/v1/catalog/tracks/{trackId:guid}/audio-master/presign-upload` | Bearer JWT | `PresignAudioMasterUploadHandler` | Returns short-lived presigned PUT URL + key for direct upload from uploader UI. |
 | `POST` | `/api/v1/catalog/tracks/{trackId:guid}/audio-master/complete` | Bearer JWT | `CompleteAudioMasterUploadHandler` | Validates uploaded object, assigns `audio_master_key`, persists transcode job, publishes RabbitMQ message. |
 | `GET`  | `/api/v1/catalog/tracks/{trackId:guid}/dash/{manifestId}/{assetName}` | Bearer JWT | `GetTrackDashAssetHandler` | Authenticated DASH gateway. Serves `manifest.mpd` from API and issues signed redirects for segment files. |
@@ -59,7 +59,13 @@ Response DTOs are defined in `Catalog/Features/Shared/CatalogDtos.cs` and per-fe
 
 ## Dev seed
 
-`CatalogDevSeeding.SeedAsync` is invoked once at API startup **only when `app.Environment.IsDevelopment()`**. It is idempotent: returns early if any artist already exists, and each media upload to MinIO is gated by `IObjectStorage.ObjectExistsAsync` so re-runs only push missing keys. The fixture (`AmuseApiFixture`) calls the same method for integration tests so endpoint tests can rely on a populated catalog plus matching MinIO objects (via the in-memory adapter).
+`CatalogDevSeeding.SeedAsync(db, storage, jobQueue, clock, cancellationToken)` is invoked once at API startup **only when `app.Environment.IsDevelopment()`**. It is idempotent:
+
+- **Media:** each cover/audio upload is gated by `IObjectStorage.ObjectExistsAsync` so re-runs only push missing keys.
+- **Catalog rows:** first run only — if any artist already exists, the fixture row insert is skipped.
+- **Encoded playback path:** after rows exist, any track with `audio_master_key` set and **no** `audio_stream_key` gets an `AudioTranscodeJob` row (unless a non-failed job already exists) and a message is published via `IAudioTranscodeJobQueue`. That upgrades seeded WAV masters into the same RabbitMQ → worker → DASH pipeline as real uploads. Until the worker finishes, `stream-info` returns `catalog.track_stream_not_ready`.
+
+The fixture (`AmuseApiFixture`) calls the same seeding signature with `InMemoryAudioTranscodeJobQueue` so tests stay hermetic.
 
 Sample data: 3 artists (Aurora Lights, Iron Palms, Velvet Monsoon), 5 releases spanning every `ReleaseType` value, each with a procedurally generated BMP gradient cover (`releases/<slug>/cover.bmp`) and per-track WAV sine waves (`releases/<slug>/NN-<track-slug>.wav`).
 

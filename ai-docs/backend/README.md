@@ -9,9 +9,11 @@ This folder documents **current backend behavior and conventions** as implemente
 | Document | Description |
 |----------|-------------|
 | [identity-auth.md](./identity-auth.md) | Identity BC: endpoints, token model, auth flows, errors, JTI blacklist |
-| [local-development.md](./local-development.md) | Postgres, migrations policy, run API, manual verification |
+| [local-development.md](./local-development.md) | Postgres, migrations policy, run API, worker, MinIO/CORS, manual verification |
 | [architecture-conventions.md](./architecture-conventions.md) | VSA, DDD, cross-BC boundaries, validation, migrations |
 | [testing.md](./testing.md) | Unit and integration tests, Docker requirement |
+| [catalog.md](./catalog.md) | Catalog BC: stream-info (DASH), dev seed + transcode job enqueue |
+| [media.md](./media.md) | Ingest, presign, worker, DASH output, client read path |
 
 ## Quick reference
 

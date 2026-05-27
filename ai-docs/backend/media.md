@@ -113,9 +113,9 @@ catalog migration emitted these as `*_key` columns (e.g. `cover_art_key`).
    included in the DTO as `coverArtUrl`/`avatarUrl`/`coverUrl`.
 3. Track audio is **not** included in the release DTO — the client must call the dedicated
    `GET /api/v1/catalog/tracks/{id}/stream-info` endpoint to obtain a playback URL.
-   - If no derived stream exists yet, `stream-info` returns signed URL to the master key.
-   - If DASH packaging completed, `stream-info` returns
-     `/api/v1/catalog/tracks/{id}/dash/{manifestId}/manifest.mpd`.
+   - **Playback is DASH-only:** if `audio_stream_key` is missing (worker not done), the API returns `catalog.track_stream_not_ready`.
+   - When DASH packaging completed, `stream-info` returns a **relative** manifest path:
+     `/api/v1/catalog/tracks/{id}/dash/{manifestId}/manifest.mpd` (the consumer resolves this against `NEXT_PUBLIC_API_BASE_URL`).
 4. DASH asset requests stay authenticated at the catalog API boundary:
    - `manifest.mpd` is served directly by API (`IObjectStorage.GetAsync`).
    - Segment requests (`*.m4s`, init fragments) are validated against track stream prefix
@@ -125,7 +125,7 @@ catalog migration emitted these as `*_key` columns (e.g. `cover_art_key`).
 
 ## Dev-only media seeding
 
-`CatalogDevSeeding.SeedAsync(db, storage, ct)` does two things, idempotently:
+`CatalogDevSeeding.SeedAsync(db, storage, jobQueue, clock, cancellationToken)` does three things, idempotently:
 
 1. **Uploads media** — for each artist slug it generates a 256x256 BMP gradient (hue
    derived from the slug hash) and uploads it as the avatar/cover. For each track it
@@ -133,6 +133,9 @@ catalog migration emitted these as `*_key` columns (e.g. `cover_art_key`).
    uploads it as the audio master. `ObjectExistsAsync` gates every upload so re-runs
    are no-ops.
 2. **Writes catalog rows** — only when the catalog table is empty (idempotent guard).
+3. **Enqueues DASH ingest jobs** — for every track with a master key and no stream key yet,
+   creates `catalog.audio_transcode_job` + publishes to RabbitMQ (same as `complete` upload),
+   so dev fixtures use the encoded pipeline.
 
 Both BMP and WAV encoders live in `SeedMediaGenerators` and are hand-rolled (no extra
 image/audio dependencies). Total data uploaded: ~28 objects, ~5.7 MB.
@@ -145,8 +148,9 @@ The seed runs at API startup in Development only — see `Program.cs`.
 `InMemoryObjectStorage` that stores blobs in a `ConcurrentDictionary` and returns
 deterministic URLs. This keeps tests hermetic — no MinIO container required.
 
-Tests use the same `CatalogDevSeeding.SeedAsync` flow, exercising the upload + DB
-path against the in-memory fake.
+Tests use the same `CatalogDevSeeding.SeedAsync` flow (with in-memory queue), exercising the upload + DB
+path against the in-memory fake. **Note:** `stream-info` is DASH-only; without a running worker,
+integration tests expect `catalog.track_stream_not_ready` for seeded tracks (see `CatalogEndpointsTests`).
 
 ## Production checklist (when we get there)
 

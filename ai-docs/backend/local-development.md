@@ -97,6 +97,10 @@ cd backend
 dotnet run --project src/Amuse.Worker.Transcoder
 ```
 
+Run from repo **`backend/`** root (as above) or set `ConnectionStrings__DefaultConnection` / RabbitMQ / Media env vars explicitly. The worker loads `appsettings.json` from the **content root**; if you `dotnet run` from another directory without overrides, `DefaultConnection` may be missing.
+
+`TranscodingWorker` emits **structured logs** (Information) for: RabbitMQ connect settings, message received (`JobId`, `TrackId`, delivery tag), job processing / skip-if-already-packaged, ffmpeg start/end timing, artifact upload counts, success/failure with elapsed ms. On ffmpeg failure, stderr is included in the error log. For verbose per-object upload lines in dev, `src/Amuse.Worker.Transcoder/appsettings.Development.json` sets `Amuse.Worker.Transcoder.TranscodingWorker` to Debug.
+
 For containerized local stack:
 
 ```bash
@@ -109,12 +113,14 @@ docker compose --profile full up -d amuse.api amuse.worker.transcoder
 Seeding is **not** part of `migrate-all.sh`. The dotnet-ef CLI uses the design-time `DbContextFactory` and does not invoke `UseAsyncSeeding`. Two idempotent seeds run at **API startup in Development only**:
 
 1. `PlatformRootSeeding.SeedAsync` — creates the root account, identity user, and platform operator.
-2. `CatalogDevSeeding.SeedAsync` — populates a small fixture of artists/releases/tracks so the listener app has something to render.
+2. `CatalogDevSeeding.SeedAsync` — populates a small fixture of artists/releases/tracks, uploads dev media to MinIO, and **enqueues transcode jobs** for tracks that have a master but no DASH stream yet (requires RabbitMQ + worker for playback to succeed via `stream-info`).
 
 Flow for a fresh DB:
 
 1. `./scripts/migrate-all.sh` — applies schema for every bounded context.
-2. `dotnet run --project src/Amuse.Api` — in Development environment, seeds the rows listed above.
+2. `docker compose up -d postgres minio minio-init rabbitmq` — infra for storage + queue.
+3. `dotnet run --project src/Amuse.Worker.Transcoder` — consumes jobs (optional for catalog browse; **required** for DASH `stream-info` on seeded tracks).
+4. `dotnet run --project src/Amuse.Api` — in Development environment, runs seeds above.
 
 Production/staging never auto-seed — operators provision the root account through a separate ops procedure and catalog data through normal write paths.
 

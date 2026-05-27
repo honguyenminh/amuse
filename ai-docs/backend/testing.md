@@ -63,3 +63,13 @@ If Docker is unavailable, tests fail with `DockerUnavailableException` — expec
 ## Manual vs automated parity
 
 Integration tests exercise the same HTTP contract documented in [local-development.md](./local-development.md). After changing auth behavior, update both tests and `ai-docs` if contracts shift.
+
+### Catalog + playback contract (`CatalogEndpointsTests`)
+
+| Test | Asserts |
+|------|---------|
+| `Stream_info_returns_track_stream_not_ready_until_ingested` | Authenticated `GET .../stream-info` returns **400** `catalog.track_stream_not_ready` when no worker has set `audio_stream_key` (DASH-only; no master signed URL). |
+| `Stream_info_requires_authentication` | Anonymous `stream-info` → **401** |
+| `Stream_info_unknown_track_returns_problem` | Missing track → problem response |
+
+Browse endpoints (`home`, artist, release) remain anonymous-friendly.
