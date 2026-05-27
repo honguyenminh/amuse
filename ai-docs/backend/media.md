@@ -23,8 +23,11 @@ works.
 `backend/compose.yaml` brings up:
 
 - `minio` — MinIO server on `:9000` (S3 API) and `:9001` (console).
-- `minio-init` — one-shot `mc` job that creates both buckets and sets `download` policy on
-  `amuse-covers`. Idempotent (`mb --ignore-existing`).
+- `minio-init` — one-shot `mc` job that:
+  - configures **global MinIO API CORS** (MinIO Community doesn't support bucket CORS APIs in some setups),
+  - creates both buckets,
+  - sets `download` policy on `amuse-covers`.
+  Idempotent (`mb --ignore-existing`).
 
 ```bash
 docker compose up -d minio minio-init
@@ -59,8 +62,10 @@ public interface IObjectStorage
 {
     Task<bool> ObjectExistsAsync(MediaBucket bucket, string key, CancellationToken ct = default);
     Task PutAsync(MediaBucket bucket, string key, ReadOnlyMemory<byte> data, string contentType, CancellationToken ct = default);
+    Task<StoredObject?> GetAsync(MediaBucket bucket, string key, CancellationToken ct = default);
     string GetPublicUrl(MediaBucket bucket, string key);
     string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl);
+    string GetSignedUploadUrl(MediaBucket bucket, string key, TimeSpan ttl, string contentType);
 }
 ```
 
@@ -68,7 +73,9 @@ Implementation: `S3ObjectStorage` (uses `AWSSDK.S3` 4.0.x). Singleton, configure
 `MediaModule.AddMediaModule(configuration)` in `Program.cs`.
 
 `GetPublicUrl` throws if called on a non-public bucket. `GetSignedUrl` returns a
-presigned URL valid for the requested TTL.
+presigned GET URL. `GetSignedUploadUrl` returns a presigned PUT URL for direct client
+uploads. `GetAsync` is used by the authenticated DASH manifest endpoint to read the MPD
+payload from object storage.
 
 ### MinIO quirks the impl handles
 
@@ -105,8 +112,15 @@ catalog migration emitted these as `*_key` columns (e.g. `cover_art_key`).
 2. Cover URLs are composed via `IObjectStorage.GetPublicUrl(MediaBucket.Covers, key)` and
    included in the DTO as `coverArtUrl`/`avatarUrl`/`coverUrl`.
 3. Track audio is **not** included in the release DTO — the client must call the dedicated
-   `GET /api/v1/catalog/tracks/{id}/stream-info` endpoint to obtain a signed URL.
-   The track DTO exposes a boolean `hasAudio` instead, so the UI can grey out
+   `GET /api/v1/catalog/tracks/{id}/stream-info` endpoint to obtain a playback URL.
+   - If no derived stream exists yet, `stream-info` returns signed URL to the master key.
+   - If DASH packaging completed, `stream-info` returns
+     `/api/v1/catalog/tracks/{id}/dash/{manifestId}/manifest.mpd`.
+4. DASH asset requests stay authenticated at the catalog API boundary:
+   - `manifest.mpd` is served directly by API (`IObjectStorage.GetAsync`).
+   - Segment requests (`*.m4s`, init fragments) are validated against track stream prefix
+     and redirected to short-lived signed object-store URLs.
+5. The track DTO exposes a boolean `hasAudio` instead, so the UI can grey out
    un-uploaded tracks.
 
 ## Dev-only media seeding
@@ -139,8 +153,8 @@ path against the in-memory fake.
 - Move `amuse-covers` behind a CDN with image transforms; `PublicBaseUrl` becomes the
   CDN host.
 - Add a bucket policy to `amuse-audio` so signed URL TTL is the only access path.
-- Add a transcoding pipeline that drops `audio_master_key` and emits multiple bitrate
-  derivatives; `stream-info` then picks based on network conditions.
+- Add multi-bitrate DASH ladder outputs (today we package a single audio representation).
+- Add optional HLS packaging from the same transcode worker if we need non-DASH clients.
 - Server-side encryption (SSE-KMS) for `amuse-audio`.
 - Consider replacing the dev BMP gradients with actual artwork uploaded by org users
   through the catalog management slice (future).

@@ -16,6 +16,18 @@ public static class CatalogErrors
     public static readonly DomainError TrackHasNoAudio =
         new("catalog.track_has_no_audio", "Track does not have an audio master assigned yet.");
 
+    public static readonly DomainError InvalidAudioUploadRequest =
+        new("catalog.invalid_audio_upload_request", "Audio upload request is invalid.");
+
+    public static readonly DomainError AudioMasterObjectMissing =
+        new("catalog.audio_master_object_missing", "Uploaded audio master was not found in object storage.");
+
+    public static readonly DomainError TrackStreamNotReady =
+        new("catalog.track_stream_not_ready", "Track stream is not ready yet.");
+
+    public static readonly DomainError StreamAssetNotFound =
+        new("catalog.stream_asset_not_found", "Requested stream asset was not found.");
+
     public static readonly DomainError InvalidSlug =
         new("catalog.invalid_slug", "Slug must be lowercase alphanumerics with single hyphens.");
 

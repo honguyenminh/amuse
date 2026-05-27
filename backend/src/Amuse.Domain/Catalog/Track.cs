@@ -11,6 +11,7 @@ public sealed class Track
     public int TrackNumber { get; private set; }
     public TrackDuration Duration { get; private set; }
     public string? AudioMasterKey { get; private set; }
+    public string? AudioStreamKey { get; private set; }
 
     private Track()
     {
@@ -22,7 +23,8 @@ public sealed class Track
         string title,
         int trackNumber,
         TrackDuration duration,
-        string? audioMasterKey)
+        string? audioMasterKey,
+        string? audioStreamKey = null)
     {
         var trimmedTitle = (title ?? throw new ArgumentNullException(nameof(title))).Trim();
         if (trimmedTitle.Length is 0 or > MaxTitleLength)
@@ -41,11 +43,35 @@ public sealed class Track
                 $"Audio master key exceeds {MaxKeyLength} characters.",
                 nameof(audioMasterKey));
 
+        if (audioStreamKey is { Length: > MaxKeyLength })
+            throw new ArgumentException(
+                $"Audio stream key exceeds {MaxKeyLength} characters.",
+                nameof(audioStreamKey));
+
         Id = id;
         ReleaseId = releaseId;
         Title = trimmedTitle;
         TrackNumber = trackNumber;
         Duration = duration;
         AudioMasterKey = audioMasterKey;
+        AudioStreamKey = audioStreamKey;
+    }
+
+    public void SetAudioMaster(string audioMasterKey)
+    {
+        if (string.IsNullOrWhiteSpace(audioMasterKey))
+            throw new ArgumentException("Audio master key is required.", nameof(audioMasterKey));
+        if (audioMasterKey.Length > MaxKeyLength)
+            throw new ArgumentException($"Audio master key exceeds {MaxKeyLength} characters.", nameof(audioMasterKey));
+        AudioMasterKey = audioMasterKey;
+    }
+
+    public void SetAudioStream(string audioStreamKey)
+    {
+        if (string.IsNullOrWhiteSpace(audioStreamKey))
+            throw new ArgumentException("Audio stream key is required.", nameof(audioStreamKey));
+        if (audioStreamKey.Length > MaxKeyLength)
+            throw new ArgumentException($"Audio stream key exceeds {MaxKeyLength} characters.", nameof(audioStreamKey));
+        AudioStreamKey = audioStreamKey;
     }
 }

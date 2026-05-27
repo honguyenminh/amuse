@@ -4,6 +4,16 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
     </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Amuse.Domain\Amuse.Domain.csproj" />
+    <ProjectReference Include="..\Amuse.Modules\Amuse.Modules.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" Version="7.*" />
+  </ItemGroup>
 
 </Project>

@@ -6,6 +6,8 @@ public enum MediaBucket
     Audio = 2,
 }
 
+public sealed record StoredObject(ReadOnlyMemory<byte> Data, string ContentType);
+
 /// <summary>
 /// Storage abstraction for media objects. Implementations target an S3-compatible
 /// backend (MinIO in dev, AWS S3 / Backblaze B2 / etc. in prod).
@@ -28,6 +30,14 @@ public interface IObjectStorage
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Reads an object from storage; returns null when the key does not exist.
+    /// </summary>
+    Task<StoredObject?> GetAsync(
+        MediaBucket bucket,
+        string key,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns the anonymous-read URL for an object in a public bucket. Throws if the
     /// bucket is not configured for anonymous reads (covers only).
     /// </summary>
@@ -38,4 +48,10 @@ public interface IObjectStorage
     /// streams that must not be guessable from the URL pattern.
     /// </summary>
     string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl);
+
+    /// <summary>
+    /// Returns a time-limited presigned PUT URL for uploading an object directly from a client.
+    /// Intended for large masters (audio/video) so the API does not proxy bytes.
+    /// </summary>
+    string GetSignedUploadUrl(MediaBucket bucket, string key, TimeSpan ttl, string contentType);
 }

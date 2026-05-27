@@ -26,6 +26,16 @@ public sealed class InMemoryObjectStorage : IObjectStorage
         return Task.CompletedTask;
     }
 
+    public Task<StoredObject?> GetAsync(
+        MediaBucket bucket,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_objects.TryGetValue((bucket, key), out var entry))
+            return Task.FromResult<StoredObject?>(null);
+        return Task.FromResult<StoredObject?>(new StoredObject(entry.Bytes, entry.ContentType));
+    }
+
     public string GetPublicUrl(MediaBucket bucket, string key) =>
         bucket == MediaBucket.Covers
             ? $"https://test.media.amuse.local/{BucketName(bucket)}/{Uri.EscapeDataString(key)}"
@@ -34,6 +44,10 @@ public sealed class InMemoryObjectStorage : IObjectStorage
     public string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl) =>
         $"https://test.media.amuse.local/{BucketName(bucket)}/{Uri.EscapeDataString(key)}" +
         $"?X-Amz-Signature=test&X-Amz-Expires={(int)ttl.TotalSeconds}";
+
+    public string GetSignedUploadUrl(MediaBucket bucket, string key, TimeSpan ttl, string contentType) =>
+        $"https://test.media.amuse.local/{BucketName(bucket)}/{Uri.EscapeDataString(key)}" +
+        $"?X-Amz-Signature=test&X-Amz-Expires={(int)ttl.TotalSeconds}&X-Amz-Verb=PUT&ContentType={Uri.EscapeDataString(contentType)}";
 
     public bool Contains(MediaBucket bucket, string key) => _objects.ContainsKey((bucket, key));
 

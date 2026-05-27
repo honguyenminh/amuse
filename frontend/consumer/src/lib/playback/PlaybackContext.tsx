@@ -22,6 +22,7 @@ import {
   type ReactNode,
 } from "react";
 import { readAudioDurationMs, readAudioPositionMs } from "./audioPosition";
+import { attachDashToAudio } from "./dashPlayer";
 import { createPlaybackOutput, type PlaybackOutput } from "./playbackOutput";
 import { playbackReducer } from "./reducer";
 import { syncAudioTime } from "./syncAudioTime";
@@ -56,6 +57,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playbackReducer, initialPlaybackState);
   const outputRef = useRef<PlaybackOutput | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const dashSessionRef = useRef<{ destroy: () => void } | null>(null);
   const lastLoadedTrackIdRef = useRef<string | null>(null);
   const isPlayingRef = useRef(false);
   const isScrubbingRef = useRef(false);
@@ -63,6 +65,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const currentTrack = state.currentIndex >= 0 ? state.queue[state.currentIndex] ?? null : null;
+  const resetDashSession = useCallback(() => {
+    dashSessionRef.current?.destroy();
+    dashSessionRef.current = null;
+  }, []);
+
 
   isPlayingRef.current = state.isPlaying;
 
@@ -107,6 +114,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     if (!audio) return;
     if (!currentTrack) {
+      resetDashSession();
       outputRef.current?.pauseImmediate();
       audio.removeAttribute("src");
       lastLoadedTrackIdRef.current = null;
@@ -120,9 +128,25 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       try {
         const info = await getTrackStreamInfo(currentTrack.id);
         if (cancelled || lastLoadedTrackIdRef.current !== currentTrack.id) return;
+        resetDashSession();
         outputRef.current?.pauseImmediate();
-        audio.crossOrigin = "anonymous";
-        audio.src = info.url;
+
+        const isDash =
+          info.contentType === "application/dash+xml" ||
+          info.url.toLowerCase().endsWith(".mpd");
+
+        if (isDash) {
+          const dashSession = await attachDashToAudio(audio, info.url, getAccessToken);
+          if (cancelled || lastLoadedTrackIdRef.current !== currentTrack.id) {
+            dashSession.destroy();
+            return;
+          }
+          dashSessionRef.current = dashSession;
+        } else {
+          audio.crossOrigin = "anonymous";
+          audio.src = info.url;
+        }
+
         audio.currentTime = 0;
         if (isPlayingRef.current) {
           await outputRef.current?.playSmooth();
@@ -146,7 +170,14 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [currentTrack?.id, router]);
+  }, [currentTrack?.id, router, resetDashSession]);
+
+  useEffect(
+    () => () => {
+      resetDashSession();
+    },
+    [resetDashSession],
+  );
 
   useEffect(() => {
     const output = outputRef.current;

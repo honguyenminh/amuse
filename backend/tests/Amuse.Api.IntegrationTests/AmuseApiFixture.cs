@@ -1,4 +1,5 @@
 using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Catalog.Seeding;
 using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Media;
@@ -75,6 +76,9 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
             services.RemoveAll<Amazon.S3.IAmazonS3>();
             services.RemoveAll<IObjectStorage>();
             services.AddSingleton<IObjectStorage>(_objectStorage);
+
+            services.RemoveAll<IAudioTranscodeJobQueue>();
+            services.AddSingleton<IAudioTranscodeJobQueue, InMemoryAudioTranscodeJobQueue>();
         });
     }
 

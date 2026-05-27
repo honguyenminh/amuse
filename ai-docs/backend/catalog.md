@@ -25,6 +25,10 @@ Errors live in `Amuse.Domain.Catalog.CatalogErrors`:
 - `catalog.release_not_found`
 - `catalog.track_not_found`
 - `catalog.track_has_no_audio`
+- `catalog.invalid_audio_upload_request`
+- `catalog.audio_master_object_missing`
+- `catalog.track_stream_not_ready`
+- `catalog.stream_asset_not_found`
 - `catalog.invalid_slug`, `catalog.invalid_artist`, `catalog.invalid_release`, `catalog.invalid_track`
 
 ## Endpoints
@@ -36,14 +40,21 @@ The three browse endpoints are **public** (`.AllowAnonymous()`); a Spotify/YouTu
 | `GET`  | `/api/v1/catalog/home`                          | Anonymous     | `BrowseHomeHandler`         | Returns 8 most-recent releases + 6 featured artists. |
 | `GET`  | `/api/v1/catalog/artists/{artistId:guid}`       | Anonymous     | `GetArtistDetailHandler`    | Returns artist + discography. `400 catalog.artist_not_found` if missing. |
 | `GET`  | `/api/v1/catalog/releases/{releaseId:guid}`     | Anonymous     | `GetReleaseDetailHandler`   | Returns release + ordered tracks. `400 catalog.release_not_found` if missing. |
-| `GET`  | `/api/v1/catalog/tracks/{trackId:guid}/stream-info` | Bearer JWT | `GetTrackStreamInfoHandler` | Short-lived signed URL for streaming. `400 catalog.track_not_found` or `catalog.track_has_no_audio`. See `ai-docs/backend/media.md`. |
+| `GET`  | `/api/v1/catalog/tracks/{trackId:guid}/stream-info` | Bearer JWT | `GetTrackStreamInfoHandler` | Returns playback URL. If DASH is ready, URL points to authenticated catalog DASH endpoint; otherwise falls back to signed master URL. |
+| `POST` | `/api/v1/catalog/tracks/{trackId:guid}/audio-master/presign-upload` | Bearer JWT | `PresignAudioMasterUploadHandler` | Returns short-lived presigned PUT URL + key for direct upload from uploader UI. |
+| `POST` | `/api/v1/catalog/tracks/{trackId:guid}/audio-master/complete` | Bearer JWT | `CompleteAudioMasterUploadHandler` | Validates uploaded object, assigns `audio_master_key`, persists transcode job, publishes RabbitMQ message. |
+| `GET`  | `/api/v1/catalog/tracks/{trackId:guid}/dash/{manifestId}/{assetName}` | Bearer JWT | `GetTrackDashAssetHandler` | Authenticated DASH gateway. Serves `manifest.mpd` from API and issues signed redirects for segment files. |
 
 Response DTOs are defined in `Catalog/Features/Shared/CatalogDtos.cs` and per-feature handler files. Track durations are returned as `durationMs` (int milliseconds). `ReleaseSummary` is the canonical card shape (used both in `BrowseHomeResponse.recentReleases` and `GetArtistDetailResponse.releases`).
 
 ## Persistence
 
 - Schema: `catalog`
-- Migration: `Catalog/Persistence/Migrations/<timestamp>_InitialCatalog.cs` creates the `catalog.release_type` enum and the `artist`, `release`, `track` tables. FK from track to release is `ON DELETE CASCADE`.
+- Migrations now include:
+  - `InitialCatalog` for `artist` / `release` / `track`
+  - `AddAudioTranscodeJobs` for `track.audio_stream_key` and `audio_transcode_job` queue/status table
+- FK from track to release is `ON DELETE CASCADE`.
+- `audio_transcode_job` is the durable status record for ingestion/transcoding lifecycle (`queued`/`processing`/`succeeded`/`failed`). RabbitMQ carries work dispatch; DB carries job state/audit.
 - `Release.Tracks` is a private list exposed as `IReadOnlyList<Track>`. EF Core access mode is configured to `Field` in `ReleaseConfiguration`.
 
 ## Dev seed

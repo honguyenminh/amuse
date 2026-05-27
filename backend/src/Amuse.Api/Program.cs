@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Amuse.Api;
 using Amuse.Modules.Audit;
 using Amuse.Modules.Catalog;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Seeding;
+using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Identity;
 using Amuse.Modules.Listener;
@@ -39,6 +41,10 @@ builder.Services.AddPlatformModule(builder.Configuration);
 builder.Services.AddCatalogModule(builder.Configuration);
 builder.Services.AddMediaModule(builder.Configuration);
 builder.Services.AddAuditModule(builder.Configuration);
+
+builder.Services.Configure<RabbitMqOptions>(
+    builder.Configuration.GetSection("RabbitMq"));
+builder.Services.AddSingleton<IAudioTranscodeJobQueue, RabbitMqAudioTranscodeJobQueue>();
 
 var app = builder.Build();
 

@@ -45,22 +45,25 @@ cd backend
 
 Order: Identity → Tenancy → Listener → Platform → Catalog → Audit.
 
-## Object storage (MinIO)
+## Object storage + queue infra (MinIO + RabbitMQ)
 
-Catalog cover art and audio masters are served from S3-compatible object storage. The
-local stack ships a MinIO instance under `backend/compose.yaml`:
+Catalog cover art/audio masters use MinIO; transcode dispatch uses RabbitMQ. The local
+stack ships both under `backend/compose.yaml`:
 
 ```bash
 cd backend
-docker compose up -d minio minio-init   # also starts postgres if you've not already
+docker compose up -d minio minio-init rabbitmq   # also starts postgres if needed
 ```
 
 `minio-init` is a one-shot job that creates the `amuse-covers` (public-read) and
-`amuse-audio` (private) buckets. Web console: <http://localhost:9001> (creds:
+`amuse-audio` (private) buckets and configures **global MinIO API CORS** (required for
+cross-origin audio playback + presigned PUTs in some MinIO Community setups). Web console: <http://localhost:9001> (creds:
 `amuse` / `amuse_dev_secret`).
 
 The dev API seeds both buckets at startup with deterministic content (BMP gradient
 covers + sine-wave WAV audio). See `ai-docs/backend/media.md`.
+
+RabbitMQ management UI: <http://localhost:15672> (`amuse` / `amuse_dev_secret`).
 
 **First run on an empty database:** EF Core may log `Failed executing DbCommand` when selecting from `__EFMigrationsHistory_*` because those tables do not exist yet. That probe is normal. Treat the run as successful when each context ends with `Done.` and the script exits `0`. Re-runs are idempotent (only pending migrations apply).
 
@@ -83,6 +86,23 @@ dotnet run --project src/Amuse.Api
 Development opens OpenAPI at `/openapi/v1.json` when `ASPNETCORE_ENVIRONMENT=Development`.
 
 HTTPS redirection is enabled; for local HTTP testing use the HTTP port from `launchSettings.json` or disable redirection in dev if needed.
+
+## Run the transcoder worker
+
+The worker consumes RabbitMQ transcode jobs and writes DASH assets (`manifest.mpd` +
+`*.m4s`) into the private audio bucket.
+
+```bash
+cd backend
+dotnet run --project src/Amuse.Worker.Transcoder
+```
+
+For containerized local stack:
+
+```bash
+cd backend
+docker compose --profile full up -d amuse.api amuse.worker.transcoder
+```
 
 ## Seeded dev data
 

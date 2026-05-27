@@ -38,6 +38,10 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
             .HasColumnName("audio_master_key")
             .HasMaxLength(Track.MaxKeyLength);
 
+        builder.Property(t => t.AudioStreamKey)
+            .HasColumnName("audio_stream_key")
+            .HasMaxLength(Track.MaxKeyLength);
+
         builder.HasIndex(t => new { t.ReleaseId, t.TrackNumber }).IsUnique();
     }
 }

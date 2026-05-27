@@ -1,8 +1,10 @@
 using Amuse.Domain.Catalog;
 using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.GetArtistDetail;
+using Amuse.Modules.Catalog.Features.GetTrackDashAsset;
 using Amuse.Modules.Catalog.Features.GetReleaseDetail;
 using Amuse.Modules.Catalog.Features.GetTrackStreamInfo;
+using Amuse.Modules.Catalog.Features.ManageTrackAudio;
 using Amuse.Modules.Catalog.Persistence;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +35,9 @@ public static class CatalogModule
         services.AddScoped<GetArtistDetailHandler>();
         services.AddScoped<GetReleaseDetailHandler>();
         services.AddScoped<GetTrackStreamInfoHandler>();
+        services.AddScoped<GetTrackDashAssetHandler>();
+        services.AddScoped<PresignAudioMasterUploadHandler>();
+        services.AddScoped<CompleteAudioMasterUploadHandler>();
 
         return services;
     }
@@ -43,6 +48,9 @@ public static class CatalogModule
         endpoints.MapGetArtistDetailEndpoint();
         endpoints.MapGetReleaseDetailEndpoint();
         endpoints.MapGetTrackStreamInfoEndpoint();
+        endpoints.MapGetTrackDashAssetEndpoint();
+        endpoints.MapPresignAudioMasterUploadEndpoint();
+        endpoints.MapCompleteAudioMasterUploadEndpoint();
         return endpoints;
     }
 }
