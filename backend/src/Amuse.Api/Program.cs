@@ -7,6 +7,7 @@ using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Seeding;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Common.Authorization;
+using Amuse.Modules.Common.Time;
 using Amuse.Modules.Identity;
 using Amuse.Modules.Listener;
 using Amuse.Modules.Media;
@@ -62,7 +63,9 @@ if (app.Environment.IsDevelopment())
 
         var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
         var objectStorage = scope.ServiceProvider.GetRequiredService<IObjectStorage>();
-        await CatalogDevSeeding.SeedAsync(catalogDb, objectStorage, CancellationToken.None);
+        var jobQueue = scope.ServiceProvider.GetRequiredService<IAudioTranscodeJobQueue>();
+        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+        await CatalogDevSeeding.SeedAsync(catalogDb, objectStorage, jobQueue, clock, CancellationToken.None);
     }
 }
 

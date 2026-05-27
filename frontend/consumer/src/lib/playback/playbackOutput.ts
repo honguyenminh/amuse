@@ -1,4 +1,5 @@
 const PAUSE_FADE_SEC = 0.12;
+const PLAY_FADE_SEC = 0.12;
 const MIN_GAIN = 0.0001;
 const FALLBACK_FADE_MS = 120;
 
@@ -116,7 +117,8 @@ export function createPlaybackOutput(): PlaybackOutput {
       if (ctx && gainNode) {
         const t = ctx.currentTime;
         gainNode.gain.cancelScheduledValues(t);
-        gainNode.gain.setValueAtTime(targetVolume, t);
+        gainNode.gain.setValueAtTime(MIN_GAIN, t);
+        gainNode.gain.exponentialRampToValueAtTime(targetVolume, t + PLAY_FADE_SEC);
         try {
           await audio.play();
         } catch (error) {
@@ -126,18 +128,25 @@ export function createPlaybackOutput(): PlaybackOutput {
       }
 
       try {
+        audio.volume = 0;
         await audio.play();
       } catch (error) {
         audio.volume = targetVolume;
         throw error;
       }
-      audio.volume = targetVolume;
+      await fadeElementVolume(targetVolume, FALLBACK_FADE_MS);
     },
 
     async pauseSmooth() {
       if (audio.paused) return;
 
       const run = async () => {
+        // Decoder keeps advancing during the fade; restore this after pause().
+        const freezeAtSec =
+          Number.isFinite(audio.currentTime) && audio.currentTime >= 0
+            ? audio.currentTime
+            : 0;
+
         cancelFades();
         const ctx = await resumeContext();
 
@@ -149,6 +158,7 @@ export function createPlaybackOutput(): PlaybackOutput {
           gainNode.gain.exponentialRampToValueAtTime(MIN_GAIN, t + PAUSE_FADE_SEC);
           await sleep(Math.ceil(PAUSE_FADE_SEC * 1000) + 25);
           if (!audio.paused) audio.pause();
+          audio.currentTime = freezeAtSec;
           const t2 = ctx.currentTime;
           gainNode.gain.cancelScheduledValues(t2);
           gainNode.gain.setValueAtTime(targetVolume, t2);
@@ -157,6 +167,7 @@ export function createPlaybackOutput(): PlaybackOutput {
 
         await fadeElementVolume(0, FALLBACK_FADE_MS);
         if (!audio.paused) audio.pause();
+        audio.currentTime = freezeAtSec;
         audio.volume = targetVolume;
       };
 

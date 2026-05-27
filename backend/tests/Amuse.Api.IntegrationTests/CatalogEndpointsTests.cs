@@ -77,7 +77,7 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
     }
 
     [Fact]
-    public async Task Stream_info_returns_signed_url_for_seeded_track()
+    public async Task Stream_info_returns_track_stream_not_ready_until_ingested()
     {
         using var client = fixture.CreateClient();
         await AuthorizeAsync(client);
@@ -91,15 +91,10 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
         var trackId = release.GetProperty("tracks")[0].GetProperty("id").GetString();
 
         var response = await client.GetAsync($"/api/v1/catalog/tracks/{trackId}/stream-info");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var payload = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        Assert.Equal(trackId, payload.GetProperty("trackId").GetString());
-        var url = payload.GetProperty("url").GetString();
-        Assert.False(string.IsNullOrEmpty(url), "Signed URL must not be empty.");
-        Assert.Contains("amuse-audio", url, StringComparison.Ordinal);
-        Assert.True(payload.GetProperty("durationMs").GetInt32() > 0);
-        Assert.True(payload.GetProperty("expiresAt").GetDateTimeOffset() > DateTimeOffset.UtcNow);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        Assert.Equal("catalog.track_stream_not_ready", problem.GetProperty("code").GetString());
     }
 
     [Fact]

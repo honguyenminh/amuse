@@ -10,7 +10,6 @@ namespace Amuse.Modules.Catalog.Features.GetTrackStreamInfo;
 
 internal sealed class GetTrackStreamInfoHandler(
     CatalogDbContext db,
-    IObjectStorage storage,
     IOptions<MediaOptions> mediaOptions)
 {
     public async Task<Result<TrackStreamInfoResponse>> HandleAsync(
@@ -34,17 +33,19 @@ internal sealed class GetTrackStreamInfoHandler(
         if (string.IsNullOrEmpty(track.AudioMasterKey))
             return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.TrackHasNoAudio);
 
-        var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        // Prefer a derived, streamable encoding when workers have ingested it.
-        // For now, treat `audio_stream_key` as authoritative. If null, fall back to the master.
-        var chosenKey = string.IsNullOrWhiteSpace(track.AudioStreamKey)
-            ? track.AudioMasterKey
-            : track.AudioStreamKey;
+        if (string.IsNullOrWhiteSpace(track.AudioStreamKey))
+            return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.TrackStreamNotReady);
 
-        var url = BuildClientUrl(trackId, chosenKey!, ttl);
+        var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
         var expiresAt = DateTimeOffset.UtcNow.Add(ttl);
 
+        var chosenKey = track.AudioStreamKey;
         var contentType = ContentTypeForKey(chosenKey);
+
+        if (!TryParseDashManifestKey(chosenKey, out var keyTrackId, out var manifestId) || keyTrackId != trackId)
+            return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.TrackStreamNotReady);
+
+        var url = $"/api/v1/catalog/tracks/{trackId}/dash/{manifestId}/manifest.mpd";
 
         return Result<TrackStreamInfoResponse>.Success(new TrackStreamInfoResponse(
             trackId,
@@ -69,19 +70,6 @@ internal sealed class GetTrackStreamInfoHandler(
             "flac" => "audio/flac",
             _ => "application/octet-stream",
         };
-    }
-
-    private string BuildClientUrl(Guid trackId, string key, TimeSpan ttl)
-    {
-        if (TryParseDashManifestKey(key, out var keyTrackId, out var manifestId))
-        {
-            if (keyTrackId == trackId)
-            {
-                return $"/api/v1/catalog/tracks/{trackId}/dash/{manifestId}/manifest.mpd";
-            }
-        }
-
-        return storage.GetSignedUrl(MediaBucket.Audio, key, ttl);
     }
 
     private static bool TryParseDashManifestKey(string key, out Guid trackId, out string manifestId)

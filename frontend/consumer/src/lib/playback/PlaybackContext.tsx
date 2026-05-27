@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveApiUrl } from "@/lib/api/config";
 import { getTrackStreamInfo } from "@/lib/api/catalogClient";
 import { ApiError } from "@/lib/api/types";
 import { getAccessToken } from "@/lib/auth/sessionStore";
@@ -88,7 +89,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     const audio = output.audio;
 
     audio.addEventListener("timeupdate", () => {
-      if (isScrubbingRef.current) return;
+      // Ignore late timeupdates while paused (e.g. during gain fade before pause()).
+      if (isScrubbingRef.current || !isPlayingRef.current) return;
       dispatch({
         type: "tick",
         positionMs: readAudioPositionMs(audio),
@@ -131,12 +133,13 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         resetDashSession();
         outputRef.current?.pauseImmediate();
 
+        const playbackUrl = resolveApiUrl(info.url);
         const isDash =
           info.contentType === "application/dash+xml" ||
-          info.url.toLowerCase().endsWith(".mpd");
+          playbackUrl.toLowerCase().endsWith(".mpd");
 
         if (isDash) {
-          const dashSession = await attachDashToAudio(audio, info.url, getAccessToken);
+          const dashSession = await attachDashToAudio(audio, playbackUrl, getAccessToken);
           if (cancelled || lastLoadedTrackIdRef.current !== currentTrack.id) {
             dashSession.destroy();
             return;
@@ -144,7 +147,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           dashSessionRef.current = dashSession;
         } else {
           audio.crossOrigin = "anonymous";
-          audio.src = info.url;
+          audio.src = playbackUrl;
         }
 
         audio.currentTime = 0;
@@ -235,6 +238,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         return;
       }
       outputRef.current?.prime();
+      isPlayingRef.current = true;
       dispatch({ type: "playQueue", tracks, startIndex });
     },
     [router],
@@ -242,17 +246,21 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback(() => {
     outputRef.current?.prime();
+    isPlayingRef.current = true;
     dispatch({ type: "play" });
   }, []);
   const pause = useCallback(() => {
     syncPositionFromAudio();
+    isPlayingRef.current = false;
     dispatch({ type: "pause" });
   }, [syncPositionFromAudio]);
   const toggle = useCallback(() => {
     if (isPlayingRef.current) {
       syncPositionFromAudio();
+      isPlayingRef.current = false;
     } else {
       outputRef.current?.prime();
+      isPlayingRef.current = true;
     }
     dispatch({ type: "toggle" });
   }, [syncPositionFromAudio]);
@@ -352,16 +360,25 @@ export function usePlayback(): PlaybackContextValue {
 export function usePlaybackPosition(): number {
   const { state, audioRef } = usePlayback();
   const [playheadMs, setPlayheadMs] = useState(state.positionMs);
+  const resumeFromPauseRef = useRef(true);
 
   useEffect(() => {
-    if (!state.isPlaying) {
-      setPlayheadMs(state.positionMs);
-      return;
-    }
+    if (state.isPlaying) return;
+    resumeFromPauseRef.current = true;
+    setPlayheadMs(state.positionMs);
+  }, [state.isPlaying, state.positionMs, state.currentIndex]);
+
+  useEffect(() => {
+    if (!state.isPlaying) return;
     const audio = audioRef.current;
     if (!audio) return;
 
-    setPlayheadMs(readAudioPositionMs(audio));
+    if (resumeFromPauseRef.current) {
+      resumeFromPauseRef.current = false;
+      setPlayheadMs(state.positionMs);
+    } else {
+      setPlayheadMs(readAudioPositionMs(audio));
+    }
 
     let raf = 0;
     const loop = () => {
@@ -370,7 +387,7 @@ export function usePlaybackPosition(): number {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [audioRef, state.isPlaying, state.currentIndex, state.positionMs]);
+  }, [audioRef, state.isPlaying, state.currentIndex]);
 
   return state.isPlaying ? playheadMs : state.positionMs;
 }

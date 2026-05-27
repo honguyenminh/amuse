@@ -36,7 +36,9 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
         await using var scope = Services.CreateAsyncScope();
         var catalogDb = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
         var storage = scope.ServiceProvider.GetRequiredService<IObjectStorage>();
-        await CatalogDevSeeding.SeedAsync(catalogDb, storage, CancellationToken.None);
+        var jobQueue = scope.ServiceProvider.GetRequiredService<IAudioTranscodeJobQueue>();
+        var clock = scope.ServiceProvider.GetRequiredService<Amuse.Modules.Common.Time.IClock>();
+        await CatalogDevSeeding.SeedAsync(catalogDb, storage, jobQueue, clock, CancellationToken.None);
     }
 
     public override async ValueTask DisposeAsync()
