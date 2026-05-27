@@ -5,8 +5,8 @@ export type PlaybackTrack = {
   durationMs: number;
   artistId: string;
   artistName: string;
-  albumId: string;
-  albumTitle: string;
+  releaseId: string;
+  releaseTitle: string;
   coverArtUrl: string | null;
 };
 

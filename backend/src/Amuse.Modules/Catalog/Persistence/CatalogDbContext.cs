@@ -11,7 +11,7 @@ public sealed class CatalogDbContext : ModuleDbContextBase
     }
 
     public DbSet<Artist> Artists => Set<Artist>();
-    public DbSet<Album> Albums => Set<Album>();
+    public DbSet<Release> Releases => Set<Release>();
     public DbSet<Track> Tracks => Set<Track>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

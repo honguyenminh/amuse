@@ -17,9 +17,9 @@ public static class GetArtistDetailEndpoint
                 var result = await handler.HandleAsync(artistId, cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization()
+            .AllowAnonymous()
             .WithName("GetCatalogArtistDetail")
-            .WithSummary("Return an artist with their albums. Returns problem `catalog.artist_not_found` if missing.")
+            .WithSummary("Return an artist with their releases. Public; no authentication required. Returns problem `catalog.artist_not_found` if missing.")
             .Produces<GetArtistDetailResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 

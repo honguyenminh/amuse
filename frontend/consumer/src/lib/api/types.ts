@@ -42,7 +42,7 @@ export type ArtistSummary = {
   coverUrl: string | null;
 };
 
-export type AlbumSummary = {
+export type ReleaseSummary = {
   id: string;
   slug: string;
   title: string;
@@ -71,7 +71,7 @@ export type TrackStreamInfoResponse = {
 };
 
 export type BrowseHomeResponse = {
-  recentAlbums: AlbumSummary[];
+  recentReleases: ReleaseSummary[];
   featuredArtists: ArtistSummary[];
 };
 
@@ -82,10 +82,10 @@ export type GetArtistDetailResponse = {
   bio: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
-  albums: AlbumSummary[];
+  releases: ReleaseSummary[];
 };
 
-export type GetAlbumDetailResponse = {
+export type GetReleaseDetailResponse = {
   id: string;
   slug: string;
   title: string;

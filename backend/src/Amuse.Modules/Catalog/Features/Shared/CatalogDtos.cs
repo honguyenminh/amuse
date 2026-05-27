@@ -9,7 +9,7 @@ public sealed record ArtistSummary(
     string? AvatarUrl,
     string? CoverUrl);
 
-public sealed record AlbumSummary(
+public sealed record ReleaseSummary(
     Guid Id,
     string Slug,
     string Title,

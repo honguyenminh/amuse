@@ -8,37 +8,37 @@ namespace Amuse.Modules.Catalog.Features.BrowseHome;
 
 internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage storage)
 {
-    private const int RecentAlbumCount = 8;
+    private const int RecentReleaseCount = 8;
     private const int FeaturedArtistCount = 6;
 
     public async Task<Result<BrowseHomeResponse>> HandleAsync(CancellationToken cancellationToken)
     {
-        var recentAlbumRows = await db.Albums
+        var recentReleaseRows = await db.Releases
             .AsNoTracking()
-            .OrderByDescending(a => a.ReleaseDate)
-            .Take(RecentAlbumCount)
+            .OrderByDescending(r => r.ReleaseDate)
+            .Take(RecentReleaseCount)
             .Join(
                 db.Artists.AsNoTracking(),
-                album => album.ArtistId,
+                release => release.ArtistId,
                 artist => artist.Id,
-                (album, artist) => new
+                (release, artist) => new
                 {
-                    AlbumId = album.Id.Value,
-                    AlbumSlug = album.Slug.Value,
-                    album.Title,
+                    ReleaseId = release.Id.Value,
+                    ReleaseSlug = release.Slug.Value,
+                    release.Title,
                     ArtistId = artist.Id.Value,
                     ArtistName = artist.Name,
                     ArtistSlug = artist.Slug.Value,
-                    album.ReleaseType,
-                    album.ReleaseDate,
-                    album.CoverArtKey,
+                    release.ReleaseType,
+                    release.ReleaseDate,
+                    release.CoverArtKey,
                 })
             .ToListAsync(cancellationToken);
 
-        var recentAlbums = recentAlbumRows
-            .Select(row => new AlbumSummary(
-                row.AlbumId,
-                row.AlbumSlug,
+        var recentReleases = recentReleaseRows
+            .Select(row => new ReleaseSummary(
+                row.ReleaseId,
+                row.ReleaseSlug,
                 row.Title,
                 row.ArtistId,
                 row.ArtistName,
@@ -72,7 +72,7 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage stor
             .ToArray();
 
         return Result<BrowseHomeResponse>.Success(new BrowseHomeResponse(
-            recentAlbums,
+            recentReleases,
             featuredArtists));
     }
 
@@ -81,5 +81,5 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage stor
 }
 
 public sealed record BrowseHomeResponse(
-    IReadOnlyList<AlbumSummary> RecentAlbums,
+    IReadOnlyList<ReleaseSummary> RecentReleases,
     IReadOnlyList<ArtistSummary> FeaturedArtists);

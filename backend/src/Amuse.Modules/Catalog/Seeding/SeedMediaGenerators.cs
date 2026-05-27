@@ -11,7 +11,7 @@ internal static class SeedMediaGenerators
 {
     /// <summary>
     /// Returns a 256x256 24-bit BMP with a top-to-bottom gradient. The pair of (HSL) colours
-    /// is deterministically derived from <paramref name="seedKey"/>, so every artist/album
+    /// is deterministically derived from <paramref name="seedKey"/>, so every artist/release
     /// gets a stable, distinctive cover and the cover-art theme extractor sees real signal.
     /// </summary>
     public static byte[] GenerateGradientBmp(string seedKey)

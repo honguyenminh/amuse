@@ -1,11 +1,14 @@
 "use client";
 
 import { getTrackStreamInfo } from "@/lib/api/catalogClient";
+import { ApiError } from "@/lib/api/types";
+import { getAccessToken } from "@/lib/auth/sessionStore";
 import { useTheme } from "@/theme/ThemeProvider";
 import {
   deterministicSeedFromString,
   extractSeedFromImage,
 } from "@/theme/extractSeedFromImage";
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -14,9 +17,14 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
+  type MutableRefObject,
   type ReactNode,
 } from "react";
+import { readAudioDurationMs, readAudioPositionMs } from "./audioPosition";
+import { createPlaybackOutput, type PlaybackOutput } from "./playbackOutput";
 import { playbackReducer } from "./reducer";
+import { syncAudioTime } from "./syncAudioTime";
 import {
   initialPlaybackState,
   type PlaybackState,
@@ -27,6 +35,7 @@ import {
 type PlaybackContextValue = {
   state: PlaybackState;
   currentTrack: PlaybackTrack | null;
+  audioRef: MutableRefObject<HTMLAudioElement | null>;
   playQueue: (tracks: PlaybackTrack[], startIndex?: number) => void;
   toggle: () => void;
   play: () => void;
@@ -34,6 +43,8 @@ type PlaybackContextValue = {
   next: () => void;
   previous: () => void;
   seek: (positionMs: number) => void;
+  beginScrub: () => void;
+  endScrub: (positionMs: number) => void;
   setVolume: (volume: number) => void;
   setRepeat: (mode: RepeatMode) => void;
   toggleShuffle: () => void;
@@ -43,44 +54,60 @@ const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
 export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playbackReducer, initialPlaybackState);
+  const outputRef = useRef<PlaybackOutput | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastLoadedTrackIdRef = useRef<string | null>(null);
+  const isPlayingRef = useRef(false);
+  const isScrubbingRef = useRef(false);
   const { setPlayingSeed, setPaused } = useTheme();
+  const router = useRouter();
 
   const currentTrack = state.currentIndex >= 0 ? state.queue[state.currentIndex] ?? null : null;
 
-  // Lazily create the single audio element on the client only.
+  isPlayingRef.current = state.isPlaying;
+
+  const applyPositionToAudio = useCallback((positionMs: number, resume: boolean) => {
+    const audio = audioRef.current;
+    const output = outputRef.current;
+    if (!audio || !Number.isFinite(audio.duration)) return;
+    syncAudioTime(audio, positionMs / 1000, resume, () => output?.pauseImmediate());
+  }, []);
+
   useEffect(() => {
-    if (audioRef.current) return;
-    const audio = new Audio();
-    audio.preload = "metadata";
-    audio.volume = initialPlaybackState.volume;
+    if (outputRef.current) return;
+    const output = createPlaybackOutput();
+    outputRef.current = output;
+    audioRef.current = output.audio;
+    const audio = output.audio;
 
     audio.addEventListener("timeupdate", () => {
+      if (isScrubbingRef.current) return;
       dispatch({
         type: "tick",
-        positionMs: Math.floor(audio.currentTime * 1000),
-        durationMs: Number.isFinite(audio.duration) ? Math.floor(audio.duration * 1000) : undefined,
+        positionMs: readAudioPositionMs(audio),
+        durationMs: readAudioDurationMs(audio),
       });
     });
     audio.addEventListener("ended", () => dispatch({ type: "trackEnded" }));
     audio.addEventListener("loadedmetadata", () => {
       dispatch({
         type: "tick",
-        positionMs: 0,
-        durationMs: Number.isFinite(audio.duration) ? Math.floor(audio.duration * 1000) : undefined,
+        positionMs: readAudioPositionMs(audio),
+        durationMs: readAudioDurationMs(audio),
       });
     });
 
-    audioRef.current = audio;
   }, []);
 
-  // Load the current track's stream URL when the queue position changes.
+  useEffect(() => {
+    outputRef.current?.setVolume(state.volume);
+  }, [state.volume]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (!currentTrack) {
-      audio.pause();
+      outputRef.current?.pauseImmediate();
       audio.removeAttribute("src");
       lastLoadedTrackIdRef.current = null;
       return;
@@ -93,40 +120,45 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       try {
         const info = await getTrackStreamInfo(currentTrack.id);
         if (cancelled || lastLoadedTrackIdRef.current !== currentTrack.id) return;
+        outputRef.current?.pauseImmediate();
+        audio.crossOrigin = "anonymous";
         audio.src = info.url;
         audio.currentTime = 0;
-        if (state.isPlaying) {
-          await audio.play().catch(() => undefined);
+        if (isPlayingRef.current) {
+          await outputRef.current?.playSmooth();
         }
-      } catch {
-        // Stream URL fetch failed; pause until the user retries.
+      } catch (error) {
         dispatch({ type: "pause" });
+        if (
+          error instanceof ApiError &&
+          (error.status === 401 || error.code === "auth.not_authenticated")
+        ) {
+          dispatch({ type: "clear" });
+          lastLoadedTrackIdRef.current = null;
+          const next = encodeURIComponent(
+            typeof window !== "undefined" ? window.location.pathname : "/home",
+          );
+          router.push(`/login?next=${next}`);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- isPlaying changes drive a different effect.
-  }, [currentTrack?.id]);
+  }, [currentTrack?.id, router]);
 
-  // Drive play/pause from reducer state to the DOM element.
   useEffect(() => {
+    const output = outputRef.current;
     const audio = audioRef.current;
-    if (!audio) return;
-    if (state.isPlaying && audio.src) {
-      void audio.play().catch(() => undefined);
+    if (!output || !audio?.src) return;
+    if (state.isPlaying) {
+      void output.playSmooth();
     } else {
-      audio.pause();
+      void output.pauseSmooth();
     }
   }, [state.isPlaying]);
 
-  // Sync volume.
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = state.volume;
-  }, [state.volume]);
-
-  // Theme bridge: feed the current cover into the playing seed precedence.
   useEffect(() => {
     if (!currentTrack) {
       setPlayingSeed(null);
@@ -148,35 +180,84 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     };
   }, [currentTrack, setPlayingSeed]);
 
-  // Theme bridge: reflect paused state for the de-saturated palette.
   useEffect(() => {
     setPaused(!state.isPlaying && state.currentIndex >= 0);
   }, [state.isPlaying, state.currentIndex, setPaused]);
 
-  // Seek to externally-dispatched positions (e.g. from the scrubber).
-  useEffect(() => {
+  const syncPositionFromAudio = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || !Number.isFinite(audio.duration)) return;
-    const desired = state.positionMs / 1000;
-    if (Math.abs(audio.currentTime - desired) > 0.5) {
-      audio.currentTime = desired;
-    }
-  }, [state.positionMs]);
+    if (!audio?.src) return;
+    dispatch({
+      type: "tick",
+      positionMs: readAudioPositionMs(audio),
+      durationMs: readAudioDurationMs(audio),
+    });
+  }, []);
 
   const playQueue = useCallback(
-    (tracks: PlaybackTrack[], startIndex = 0) =>
-      dispatch({ type: "playQueue", tracks, startIndex }),
-    [],
+    (tracks: PlaybackTrack[], startIndex = 0) => {
+      if (!getAccessToken()) {
+        const next = encodeURIComponent(
+          typeof window !== "undefined" ? window.location.pathname : "/home",
+        );
+        router.push(`/login?next=${next}`);
+        return;
+      }
+      outputRef.current?.prime();
+      dispatch({ type: "playQueue", tracks, startIndex });
+    },
+    [router],
   );
-  const play = useCallback(() => dispatch({ type: "play" }), []);
-  const pause = useCallback(() => dispatch({ type: "pause" }), []);
-  const toggle = useCallback(() => dispatch({ type: "toggle" }), []);
+
+  const play = useCallback(() => {
+    outputRef.current?.prime();
+    dispatch({ type: "play" });
+  }, []);
+  const pause = useCallback(() => {
+    syncPositionFromAudio();
+    dispatch({ type: "pause" });
+  }, [syncPositionFromAudio]);
+  const toggle = useCallback(() => {
+    if (isPlayingRef.current) {
+      syncPositionFromAudio();
+    } else {
+      outputRef.current?.prime();
+    }
+    dispatch({ type: "toggle" });
+  }, [syncPositionFromAudio]);
   const next = useCallback(() => dispatch({ type: "next" }), []);
-  const previous = useCallback(() => dispatch({ type: "previous" }), []);
+  const previous = useCallback(() => {
+    if (state.currentIndex < 0) return;
+    const restartCurrent = state.positionMs > 3000;
+    dispatch({ type: "previous" });
+    if (restartCurrent) {
+      applyPositionToAudio(0, isPlayingRef.current);
+    }
+  }, [state.currentIndex, state.positionMs, applyPositionToAudio]);
+
   const seek = useCallback(
-    (positionMs: number) => dispatch({ type: "seek", positionMs }),
-    [],
+    (positionMs: number) => {
+      const ms = Math.max(0, positionMs);
+      dispatch({ type: "seek", positionMs: ms });
+      applyPositionToAudio(ms, isPlayingRef.current);
+    },
+    [applyPositionToAudio],
   );
+
+  const beginScrub = useCallback(() => {
+    isScrubbingRef.current = true;
+  }, []);
+
+  const endScrub = useCallback(
+    (positionMs: number) => {
+      isScrubbingRef.current = false;
+      const ms = Math.max(0, positionMs);
+      dispatch({ type: "seek", positionMs: ms });
+      applyPositionToAudio(ms, isPlayingRef.current);
+    },
+    [applyPositionToAudio],
+  );
+
   const setVolume = useCallback(
     (volume: number) => dispatch({ type: "setVolume", volume }),
     [],
@@ -191,6 +272,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       currentTrack,
+      audioRef,
       playQueue,
       toggle,
       play,
@@ -198,6 +280,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       next,
       previous,
       seek,
+      beginScrub,
+      endScrub,
       setVolume,
       setRepeat,
       toggleShuffle,
@@ -212,6 +296,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       next,
       previous,
       seek,
+      beginScrub,
+      endScrub,
       setVolume,
       setRepeat,
       toggleShuffle,
@@ -225,4 +311,35 @@ export function usePlayback(): PlaybackContextValue {
   const ctx = useContext(PlaybackContext);
   if (!ctx) throw new Error("usePlayback must be used within PlaybackProvider");
   return ctx;
+}
+
+/**
+ * Playhead position for sliders. While playing, sampled every frame from the
+ * audio element. While paused, follows reducer `positionMs` so seek / previous
+ * update the bar immediately without waiting for `timeupdate`.
+ */
+export function usePlaybackPosition(): number {
+  const { state, audioRef } = usePlayback();
+  const [playheadMs, setPlayheadMs] = useState(state.positionMs);
+
+  useEffect(() => {
+    if (!state.isPlaying) {
+      setPlayheadMs(state.positionMs);
+      return;
+    }
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    setPlayheadMs(readAudioPositionMs(audio));
+
+    let raf = 0;
+    const loop = () => {
+      setPlayheadMs(readAudioPositionMs(audio));
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [audioRef, state.isPlaying, state.currentIndex, state.positionMs]);
+
+  return state.isPlaying ? playheadMs : state.positionMs;
 }

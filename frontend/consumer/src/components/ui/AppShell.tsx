@@ -1,7 +1,10 @@
-import type { ReactNode } from "react";
+"use client";
+
 import { MiniPlayer } from "@/components/player/MiniPlayer";
-import { BottomNav } from "./BottomNav";
-import { TopBar } from "./TopBar";
+import { MobileDrawer } from "@/components/ui/MobileDrawer";
+import { Sidebar } from "@/components/ui/Sidebar";
+import { TopBar } from "@/components/ui/TopBar";
+import { useState, type ReactNode } from "react";
 
 type AppShellProps = {
   title: string;
@@ -12,6 +15,26 @@ type AppShellProps = {
   hidePlayer?: boolean;
 };
 
+/**
+ * Application chrome for the consumer app.
+ *
+ * Layout, locked to `h-dvh` so mobile address-bar shrink doesn't leak the body
+ * out from under the player:
+ *
+ * ```
+ * ┌─────────┬────────────────────────┐
+ * │         │ TopBar (sticky)        │
+ * │ Sidebar │ scrollable main        │
+ * │ (md+)   │                        │
+ * └─────────┴────────────────────────┘
+ * │ MiniPlayer (full-width, fixed)    │
+ * └───────────────────────────────────┘
+ * ```
+ *
+ * On viewports below `md` the sidebar collapses into a slide-in MobileDrawer
+ * toggled by the TopBar's hamburger. The MiniPlayer spans the full viewport
+ * width on all sizes; it self-hides when the queue is empty.
+ */
 export function AppShell({
   title,
   activePath,
@@ -19,12 +42,29 @@ export function AppShell({
   children,
   hidePlayer = false,
 }: AppShellProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
-    <div className="flex min-h-full flex-col bg-background text-on-background">
-      <TopBar title={title} trailing={trailing} />
-      <main className="flex flex-1 flex-col">{children}</main>
+    <div className="flex h-dvh flex-col bg-background text-on-background">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="hidden md:flex">
+          <Sidebar activePath={activePath} />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TopBar
+            title={title}
+            trailing={trailing}
+            onMenuClick={() => setDrawerOpen(true)}
+          />
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
+      </div>
       {hidePlayer ? null : <MiniPlayer />}
-      <BottomNav activePath={activePath} />
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        activePath={activePath}
+      />
     </div>
   );
 }

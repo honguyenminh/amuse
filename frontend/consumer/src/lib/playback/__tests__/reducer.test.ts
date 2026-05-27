@@ -9,8 +9,8 @@ const T = (id: string, trackNumber = 1, durationMs = 180_000): PlaybackTrack => 
   durationMs,
   artistId: "a1",
   artistName: "Artist",
-  albumId: "al1",
-  albumTitle: "Album",
+  releaseId: "r1",
+  releaseTitle: "Release",
   coverArtUrl: null,
 });
 

@@ -13,8 +13,14 @@ function normalizeHue(h: number): number {
   return x < 0 ? x + 360 : x;
 }
 
+/** Foreground on a filled primary/secondary swatch (saturated). */
 function contrastOn(l: number, h: number): string {
-  return l > 0.62 ? oklch(0.18, 0.02, h) : oklch(0.97, 0.01, h);
+  return l >= 0.58 ? oklch(0.12, 0.03, h) : oklch(0.97, 0.01, h);
+}
+
+/** Foreground on a tonal container (lighter, lower chroma). Bias darker text earlier — mid-L containers need near-black, not gray-purple. */
+function contrastOnContainer(containerL: number, h: number): string {
+  return containerL >= 0.52 ? oklch(0.12, 0.04, h) : oklch(0.96, 0.02, h);
 }
 
 /**
@@ -24,8 +30,9 @@ export function seedToPalette(seed: ColorSeed): SemanticPalette {
   const { l, c, h } = seed;
   const primary = oklch(l, c, h);
   const onPrimary = contrastOn(l, h);
-  const primaryContainer = oklch(clamp(l + 0.12, 0, 1), c * 0.55, h);
-  const onPrimaryContainer = contrastOn(l + 0.12, h);
+  const primaryContainerL = clamp(l + 0.12, 0, 1);
+  const primaryContainer = oklch(primaryContainerL, c * 0.55, h);
+  const onPrimaryContainer = contrastOnContainer(primaryContainerL, h);
   const secondary = oklch(clamp(l - 0.05, 0, 1), c * 0.75, h + 30);
   const onSecondary = contrastOn(l - 0.05, h);
   const surface = oklch(0.98, c * 0.04, h);

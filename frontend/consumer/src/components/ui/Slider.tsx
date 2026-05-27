@@ -3,12 +3,19 @@
 import { cn } from "@/lib/cn";
 import type { InputHTMLAttributes } from "react";
 
-type SliderProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "onChange" | "size"> & {
+type SliderProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type" | "value" | "onChange" | "size"
+> & {
   value: number;
   min?: number;
   max?: number;
   step?: number;
   onChange: (next: number) => void;
+  /** Fired when the user starts an interaction (pointer down / touch start). */
+  onScrubStart?: () => void;
+  /** Fired when the user releases the scrubber, with the final value. */
+  onScrubEnd?: (final: number) => void;
   /** Visual size of the track / thumb. */
   size?: "sm" | "md";
   /** Optional non-visual label for assistive tech. */
@@ -21,8 +28,15 @@ const sizeClass: Record<NonNullable<SliderProps["size"]>, string> = {
 };
 
 /**
- * Tokenised range slider. The native input drives behaviour (keyboard, focus, accessibility);
- * the visual track is styled via CSS variables so it inherits the active theme.
+ * Tokenised range slider.
+ *
+ * - The fill width has **no** CSS transition: any animation would visibly lag
+ *   the native input thumb during scrubbing. Smoothness during natural
+ *   playback is the caller's responsibility (e.g. driving the value off
+ *   `usePlaybackPosition()` for a 60 Hz feed).
+ * - `onScrubStart` / `onScrubEnd` are surfaced so callers can suspend other
+ *   pushes into `value` while the user is dragging (preventing the audio
+ *   element's own timeupdate from yanking the thumb back).
  */
 export function Slider({
   value,
@@ -30,6 +44,8 @@ export function Slider({
   max = 100,
   step = 1,
   onChange,
+  onScrubStart,
+  onScrubEnd,
   className,
   size = "md",
   label,
@@ -49,7 +65,7 @@ export function Slider({
         aria-hidden
       >
         <span
-          className="block h-full bg-primary transition-[width] duration-100 ease-out"
+          className="block h-full bg-primary"
           style={{ width: `${percent}%` }}
         />
       </span>
@@ -61,6 +77,14 @@ export function Slider({
         value={clamped}
         aria-label={label}
         onChange={(event) => onChange(Number(event.target.value))}
+        onInput={(event) => onChange(Number(event.currentTarget.value))}
+        onPointerDown={() => onScrubStart?.()}
+        onPointerUp={(event) =>
+          onScrubEnd?.(Number((event.target as HTMLInputElement).value))
+        }
+        onPointerCancel={(event) =>
+          onScrubEnd?.(Number((event.target as HTMLInputElement).value))
+        }
         className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-on-primary [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-on-primary"
         {...props}
       />

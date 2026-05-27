@@ -5,7 +5,7 @@
   --amuse-primary: oklch(0.520 0.220 285.0);
   --amuse-on-primary: oklch(0.970 0.010 285.0);
   --amuse-primary-container: oklch(0.640 0.121 285.0);
-  --amuse-on-primary-container: oklch(0.180 0.020 285.0);
+  --amuse-on-primary-container: oklch(0.120 0.040 285.0);
   --amuse-secondary: oklch(0.470 0.165 315.0);
   --amuse-on-secondary: oklch(0.970 0.010 315.0);
   --amuse-surface: oklch(0.980 0.009 285.0);
@@ -216,6 +216,23 @@ body {
   background: var(--amuse-background);
   color: var(--amuse-on-background);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Smooth palette shifts when page/playing seeds change (OKLCH vars on :root). */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  body
+    *:not(input):not(textarea):not(select):not(option):not(video):not(canvas):not(
+      img
+    ):not(svg):not([data-no-theme-transition]) {
+    transition-property: background-color, color, border-color, fill, stroke;
+    transition-duration: 0.55s;
+    transition-timing-function: ease;
+  }
+
+  input[type="range"] {
+    transition: none;
+  }
 }
 
 *:focus-visible {

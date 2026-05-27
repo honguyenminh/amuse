@@ -25,55 +25,6 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "release_type", new[] { "single", "ep", "album", "compilation" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Amuse.Domain.Catalog.Album", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("ArtistId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("artist_id");
-
-                    b.Property<string>("CoverArtKey")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)")
-                        .HasColumnName("cover_art_key");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset>("ReleaseDate")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("release_date");
-
-                    b.Property<ReleaseType>("ReleaseType")
-                        .HasColumnType("catalog.release_type")
-                        .HasColumnName("release_type");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(96)
-                        .HasColumnType("character varying(96)")
-                        .HasColumnName("slug");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("title");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReleaseDate");
-
-                    b.HasIndex("ArtistId", "Slug")
-                        .IsUnique();
-
-                    b.ToTable("album", "catalog");
-                });
-
             modelBuilder.Entity("Amuse.Domain.Catalog.Artist", b =>
                 {
                     b.Property<Guid>("Id")
@@ -119,15 +70,60 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     b.ToTable("artist", "catalog");
                 });
 
-            modelBuilder.Entity("Amuse.Domain.Catalog.Track", b =>
+            modelBuilder.Entity("Amuse.Domain.Catalog.Release", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("AlbumId")
+                    b.Property<Guid>("ArtistId")
                         .HasColumnType("uuid")
-                        .HasColumnName("album_id");
+                        .HasColumnName("artist_id");
+
+                    b.Property<string>("CoverArtKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("cover_art_key");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ReleaseDate")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("release_date");
+
+                    b.Property<ReleaseType>("ReleaseType")
+                        .HasColumnType("catalog.release_type")
+                        .HasColumnName("release_type");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)")
+                        .HasColumnName("slug");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReleaseDate");
+
+                    b.HasIndex("ArtistId", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("release", "catalog");
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Catalog.Track", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("AudioMasterKey")
                         .HasMaxLength(512)
@@ -137,6 +133,10 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     b.Property<int>("Duration")
                         .HasColumnType("integer")
                         .HasColumnName("duration_ms");
+
+                    b.Property<Guid>("ReleaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("release_id");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -150,7 +150,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AlbumId", "TrackNumber")
+                    b.HasIndex("ReleaseId", "TrackNumber")
                         .IsUnique();
 
                     b.ToTable("track", "catalog");
@@ -158,14 +158,14 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
 
             modelBuilder.Entity("Amuse.Domain.Catalog.Track", b =>
                 {
-                    b.HasOne("Amuse.Domain.Catalog.Album", null)
+                    b.HasOne("Amuse.Domain.Catalog.Release", null)
                         .WithMany("Tracks")
-                        .HasForeignKey("AlbumId")
+                        .HasForeignKey("ReleaseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Amuse.Domain.Catalog.Album", b =>
+            modelBuilder.Entity("Amuse.Domain.Catalog.Release", b =>
                 {
                     b.Navigation("Tracks");
                 });

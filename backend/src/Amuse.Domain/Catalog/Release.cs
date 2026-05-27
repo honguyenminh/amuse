@@ -1,11 +1,11 @@
 namespace Amuse.Domain.Catalog;
 
-public sealed class Album
+public sealed class Release
 {
     public const int MaxTitleLength = 300;
     public const int MaxKeyLength = 512;
 
-    public AlbumId Id { get; private set; }
+    public ReleaseId Id { get; private set; }
     public ArtistId ArtistId { get; private set; }
     public string Title { get; private set; } = null!;
     public Slug Slug { get; private set; }
@@ -17,12 +17,12 @@ public sealed class Album
     private readonly List<Track> _tracks = [];
     public IReadOnlyList<Track> Tracks => _tracks;
 
-    private Album()
+    private Release()
     {
     }
 
-    private Album(
-        AlbumId id,
+    private Release(
+        ReleaseId id,
         ArtistId artistId,
         string title,
         Slug slug,
@@ -41,8 +41,8 @@ public sealed class Album
         CreatedAt = createdAt;
     }
 
-    public static Album Create(
-        AlbumId id,
+    public static Release Create(
+        ReleaseId id,
         ArtistId artistId,
         string title,
         Slug slug,
@@ -54,7 +54,7 @@ public sealed class Album
         var trimmedTitle = (title ?? throw new ArgumentNullException(nameof(title))).Trim();
         if (trimmedTitle.Length is 0 or > MaxTitleLength)
             throw new ArgumentException(
-                $"Album title must be 1..{MaxTitleLength} characters.",
+                $"Release title must be 1..{MaxTitleLength} characters.",
                 nameof(title));
 
         if (releaseDate.Offset != TimeSpan.Zero)
@@ -67,7 +67,7 @@ public sealed class Album
                 $"Cover art key exceeds {MaxKeyLength} characters.",
                 nameof(coverArtKey));
 
-        return new Album(id, artistId, trimmedTitle, slug, releaseType, releaseDate, coverArtKey, createdAt);
+        return new Release(id, artistId, trimmedTitle, slug, releaseType, releaseDate, coverArtKey, createdAt);
     }
 
     public Track AddTrack(
@@ -79,7 +79,7 @@ public sealed class Album
     {
         if (_tracks.Any(t => t.TrackNumber == trackNumber))
             throw new InvalidOperationException(
-                $"Track number {trackNumber} already exists on album '{Id.Value}'.");
+                $"Track number {trackNumber} already exists on release '{Id.Value}'.");
 
         var track = new Track(id, Id, title, trackNumber, duration, audioMasterKey);
         _tracks.Add(track);

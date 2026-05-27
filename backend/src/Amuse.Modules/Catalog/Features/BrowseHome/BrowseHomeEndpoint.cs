@@ -16,9 +16,9 @@ public static class BrowseHomeEndpoint
                 var result = await handler.HandleAsync(cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization()
+            .AllowAnonymous()
             .WithName("BrowseCatalogHome")
-            .WithSummary("Return a curated home feed of recent albums and featured artists.")
+            .WithSummary("Return a curated home feed of recent releases and featured artists. Public; no authentication required.")
             .Produces<BrowseHomeResponse>();
 
         return endpoints;

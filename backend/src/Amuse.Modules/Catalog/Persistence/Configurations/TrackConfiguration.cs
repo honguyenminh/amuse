@@ -16,9 +16,9 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
             .HasColumnName("id")
             .HasConversion(id => id.Value, value => TrackId.From(value));
 
-        builder.Property(t => t.AlbumId)
-            .HasColumnName("album_id")
-            .HasConversion(id => id.Value, value => AlbumId.From(value));
+        builder.Property(t => t.ReleaseId)
+            .HasColumnName("release_id")
+            .HasConversion(id => id.Value, value => ReleaseId.From(value));
 
         builder.Property(t => t.Title)
             .HasColumnName("title")
@@ -38,6 +38,6 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
             .HasColumnName("audio_master_key")
             .HasMaxLength(Track.MaxKeyLength);
 
-        builder.HasIndex(t => new { t.AlbumId, t.TrackNumber }).IsUnique();
+        builder.HasIndex(t => new { t.ReleaseId, t.TrackNumber }).IsUnique();
     }
 }

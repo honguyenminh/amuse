@@ -4,61 +4,61 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Amuse.Modules.Catalog.Persistence.Configurations;
 
-internal sealed class AlbumConfiguration : IEntityTypeConfiguration<Album>
+internal sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
 {
-    public void Configure(EntityTypeBuilder<Album> builder)
+    public void Configure(EntityTypeBuilder<Release> builder)
     {
-        builder.ToTable("album");
+        builder.ToTable("release");
 
-        builder.HasKey(a => a.Id);
+        builder.HasKey(r => r.Id);
 
-        builder.Property(a => a.Id)
+        builder.Property(r => r.Id)
             .HasColumnName("id")
-            .HasConversion(id => id.Value, value => AlbumId.From(value));
+            .HasConversion(id => id.Value, value => ReleaseId.From(value));
 
-        builder.Property(a => a.ArtistId)
+        builder.Property(r => r.ArtistId)
             .HasColumnName("artist_id")
             .HasConversion(id => id.Value, value => ArtistId.From(value));
 
-        builder.Property(a => a.Title)
+        builder.Property(r => r.Title)
             .HasColumnName("title")
-            .HasMaxLength(Album.MaxTitleLength)
+            .HasMaxLength(Release.MaxTitleLength)
             .IsRequired();
 
-        builder.Property(a => a.Slug)
+        builder.Property(r => r.Slug)
             .HasColumnName("slug")
             .HasMaxLength(Slug.MaxLength)
             .HasConversion(s => s.Value, v => Slug.From(v))
             .IsRequired();
 
-        builder.Property(a => a.ReleaseType)
+        builder.Property(r => r.ReleaseType)
             .HasColumnName("release_type")
             .HasColumnType("catalog.release_type");
 
-        builder.Property(a => a.ReleaseDate)
+        builder.Property(r => r.ReleaseDate)
             .HasColumnName("release_date")
             .HasColumnType("timestamptz");
 
-        builder.Property(a => a.CoverArtKey)
+        builder.Property(r => r.CoverArtKey)
             .HasColumnName("cover_art_key")
-            .HasMaxLength(Album.MaxKeyLength);
+            .HasMaxLength(Release.MaxKeyLength);
 
-        builder.Property(a => a.CreatedAt)
+        builder.Property(r => r.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz");
 
-        builder.HasIndex(a => new { a.ArtistId, a.Slug }).IsUnique();
-        builder.HasIndex(a => a.ReleaseDate);
+        builder.HasIndex(r => new { r.ArtistId, r.Slug }).IsUnique();
+        builder.HasIndex(r => r.ReleaseDate);
 
         builder
-            .HasMany(a => a.Tracks)
+            .HasMany(r => r.Tracks)
             .WithOne()
-            .HasForeignKey(t => t.AlbumId)
+            .HasForeignKey(t => t.ReleaseId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder
             .Metadata
-            .FindNavigation(nameof(Album.Tracks))!
+            .FindNavigation(nameof(Release.Tracks))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
     }
 }

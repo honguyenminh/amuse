@@ -2,7 +2,7 @@
 
 The `Amuse.Modules.Media` module owns the abstraction over object storage. It does not have
 its own bounded context or `DbContext` — media metadata that belongs to a domain entity
-(cover art on `Artist`/`Album`, audio master on `Track`) is stored as object **keys** on
+(cover art on `Artist`/`Release`, audio master on `Track`) is stored as object **keys** on
 those entities and resolved to URLs at read time.
 
 ## Buckets
@@ -11,7 +11,7 @@ Two S3-compatible buckets, sourced from `appsettings:Media`:
 
 | Bucket             | Visibility       | Purpose                          | URL shape                                              |
 | ------------------ | ---------------- | -------------------------------- | ------------------------------------------------------ |
-| `amuse-covers`     | anonymous read   | Album covers, artist art         | `GetPublicUrl` → `<PublicBaseUrl>/amuse-covers/<key>`  |
+| `amuse-covers`     | anonymous read   | Release covers, artist art       | `GetPublicUrl` → `<PublicBaseUrl>/amuse-covers/<key>`  |
 | `amuse-audio`      | private          | Track masters                    | `GetSignedUrl` → presigned GET with TTL                |
 
 In dev, both back onto a single MinIO instance launched via `backend/compose.yaml`. In
@@ -89,14 +89,14 @@ Catalog seeding follows these conventions (see `CatalogDevSeeding.CoverKey` / `A
 amuse-covers/
   artists/{slug}/avatar.bmp
   artists/{slug}/cover.bmp
-  albums/{slug}/cover.bmp
+  releases/{slug}/cover.bmp
 
 amuse-audio/
-  albums/{album-slug}/{track-number:00}-{title-slug}.wav
+  releases/{release-slug}/{track-number:00}-{title-slug}.wav
 ```
 
 Keys are stored on the domain entities (`Artist.AvatarKey`, `Artist.CoverKey`,
-`Album.CoverArtKey`, `Track.AudioMasterKey`) as plain strings with a 512-char max. The
+`Release.CoverArtKey`, `Track.AudioMasterKey`) as plain strings with a 512-char max. The
 catalog migration emitted these as `*_key` columns (e.g. `cover_art_key`).
 
 ## Catalog read flow
@@ -104,7 +104,7 @@ catalog migration emitted these as `*_key` columns (e.g. `cover_art_key`).
 1. Catalog handler reads the entity (just keys, no URLs).
 2. Cover URLs are composed via `IObjectStorage.GetPublicUrl(MediaBucket.Covers, key)` and
    included in the DTO as `coverArtUrl`/`avatarUrl`/`coverUrl`.
-3. Track audio is **not** included in the album DTO — the client must call the dedicated
+3. Track audio is **not** included in the release DTO — the client must call the dedicated
    `GET /api/v1/catalog/tracks/{id}/stream-info` endpoint to obtain a signed URL.
    The track DTO exposes a boolean `hasAudio` instead, so the UI can grey out
    un-uploaded tracks.

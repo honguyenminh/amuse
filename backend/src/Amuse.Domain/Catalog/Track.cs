@@ -6,7 +6,7 @@ public sealed class Track
     public const int MaxKeyLength = 512;
 
     public TrackId Id { get; private set; }
-    public AlbumId AlbumId { get; private set; }
+    public ReleaseId ReleaseId { get; private set; }
     public string Title { get; private set; } = null!;
     public int TrackNumber { get; private set; }
     public TrackDuration Duration { get; private set; }
@@ -18,7 +18,7 @@ public sealed class Track
 
     internal Track(
         TrackId id,
-        AlbumId albumId,
+        ReleaseId releaseId,
         string title,
         int trackNumber,
         TrackDuration duration,
@@ -42,7 +42,7 @@ public sealed class Track
                 nameof(audioMasterKey));
 
         Id = id;
-        AlbumId = albumId;
+        ReleaseId = releaseId;
         Title = trimmedTitle;
         TrackNumber = trackNumber;
         Duration = duration;

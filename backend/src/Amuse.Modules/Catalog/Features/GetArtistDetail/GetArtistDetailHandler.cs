@@ -36,33 +36,33 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage
         if (artist is null)
             return Result<GetArtistDetailResponse>.Failure(CatalogErrors.ArtistNotFound);
 
-        var albumRows = await db.Albums
+        var releaseRows = await db.Releases
             .AsNoTracking()
-            .Where(a => a.ArtistId == typedId)
-            .OrderByDescending(a => a.ReleaseDate)
-            .Select(a => new
+            .Where(r => r.ArtistId == typedId)
+            .OrderByDescending(r => r.ReleaseDate)
+            .Select(r => new
             {
-                AlbumId = a.Id.Value,
-                AlbumSlug = a.Slug.Value,
-                a.Title,
-                ArtistId = a.ArtistId.Value,
-                a.ReleaseType,
-                a.ReleaseDate,
-                a.CoverArtKey,
+                ReleaseId = r.Id.Value,
+                ReleaseSlug = r.Slug.Value,
+                r.Title,
+                ArtistId = r.ArtistId.Value,
+                r.ReleaseType,
+                r.ReleaseDate,
+                r.CoverArtKey,
             })
             .ToListAsync(cancellationToken);
 
-        var albums = albumRows
-            .Select(a => new AlbumSummary(
-                a.AlbumId,
-                a.AlbumSlug,
-                a.Title,
-                a.ArtistId,
+        var releases = releaseRows
+            .Select(r => new ReleaseSummary(
+                r.ReleaseId,
+                r.ReleaseSlug,
+                r.Title,
+                r.ArtistId,
                 artist.Name,
                 artist.Slug.Value,
-                a.ReleaseType,
-                a.ReleaseDate,
-                BrowseHomeHandler.CoverArtUrlFor(storage, a.CoverArtKey)))
+                r.ReleaseType,
+                r.ReleaseDate,
+                BrowseHomeHandler.CoverArtUrlFor(storage, r.CoverArtKey)))
             .ToArray();
 
         var response = new GetArtistDetailResponse(
@@ -72,7 +72,7 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage
             artist.Bio,
             BrowseHomeHandler.CoverArtUrlFor(storage, artist.AvatarKey),
             BrowseHomeHandler.CoverArtUrlFor(storage, artist.CoverKey),
-            albums);
+            releases);
 
         return Result<GetArtistDetailResponse>.Success(response);
     }
@@ -85,4 +85,4 @@ public sealed record GetArtistDetailResponse(
     string? Bio,
     string? AvatarUrl,
     string? CoverUrl,
-    IReadOnlyList<AlbumSummary> Albums);
+    IReadOnlyList<ReleaseSummary> Releases);

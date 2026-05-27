@@ -1,24 +1,27 @@
 "use client";
 
 import { AppShell } from "@/components/ui/AppShell";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { browseCatalogHome } from "@/lib/api/catalogClient";
 import type {
-  AlbumSummary,
   ArtistSummary,
   BrowseHomeResponse,
+  ReleaseSummary,
+  ReleaseType,
 } from "@/lib/api/types";
-import { useAuth } from "@/lib/auth/AuthProvider";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const releaseTypeLabel: Record<ReleaseType, string> = {
+  single: "Single",
+  ep: "EP",
+  album: "Album",
+  compilation: "Compilation",
+};
+
 export default function HomePage() {
-  const auth = useAuth();
-  const router = useRouter();
   const [data, setData] = useState<BrowseHomeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,32 +45,13 @@ export default function HomePage() {
   }, []);
 
   return (
-    <AppShell
-      title="Home"
-      activePath="/home"
-      trailing={
-        <Button
-          type="button"
-          variant="text"
-          onClick={() => void auth.logout().then(() => router.replace("/login"))}
-        >
-          Log out
-        </Button>
-      }
-    >
-      <div className="flex flex-col gap-6 p-4">
-        <Card>
-          <Text variant="headline-medium">Listener home</Text>
-          <Text variant="label-medium">
-            Signed in · listener id {auth.listenerId ?? "—"}
-          </Text>
-        </Card>
-
+    <AppShell title="Home" activePath="/home">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4 md:p-6">
         {loading && (
           <section className="flex flex-col gap-3">
-            <Skeleton className="h-6 w-40" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton className="h-7 w-48" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              {Array.from({ length: 8 }, (_, i) => (
                 <Card key={i}>
                   <Skeleton className="aspect-square w-full rounded-md" />
                   <Skeleton className="mt-2 h-5 w-3/4" />
@@ -88,16 +72,16 @@ export default function HomePage() {
           <>
             <section className="flex flex-col gap-3">
               <Text variant="title-large">Recent releases</Text>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {data.recentAlbums.map((album) => (
-                  <AlbumTile key={album.id} album={album} />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                {data.recentReleases.map((release) => (
+                  <ReleaseTile key={release.id} release={release} />
                 ))}
               </div>
             </section>
 
             <section className="flex flex-col gap-3">
               <Text variant="title-large">Featured artists</Text>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                 {data.featuredArtists.map((artist) => (
                   <ArtistTile key={artist.id} artist={artist} />
                 ))}
@@ -110,22 +94,24 @@ export default function HomePage() {
   );
 }
 
-function AlbumTile({ album }: { album: AlbumSummary }) {
+function ReleaseTile({ release }: { release: ReleaseSummary }) {
   return (
-    <Link href={`/album/${album.id}`} className="group block">
+    <Link href={`/release/${release.id}`} className="group block">
       <Card>
         <div className="flex flex-col gap-2">
-          {album.coverArtUrl && (
+          {release.coverArtUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={album.coverArtUrl}
-              alt={album.title}
+              src={release.coverArtUrl}
+              alt={release.title}
               className="aspect-square w-full rounded-md object-cover"
             />
           )}
-          <Text variant="title-medium">{album.title}</Text>
-          <Text variant="label-medium">
-            {album.artistName} · {album.releaseType}
+          <Text variant="title-medium" className="truncate">
+            {release.title}
+          </Text>
+          <Text variant="label-medium" className="truncate text-on-surface-variant">
+            {release.artistName} · {releaseTypeLabel[release.releaseType]}
           </Text>
         </div>
       </Card>
@@ -146,7 +132,9 @@ function ArtistTile({ artist }: { artist: ArtistSummary }) {
               className="aspect-square w-full rounded-full object-cover"
             />
           )}
-          <Text variant="title-medium">{artist.name}</Text>
+          <Text variant="title-medium" className="truncate text-center">
+            {artist.name}
+          </Text>
         </div>
       </Card>
     </Link>

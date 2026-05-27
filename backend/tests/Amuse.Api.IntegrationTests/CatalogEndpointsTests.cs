@@ -12,33 +12,31 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public async Task Home_returns_recent_albums_and_artists()
+    public async Task Home_returns_recent_releases_and_artists()
     {
         using var client = fixture.CreateClient();
-        await AuthorizeAsync(client);
 
         var response = await client.GetAsync("/api/v1/catalog/home");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        Assert.True(payload.GetProperty("recentAlbums").GetArrayLength() > 0);
+        Assert.True(payload.GetProperty("recentReleases").GetArrayLength() > 0);
         Assert.True(payload.GetProperty("featuredArtists").GetArrayLength() > 0);
     }
 
     [Fact]
-    public async Task Album_detail_returns_tracks_for_seeded_id()
+    public async Task Release_detail_returns_tracks_for_seeded_id()
     {
         using var client = fixture.CreateClient();
-        await AuthorizeAsync(client);
 
         var home = await client.GetFromJsonAsync<JsonElement>("/api/v1/catalog/home", JsonOptions);
-        var albumId = home.GetProperty("recentAlbums")[0].GetProperty("id").GetString();
+        var releaseId = home.GetProperty("recentReleases")[0].GetProperty("id").GetString();
 
-        var response = await client.GetAsync($"/api/v1/catalog/albums/{albumId}");
+        var response = await client.GetAsync($"/api/v1/catalog/releases/{releaseId}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        Assert.Equal(albumId, payload.GetProperty("id").GetString());
+        Assert.Equal(releaseId, payload.GetProperty("id").GetString());
         Assert.True(payload.GetProperty("tracks").GetArrayLength() >= 1);
     }
 
@@ -46,38 +44,36 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
     public async Task Artist_detail_returns_discography_for_seeded_id()
     {
         using var client = fixture.CreateClient();
-        await AuthorizeAsync(client);
 
         var home = await client.GetFromJsonAsync<JsonElement>("/api/v1/catalog/home", JsonOptions);
-        var artistId = home.GetProperty("recentAlbums")[0].GetProperty("artistId").GetString();
+        var artistId = home.GetProperty("recentReleases")[0].GetProperty("artistId").GetString();
 
         var response = await client.GetAsync($"/api/v1/catalog/artists/{artistId}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         Assert.Equal(artistId, payload.GetProperty("id").GetString());
-        Assert.True(payload.GetProperty("albums").GetArrayLength() >= 1);
+        Assert.True(payload.GetProperty("releases").GetArrayLength() >= 1);
     }
 
     [Fact]
-    public async Task Album_detail_unknown_id_returns_problem()
+    public async Task Release_detail_unknown_id_returns_problem()
     {
         using var client = fixture.CreateClient();
-        await AuthorizeAsync(client);
 
-        var response = await client.GetAsync("/api/v1/catalog/albums/00000000-0000-0000-0000-000000000099");
+        var response = await client.GetAsync("/api/v1/catalog/releases/00000000-0000-0000-0000-000000000099");
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        Assert.Equal("catalog.album_not_found", problem.GetProperty("title").GetString());
+        Assert.Equal("catalog.release_not_found", problem.GetProperty("title").GetString());
     }
 
     [Fact]
-    public async Task Catalog_home_requires_authentication()
+    public async Task Catalog_home_is_public()
     {
         using var client = fixture.CreateClient();
         var response = await client.GetAsync("/api/v1/catalog/home");
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -87,12 +83,12 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
         await AuthorizeAsync(client);
 
         var home = await client.GetFromJsonAsync<JsonElement>("/api/v1/catalog/home", JsonOptions);
-        var albumId = home.GetProperty("recentAlbums")[0].GetProperty("id").GetString();
+        var releaseId = home.GetProperty("recentReleases")[0].GetProperty("id").GetString();
 
-        var album = await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v1/catalog/albums/{albumId}",
+        var release = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/catalog/releases/{releaseId}",
             JsonOptions);
-        var trackId = album.GetProperty("tracks")[0].GetProperty("id").GetString();
+        var trackId = release.GetProperty("tracks")[0].GetProperty("id").GetString();
 
         var response = await client.GetAsync($"/api/v1/catalog/tracks/{trackId}/stream-info");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -104,6 +100,15 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
         Assert.Contains("amuse-audio", url, StringComparison.Ordinal);
         Assert.True(payload.GetProperty("durationMs").GetInt32() > 0);
         Assert.True(payload.GetProperty("expiresAt").GetDateTimeOffset() > DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task Stream_info_requires_authentication()
+    {
+        using var client = fixture.CreateClient();
+        var response = await client.GetAsync(
+            "/api/v1/catalog/tracks/00000000-0000-0000-0000-000000000099/stream-info");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]

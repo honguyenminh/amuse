@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Amuse.Modules.Catalog.Seeding;
 
 /// <summary>
-/// Idempotent dev-only seed. Populates a small fixture of artists, albums and tracks the first
+/// Idempotent dev-only seed. Populates a small fixture of artists, releases and tracks the first
 /// time it runs against an empty catalog, and uploads matching cover/audio assets to MinIO.
 /// Safe to call repeatedly: each step is skipped when the data already exists.
 /// </summary>
@@ -53,93 +53,93 @@ public static class CatalogDevSeeding
 
         db.Artists.AddRange(aurora, ironPalms, velvetMonsoon);
 
-        var dawnAlbum = Album.Create(
-            id: AlbumId.From(Guid.Parse("019e6010-0000-7000-8000-000000000001")),
+        var dawn = Release.Create(
+            id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000001")),
             artistId: aurora.Id,
             title: "Dawn Anatomy",
             slug: Slug.From("dawn-anatomy"),
             releaseType: ReleaseType.Album,
             releaseDate: new DateTimeOffset(2025, 11, 14, 0, 0, 0, TimeSpan.Zero),
             createdAt: now,
-            coverArtKey: CoverKey.ForAlbumCover("dawn-anatomy"));
+            coverArtKey: CoverKey.ForReleaseCover("dawn-anatomy"));
 
-        AddTrack(dawnAlbum, "019e6020-0000-7000-8000-000000000001", "Threshold",      1, 214_000);
-        AddTrack(dawnAlbum, "019e6020-0000-7000-8000-000000000002", "First Wave",     2, 187_500);
-        AddTrack(dawnAlbum, "019e6020-0000-7000-8000-000000000003", "Halfway House",  3, 243_000);
-        AddTrack(dawnAlbum, "019e6020-0000-7000-8000-000000000004", "Slow Dawn",      4, 305_000);
+        AddTrack(dawn, "019e6020-0000-7000-8000-000000000001", "Threshold",      1, 214_000);
+        AddTrack(dawn, "019e6020-0000-7000-8000-000000000002", "First Wave",     2, 187_500);
+        AddTrack(dawn, "019e6020-0000-7000-8000-000000000003", "Halfway House",  3, 243_000);
+        AddTrack(dawn, "019e6020-0000-7000-8000-000000000004", "Slow Dawn",      4, 305_000);
 
-        var auroraEp = Album.Create(
-            id: AlbumId.From(Guid.Parse("019e6010-0000-7000-8000-000000000002")),
+        var ribbons = Release.Create(
+            id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000002")),
             artistId: aurora.Id,
             title: "Ribbons & Frost",
             slug: Slug.From("ribbons-and-frost"),
             releaseType: ReleaseType.Ep,
             releaseDate: new DateTimeOffset(2024, 3, 22, 0, 0, 0, TimeSpan.Zero),
             createdAt: now,
-            coverArtKey: CoverKey.ForAlbumCover("ribbons-and-frost"));
+            coverArtKey: CoverKey.ForReleaseCover("ribbons-and-frost"));
 
-        AddTrack(auroraEp, "019e6020-0000-7000-8000-000000000010", "Ribbons", 1, 168_000);
-        AddTrack(auroraEp, "019e6020-0000-7000-8000-000000000011", "Frost",   2, 202_400);
-        AddTrack(auroraEp, "019e6020-0000-7000-8000-000000000012", "Margins", 3, 220_000);
+        AddTrack(ribbons, "019e6020-0000-7000-8000-000000000010", "Ribbons", 1, 168_000);
+        AddTrack(ribbons, "019e6020-0000-7000-8000-000000000011", "Frost",   2, 202_400);
+        AddTrack(ribbons, "019e6020-0000-7000-8000-000000000012", "Margins", 3, 220_000);
 
-        var concreteWaves = Album.Create(
-            id: AlbumId.From(Guid.Parse("019e6010-0000-7000-8000-000000000003")),
+        var concreteWaves = Release.Create(
+            id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000003")),
             artistId: ironPalms.Id,
             title: "Concrete Waves",
             slug: Slug.From("concrete-waves"),
             releaseType: ReleaseType.Album,
             releaseDate: new DateTimeOffset(2025, 6, 6, 0, 0, 0, TimeSpan.Zero),
             createdAt: now,
-            coverArtKey: CoverKey.ForAlbumCover("concrete-waves"));
+            coverArtKey: CoverKey.ForReleaseCover("concrete-waves"));
 
         AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000020", "Rebar",      1, 254_000);
         AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000021", "Spillway",   2, 312_500);
         AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000022", "Half-Tide",  3, 289_000);
         AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000023", "Pour",       4, 401_750);
 
-        var pylonsSingle = Album.Create(
-            id: AlbumId.From(Guid.Parse("019e6010-0000-7000-8000-000000000004")),
+        var pylons = Release.Create(
+            id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000004")),
             artistId: ironPalms.Id,
             title: "Pylons",
             slug: Slug.From("pylons"),
             releaseType: ReleaseType.Single,
             releaseDate: new DateTimeOffset(2026, 1, 12, 0, 0, 0, TimeSpan.Zero),
             createdAt: now,
-            coverArtKey: CoverKey.ForAlbumCover("pylons"));
+            coverArtKey: CoverKey.ForReleaseCover("pylons"));
 
-        AddTrack(pylonsSingle, "019e6020-0000-7000-8000-000000000030", "Pylons", 1, 276_000);
+        AddTrack(pylons, "019e6020-0000-7000-8000-000000000030", "Pylons", 1, 276_000);
 
-        var velvetAlbum = Album.Create(
-            id: AlbumId.From(Guid.Parse("019e6010-0000-7000-8000-000000000005")),
+        var weather = Release.Create(
+            id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000005")),
             artistId: velvetMonsoon.Id,
             title: "Weather Reports",
             slug: Slug.From("weather-reports"),
             releaseType: ReleaseType.Album,
             releaseDate: new DateTimeOffset(2026, 4, 18, 0, 0, 0, TimeSpan.Zero),
             createdAt: now,
-            coverArtKey: CoverKey.ForAlbumCover("weather-reports"));
+            coverArtKey: CoverKey.ForReleaseCover("weather-reports"));
 
-        AddTrack(velvetAlbum, "019e6020-0000-7000-8000-000000000040", "Static Bloom",           1, 232_000);
-        AddTrack(velvetAlbum, "019e6020-0000-7000-8000-000000000041", "Monsoon Hours",          2, 258_500);
-        AddTrack(velvetAlbum, "019e6020-0000-7000-8000-000000000042", "Soft Power Cuts",        3, 204_000);
-        AddTrack(velvetAlbum, "019e6020-0000-7000-8000-000000000043", "Hanoi Through Curtains", 4, 297_000);
-        AddTrack(velvetAlbum, "019e6020-0000-7000-8000-000000000044", "Lisbon, Drying",         5, 341_500);
+        AddTrack(weather, "019e6020-0000-7000-8000-000000000040", "Static Bloom",           1, 232_000);
+        AddTrack(weather, "019e6020-0000-7000-8000-000000000041", "Monsoon Hours",          2, 258_500);
+        AddTrack(weather, "019e6020-0000-7000-8000-000000000042", "Soft Power Cuts",        3, 204_000);
+        AddTrack(weather, "019e6020-0000-7000-8000-000000000043", "Hanoi Through Curtains", 4, 297_000);
+        AddTrack(weather, "019e6020-0000-7000-8000-000000000044", "Lisbon, Drying",         5, 341_500);
 
-        db.Albums.AddRange(dawnAlbum, auroraEp, concreteWaves, pylonsSingle, velvetAlbum);
+        db.Releases.AddRange(dawn, ribbons, concreteWaves, pylons, weather);
 
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private static void AddTrack(Album album, string idString, string title, int trackNumber, int durationMs) =>
-        album.AddTrack(
+    private static void AddTrack(Release release, string idString, string title, int trackNumber, int durationMs) =>
+        release.AddTrack(
             TrackId.From(Guid.Parse(idString)),
             title,
             trackNumber,
             TrackDuration.FromMilliseconds(durationMs),
-            audioMasterKey: AudioKey.ForTrack(album.Slug.Value, trackNumber, title));
+            audioMasterKey: AudioKey.ForTrack(release.Slug.Value, trackNumber, title));
 
     /// <summary>
-    /// Generates and uploads the BMP cover + WAV audio set for each artist/album/track combo.
+    /// Generates and uploads the BMP cover + WAV audio set for each artist/release/track combo.
     /// Each upload is gated by ObjectExistsAsync so re-runs only push missing keys.
     /// </summary>
     private static async Task EnsureMediaAsync(IObjectStorage storage, CancellationToken cancellationToken)
@@ -148,16 +148,16 @@ public static class CatalogDevSeeding
         await UploadCoverIfMissingAsync(storage, "iron-palms", isArtist: true, cancellationToken);
         await UploadCoverIfMissingAsync(storage, "velvet-monsoon", isArtist: true, cancellationToken);
 
-        foreach (var (albumSlug, tracks) in TrackPlan)
+        foreach (var (releaseSlug, tracks) in TrackPlan)
         {
-            await UploadCoverIfMissingAsync(storage, albumSlug, isArtist: false, cancellationToken);
+            await UploadCoverIfMissingAsync(storage, releaseSlug, isArtist: false, cancellationToken);
             foreach (var (trackNumber, title) in tracks)
             {
-                var key = AudioKey.ForTrack(albumSlug, trackNumber, title);
+                var key = AudioKey.ForTrack(releaseSlug, trackNumber, title);
                 if (await storage.ObjectExistsAsync(MediaBucket.Audio, key, cancellationToken))
                     continue;
 
-                // Pentatonic-ish tone, distinct per track within an album.
+                // Pentatonic-ish tone, distinct per track within a release.
                 var frequency = 220.0 * Math.Pow(2, (trackNumber - 1) / 12.0);
                 var bytes = SeedMediaGenerators.GenerateSineWaveWav(frequency, durationSeconds: 5.0);
                 await storage.PutAsync(MediaBucket.Audio, key, bytes, "audio/wav", cancellationToken);
@@ -171,7 +171,7 @@ public static class CatalogDevSeeding
         bool isArtist,
         CancellationToken cancellationToken)
     {
-        // Avatars (artist square), full cover (artist hero), and album covers all share the
+        // Avatars (artist square), full cover (artist hero), and release covers all share the
         // same generator. Each gets its own deterministic seed so they look distinct.
         if (isArtist)
         {
@@ -180,7 +180,7 @@ public static class CatalogDevSeeding
         }
         else
         {
-            await UploadIfMissing(CoverKey.ForAlbumCover(slug), $"{slug}-album");
+            await UploadIfMissing(CoverKey.ForReleaseCover(slug), $"{slug}-release");
         }
 
         async Task UploadIfMissing(string key, string seed)
@@ -192,7 +192,7 @@ public static class CatalogDevSeeding
         }
     }
 
-    private static readonly (string AlbumSlug, (int TrackNumber, string Title)[] Tracks)[] TrackPlan =
+    private static readonly (string ReleaseSlug, (int TrackNumber, string Title)[] Tracks)[] TrackPlan =
     [
         ("dawn-anatomy", [
             (1, "Threshold"), (2, "First Wave"), (3, "Halfway House"), (4, "Slow Dawn"),
@@ -218,14 +218,14 @@ internal static class CoverKey
 {
     public static string ForArtistAvatar(string slug) => $"artists/{slug}/avatar.bmp";
     public static string ForArtistCover(string slug) => $"artists/{slug}/cover.bmp";
-    public static string ForAlbumCover(string slug) => $"albums/{slug}/cover.bmp";
+    public static string ForReleaseCover(string slug) => $"releases/{slug}/cover.bmp";
 }
 
 /// <summary>Conventions for object keys in the private audio bucket.</summary>
 internal static class AudioKey
 {
-    public static string ForTrack(string albumSlug, int trackNumber, string title) =>
-        $"albums/{albumSlug}/{trackNumber:00}-{Slugify(title)}.wav";
+    public static string ForTrack(string releaseSlug, int trackNumber, string title) =>
+        $"releases/{releaseSlug}/{trackNumber:00}-{Slugify(title)}.wav";
 
     private static string Slugify(string value)
     {

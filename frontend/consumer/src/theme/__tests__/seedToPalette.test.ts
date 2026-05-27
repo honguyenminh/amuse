@@ -16,6 +16,12 @@ describe("seedToPalette", () => {
     expect(palette.surface).toMatch(/^oklch\(/);
   });
 
+  it("onPrimaryContainer is dark when container lightness is mid-high", () => {
+    const palette = seedToPalette({ l: 0.5, c: 0.2, h: 120 });
+    // Container L = 0.62 — must not pick light-on-light (old threshold bug at exactly 0.62).
+    expect(palette.onPrimaryContainer).toMatch(/oklch\(0\.1/);
+  });
+
   it("paused variant lowers chroma", () => {
     const base = { l: 0.5, c: 0.3, h: 90 };
     const paused = makePausedVariant(base);

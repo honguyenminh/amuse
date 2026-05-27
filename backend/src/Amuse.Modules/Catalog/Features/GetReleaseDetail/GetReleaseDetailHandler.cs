@@ -6,38 +6,38 @@ using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Media;
 using Microsoft.EntityFrameworkCore;
 
-namespace Amuse.Modules.Catalog.Features.GetAlbumDetail;
+namespace Amuse.Modules.Catalog.Features.GetReleaseDetail;
 
-internal sealed class GetAlbumDetailHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IObjectStorage storage)
 {
-    public async Task<Result<GetAlbumDetailResponse>> HandleAsync(
-        Guid albumId,
+    public async Task<Result<GetReleaseDetailResponse>> HandleAsync(
+        Guid releaseId,
         CancellationToken cancellationToken)
     {
-        if (albumId == Guid.Empty)
-            return Result<GetAlbumDetailResponse>.Failure(CatalogErrors.AlbumNotFound);
+        if (releaseId == Guid.Empty)
+            return Result<GetReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
 
-        var typedId = AlbumId.From(albumId);
+        var typedId = ReleaseId.From(releaseId);
 
-        var album = await db.Albums
+        var release = await db.Releases
             .AsNoTracking()
-            .Include(a => a.Tracks)
-            .Where(a => a.Id == typedId)
+            .Include(r => r.Tracks)
+            .Where(r => r.Id == typedId)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (album is null)
-            return Result<GetAlbumDetailResponse>.Failure(CatalogErrors.AlbumNotFound);
+        if (release is null)
+            return Result<GetReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
 
         var artist = await db.Artists
             .AsNoTracking()
-            .Where(a => a.Id == album.ArtistId)
+            .Where(a => a.Id == release.ArtistId)
             .Select(a => new { a.Id, a.Slug, a.Name })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (artist is null)
-            return Result<GetAlbumDetailResponse>.Failure(CatalogErrors.AlbumNotFound);
+            return Result<GetReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
 
-        var tracks = album.Tracks
+        var tracks = release.Tracks
             .OrderBy(t => t.TrackNumber)
             .Select(t => new TrackResponse(
                 t.Id.Value,
@@ -47,23 +47,23 @@ internal sealed class GetAlbumDetailHandler(CatalogDbContext db, IObjectStorage 
                 HasAudio: !string.IsNullOrEmpty(t.AudioMasterKey)))
             .ToArray();
 
-        var response = new GetAlbumDetailResponse(
-            album.Id.Value,
-            album.Slug.Value,
-            album.Title,
+        var response = new GetReleaseDetailResponse(
+            release.Id.Value,
+            release.Slug.Value,
+            release.Title,
             artist.Id.Value,
             artist.Name,
             artist.Slug.Value,
-            album.ReleaseType,
-            album.ReleaseDate,
-            BrowseHomeHandler.CoverArtUrlFor(storage, album.CoverArtKey),
+            release.ReleaseType,
+            release.ReleaseDate,
+            BrowseHomeHandler.CoverArtUrlFor(storage, release.CoverArtKey),
             tracks);
 
-        return Result<GetAlbumDetailResponse>.Success(response);
+        return Result<GetReleaseDetailResponse>.Success(response);
     }
 }
 
-public sealed record GetAlbumDetailResponse(
+public sealed record GetReleaseDetailResponse(
     Guid Id,
     string Slug,
     string Title,

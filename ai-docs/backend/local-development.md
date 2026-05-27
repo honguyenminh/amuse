@@ -89,7 +89,7 @@ HTTPS redirection is enabled; for local HTTP testing use the HTTP port from `lau
 Seeding is **not** part of `migrate-all.sh`. The dotnet-ef CLI uses the design-time `DbContextFactory` and does not invoke `UseAsyncSeeding`. Two idempotent seeds run at **API startup in Development only**:
 
 1. `PlatformRootSeeding.SeedAsync` — creates the root account, identity user, and platform operator.
-2. `CatalogDevSeeding.SeedAsync` — populates a small fixture of artists/albums/tracks so the listener app has something to render.
+2. `CatalogDevSeeding.SeedAsync` — populates a small fixture of artists/releases/tracks so the listener app has something to render.
 
 Flow for a fresh DB:
 

@@ -4,12 +4,25 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-export default function LoginPage() {
+/**
+ * `?next=<path>` lets us bounce visitors back to where they were when they
+ * hit a login wall (e.g. pressing play while anonymous). Sanitised to local
+ * paths only so a crafted ?next=https://attacker can't redirect off-site.
+ */
+function safeNextPath(value: string | null): string {
+  if (!value) return "/home";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/home";
+  return value;
+}
+
+function LoginInner() {
   const auth = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNextPath(searchParams.get("next"));
   const [email, setEmail] = useState("root@amuse.local");
   const [password, setPassword] = useState("ChangeMe_Root123!");
   const [error, setError] = useState<string | null>(null);
@@ -17,9 +30,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (auth.isReady && auth.isAuthenticated) {
-      router.replace("/home");
+      router.replace(next);
     }
-  }, [auth.isReady, auth.isAuthenticated, router]);
+  }, [auth.isReady, auth.isAuthenticated, next, router]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -27,7 +40,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await auth.login(email, password);
-      router.replace("/home");
+      router.replace(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {
@@ -36,7 +49,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-background p-6">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background p-6">
       <Card className="w-full max-w-md">
         <form className="flex flex-col gap-4" onSubmit={onSubmit}>
           <Text as="h1" variant="headline-large">
@@ -75,5 +88,16 @@ export default function LoginPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  // `useSearchParams` requires a Suspense boundary in Next.js 15 static export
+  // mode; rendering the form lazily satisfies it without any UX impact since
+  // the fallback only flashes for one render.
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }

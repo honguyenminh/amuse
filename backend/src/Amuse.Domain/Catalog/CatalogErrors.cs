@@ -7,8 +7,8 @@ public static class CatalogErrors
     public static readonly DomainError ArtistNotFound =
         new("catalog.artist_not_found", "Artist was not found.");
 
-    public static readonly DomainError AlbumNotFound =
-        new("catalog.album_not_found", "Album was not found.");
+    public static readonly DomainError ReleaseNotFound =
+        new("catalog.release_not_found", "Release was not found.");
 
     public static readonly DomainError TrackNotFound =
         new("catalog.track_not_found", "Track was not found.");
@@ -22,8 +22,8 @@ public static class CatalogErrors
     public static readonly DomainError InvalidArtist =
         new("catalog.invalid_artist", "Artist data is invalid.");
 
-    public static readonly DomainError InvalidAlbum =
-        new("catalog.invalid_album", "Album data is invalid.");
+    public static readonly DomainError InvalidRelease =
+        new("catalog.invalid_release", "Release data is invalid.");
 
     public static readonly DomainError InvalidTrack =
         new("catalog.invalid_track", "Track data is invalid.");
