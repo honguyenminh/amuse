@@ -21,7 +21,73 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "tenancy", "org_class", new[] { "indie_group", "backing_org" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "tenancy", "organization_lifecycle_status", new[] { "draft", "active", "suspended", "closed" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "tenancy", "organization_onboarding_status", new[] { "not_required", "pending_review", "approved", "rejected" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "tenancy", "organization_trust_tier", new[] { "unverified", "identity_verified", "platform_verified" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Amuse.Domain.Tenancy.Organization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("approved_at");
+
+                    b.Property<int?>("ApprovedByOperatorId")
+                        .HasColumnType("integer")
+                        .HasColumnName("approved_by_operator_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_account_id");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<int>("LifecycleStatus")
+                        .HasColumnType("tenancy.organization_lifecycle_status")
+                        .HasColumnName("lifecycle_status");
+
+                    b.Property<int>("OnboardingStatus")
+                        .HasColumnType("tenancy.organization_onboarding_status")
+                        .HasColumnName("onboarding_status");
+
+                    b.Property<int>("OrgClass")
+                        .HasColumnType("tenancy.org_class")
+                        .HasColumnName("org_class");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<int>("TrustTier")
+                        .HasColumnType("tenancy.organization_trust_tier")
+                        .HasColumnName("trust_tier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OnboardingStatus");
+
+                    b.HasIndex("OrgClass");
+
+                    b.ToTable("organization", "tenancy");
+                });
 
             modelBuilder.Entity("Amuse.Domain.Tenancy.OrganizationMember", b =>
                 {
@@ -66,6 +132,15 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("organization_member", "tenancy");
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Tenancy.OrganizationMember", b =>
+                {
+                    b.HasOne("Amuse.Domain.Tenancy.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

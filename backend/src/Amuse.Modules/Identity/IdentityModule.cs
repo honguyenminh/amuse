@@ -2,14 +2,20 @@ using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Common.Endpoints;
 using Amuse.Modules.Common.Time;
 using FluentValidation;
+using Amuse.Modules.Identity.Email;
+using Amuse.Modules.Identity.Features.ConfirmEmail;
 using Amuse.Modules.Identity.Features.ExternalLoginComplete;
 using Amuse.Modules.Identity.Features.GetCurrentAccount;
 using Amuse.Modules.Identity.Features.ListAvailablePersonas;
 using Amuse.Modules.Identity.Features.LoginPassword;
 using Amuse.Modules.Identity.Features.RefreshToken;
+using Amuse.Modules.Identity.Features.RegisterPassword;
+using Amuse.Modules.Identity.Features.ResendConfirmation;
 using Amuse.Modules.Identity.Features.RevokeToken;
 using Amuse.Modules.Identity.Options;
 using Amuse.Modules.Identity.Persistence;
+using Amuse.Modules.Identity.Services;
+using Amuse.Modules.Tenancy.Contracts;
 using Amuse.Modules.Identity.Auth;
 using Amuse.Modules.Identity.Auth.External;
 using Microsoft.AspNetCore.Builder;
@@ -32,6 +38,7 @@ public static class IdentityModule
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<ExternalProviderOptions>(configuration.GetSection(ExternalProviderOptions.SectionName));
+        services.Configure<IdentityEmailOptions>(configuration.GetSection(IdentityEmailOptions.SectionName));
 
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseNpgsql(
@@ -59,10 +66,17 @@ public static class IdentityModule
         services.AddSingleton<IClock, SystemClock>();
 
         services.AddScoped<AccountLinker>();
+        services.AddScoped<IOrganizationCreatorContactLookup, OrganizationCreatorContactLookup>();
         services.AddScoped<TokenIssuer>();
         services.AddScoped<ExternalIdentityResolverFactory>();
+        RegisterEmailSender(services, configuration);
+        services.AddScoped<EmailConfirmationLinkBuilder>();
+        services.AddSingleton<ConfirmationResendThrottle>();
 
         services.AddScoped<LoginPasswordHandler>();
+        services.AddScoped<RegisterPasswordHandler>();
+        services.AddScoped<ConfirmEmailHandler>();
+        services.AddScoped<ResendConfirmationHandler>();
         services.AddScoped<ExternalLoginCompleteHandler>();
         services.AddScoped<RefreshTokenHandler>();
         services.AddScoped<RevokeTokenHandler>();
@@ -78,11 +92,27 @@ public static class IdentityModule
         return services;
     }
 
+    private static void RegisterEmailSender(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var email = configuration.GetSection(IdentityEmailOptions.SectionName).Get<IdentityEmailOptions>()
+            ?? new IdentityEmailOptions();
+
+        if (email.Smtp.Enabled && !string.IsNullOrWhiteSpace(email.Smtp.Host))
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        else
+            services.AddSingleton<IEmailSender, LogEmailSender>();
+    }
+
     public static IEndpointRouteBuilder MapIdentityModule(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/identity");
 
         group.MapLoginPasswordEndpoint();
+        group.MapRegisterPasswordEndpoint();
+        group.MapConfirmEmailEndpoint();
+        group.MapResendConfirmationEndpoint();
         group.MapExternalLoginCompleteEndpoint();
         group.MapRefreshTokenEndpoint();
         group.MapRevokeTokenEndpoint();

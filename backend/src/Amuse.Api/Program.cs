@@ -20,16 +20,26 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
 });
 
 // TODO: configure OpenAPI and scalar
 builder.Services.AddOpenApi();
+var devCorsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ??
+    [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
+        policy.WithOrigins(devCorsOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -51,8 +61,8 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
     app.UseCors("DevFrontend");
+    app.MapOpenApi();
 
     // Dev-only idempotent seeding. NOT a migration: schema changes still live in EF migrations
     // applied by scripts/migrate-all.sh or the deploy pipeline.
@@ -68,14 +78,18 @@ if (app.Environment.IsDevelopment())
         await CatalogDevSeeding.SeedAsync(catalogDb, objectStorage, jobQueue, clock, CancellationToken.None);
     }
 }
-
-app.UseHttpsRedirection();
+else
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<TenantGuardMiddleware>();
 
 app.MapIdentityModule();
+app.MapTenancyModule();
 app.MapListenerModule();
+app.MapPlatformModule();
 app.MapCatalogModule();
 app.MapGet("/demo", () => "Hello, World!").RequireAuthorization();
 

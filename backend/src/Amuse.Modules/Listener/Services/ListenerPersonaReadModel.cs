@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Listener.Services;
 
-internal sealed class ListenerPersonaReadModel(ListenerDbContext dbContext) : IListenerPersonaReadModel
+internal sealed class ListenerPersonaReadModel(
+    ListenerDbContext dbContext,
+    EnsureListenerProfileService ensureService) : IListenerPersonaReadModel
 {
     public async Task<Result<PersonaAccessContext>> GetListenerContextAsync(
         AccountId accountId,
@@ -38,5 +40,13 @@ internal sealed class ListenerPersonaReadModel(ListenerDbContext dbContext) : IL
             .FirstOrDefaultAsync(p => p.AccountId == accountId, cancellationToken);
 
         return profile?.Id;
+    }
+
+    public async Task<Result<ListenerProfileId>> EnsureProfileForAccountAsync(
+        AccountId accountId,
+        CancellationToken cancellationToken)
+    {
+        var profile = await ensureService.EnsureAsync(accountId, cancellationToken);
+        return Result<ListenerProfileId>.Success(profile.Id);
     }
 }

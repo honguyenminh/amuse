@@ -5,6 +5,7 @@ import {
   refreshTokens,
   revokeSession,
 } from "@/lib/api/identityClient";
+import { listenerBootstrapContext } from "@/lib/auth/listenerBootstrapContext";
 import type { PersonaContextRequest } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/types";
 import { bootstrapListener } from "@/lib/listener/bootstrapListener";
@@ -67,11 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const restoreSession = useCallback(async () => {
     try {
-      const refreshed = await refreshTokens({
-        type: "platform",
-        orgId: null,
-        listenerId: null,
-      });
+      const refreshed = await refreshTokens(listenerBootstrapContext);
       setAccessToken(refreshed.accessToken);
       await runBootstrap(refreshed.accessToken);
       setIsAuthenticated(true);
@@ -90,11 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const tokens = await loginPassword(email, password, {
-        type: "platform",
-        orgId: null,
-        listenerId: null,
-      });
+      const tokens = await loginPassword(
+        email,
+        password,
+        listenerBootstrapContext,
+      );
       setAccessToken(tokens.accessToken);
       await runBootstrap(tokens.accessToken);
       setIsAuthenticated(true);

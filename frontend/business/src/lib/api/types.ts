@@ -18,6 +18,8 @@ export type AvailablePersona = {
   orgId: string | null;
   listenerId: string | null;
   label: string | null;
+  orgClass?: string | null;
+  onboardingStatus?: string | null;
 };
 
 export type CurrentAccountResponse = {

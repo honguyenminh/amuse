@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Amuse.Domain.Identity;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Identity.Contracts;
@@ -24,7 +25,13 @@ internal sealed class ListAvailablePersonasHandler(
         var personas = new List<AvailablePersona>();
 
         var orgs = await tenancyReadModel.ListAvailableOrgsAsync(accountId, cancellationToken);
-        personas.AddRange(orgs.Select(o => new AvailablePersona("org", o.OrganizationId, null, o.Label)));
+        personas.AddRange(orgs.Select(o => new AvailablePersona(
+            "org",
+            o.OrganizationId,
+            null,
+            o.DisplayName,
+            ToJsonEnum(o.OrgClass),
+            ToJsonEnum(o.OnboardingStatus))));
 
         var listenerId = await listenerReadModel.GetProfileIdForAccountAsync(accountId, cancellationToken);
         if (listenerId is not null)
@@ -35,4 +42,7 @@ internal sealed class ListAvailablePersonasHandler(
 
         return Result<IReadOnlyList<AvailablePersona>>.Success(personas);
     }
+
+    private static string ToJsonEnum<T>(T value) where T : struct, Enum =>
+        JsonNamingPolicy.CamelCase.ConvertName(value.ToString());
 }

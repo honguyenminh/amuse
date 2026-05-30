@@ -17,6 +17,8 @@ import {
   personaMatchesContext,
   personaToContext,
 } from "@/lib/auth/resolveBusinessPersonas";
+import { listenerBootstrapContext } from "@/lib/auth/listenerBootstrapContext";
+import { recordRecentPersona } from "@/lib/auth/recentPersonas";
 import {
   clearSession,
   getAccessToken,
@@ -25,6 +27,7 @@ import {
   setAccessToken,
   setActivePersona,
 } from "@/lib/auth/sessionStore";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -35,12 +38,6 @@ import {
   type ReactNode,
 } from "react";
 
-const platformContext: PersonaContextRequest = {
-  type: "platform",
-  orgId: null,
-  listenerId: null,
-};
-
 type AuthState = {
   isReady: boolean;
   isAuthenticated: boolean;
@@ -48,12 +45,15 @@ type AuthState = {
   activePersona: PersonaContextRequest | null;
   businessPersonas: AvailablePersona[];
   needsPersonaSelection: boolean;
+  needsOrganizationSetup: boolean;
   bootstrapError: string | null;
   login: (email: string, password: string) => Promise<{
     needsSelection: boolean;
+    needsOrganizationSetup: boolean;
   }>;
   logout: () => Promise<void>;
   selectPersona: (persona: AvailablePersona) => Promise<void>;
+  reloadBusinessPersonas: () => Promise<AvailablePersona[]>;
   retryBootstrap: () => Promise<void>;
 };
 
@@ -70,6 +70,8 @@ async function activatePersona(
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [account, setAccount] = useState<CurrentAccountResponse | null>(null);
@@ -91,13 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (personas.length === 0) {
       setActivePersona(null);
       setActivePersonaState(null);
-      const message = "No organization or platform access for this account.";
-      setBootstrapError(message);
+      setBootstrapError(null);
       return {
         token: initialToken,
         activePersona: null,
         needsSelection: false,
-        error: message,
+        needsOrganizationSetup: true,
+        error: null,
       };
     }
 
@@ -109,23 +111,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedMatch) {
       const context = personaToContext(storedMatch);
       const token = await activatePersona(initialToken, context);
+      recordRecentPersona(storedMatch);
       setActivePersonaState(context);
       return {
         token,
         activePersona: context,
         needsSelection: false,
+        needsOrganizationSetup: false,
         error: null,
       };
     }
 
     if (personas.length === 1) {
-      const context = personaToContext(personas[0]!);
+      const only = personas[0]!;
+      const context = personaToContext(only);
       const token = await activatePersona(initialToken, context);
+      recordRecentPersona(only);
       setActivePersonaState(context);
       return {
         token,
         activePersona: context,
         needsSelection: false,
+        needsOrganizationSetup: false,
         error: null,
       };
     }
@@ -136,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: initialToken,
       activePersona: null,
       needsSelection: true,
+      needsOrganizationSetup: false,
       error: null,
     };
   }, []);
@@ -147,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const restoreSession = useCallback(async () => {
     try {
-      const refreshed = await refreshTokens(platformContext);
+      const refreshed = await refreshTokens(listenerBootstrapContext);
       setAccessToken(refreshed.accessToken);
       const resolved = await resolveSession(refreshed.accessToken);
       await loadAccount(resolved.token);
@@ -169,10 +177,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void restoreSession();
   }, [restoreSession]);
 
+  const needsOrganizationSetup =
+    isAuthenticated &&
+    businessPersonas.length === 0 &&
+    activePersonaState === null &&
+    bootstrapError === null;
+
+  useEffect(() => {
+    if (!isReady || !needsOrganizationSetup) {
+      return;
+    }
+    if (
+      pathname.startsWith("/create-organization") ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/signup") ||
+      pathname.startsWith("/confirm-email")
+    ) {
+      return;
+    }
+    router.replace("/create-organization?returnTo=/dashboard");
+  }, [isReady, needsOrganizationSetup, pathname, router]);
+
   const login = useCallback(
     async (email: string, password: string) => {
       setBootstrapError(null);
-      const tokens = await loginPassword(email, password, platformContext);
+      const tokens = await loginPassword(
+        email,
+        password,
+        listenerBootstrapContext,
+      );
       setAccessToken(tokens.accessToken);
       const resolved = await resolveSession(tokens.accessToken);
       if (resolved.error) {
@@ -180,7 +213,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       await loadAccount(resolved.token);
       setIsAuthenticated(true);
-      return { needsSelection: resolved.needsSelection };
+      return {
+        needsSelection: resolved.needsSelection,
+        needsOrganizationSetup: resolved.needsOrganizationSetup ?? false,
+      };
     },
     [loadAccount, resolveSession],
   );
@@ -209,12 +245,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const context = personaToContext(persona);
       const refreshedToken = await activatePersona(token, context);
+      recordRecentPersona(persona);
       setActivePersonaState(context);
       setBootstrapError(null);
       await loadAccount(refreshedToken);
     },
     [loadAccount],
   );
+
+  const reloadBusinessPersonas = useCallback(async () => {
+    const token = getAccessToken();
+    if (!token) {
+      throw new Error("Not authenticated.");
+    }
+    const personas = filterBusinessPersonas(await listPersonas(token));
+    setBusinessPersonas(personas);
+    return personas;
+  }, []);
 
   const retryBootstrap = useCallback(async () => {
     const token = getAccessToken();
@@ -250,10 +297,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activePersona: activePersonaState ?? getActivePersona(),
       businessPersonas,
       needsPersonaSelection,
+      needsOrganizationSetup,
       bootstrapError,
       login,
       logout,
       selectPersona,
+      reloadBusinessPersonas,
       retryBootstrap,
     }),
     [
@@ -263,10 +312,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activePersonaState,
       businessPersonas,
       needsPersonaSelection,
+      needsOrganizationSetup,
       bootstrapError,
       login,
       logout,
       selectPersona,
+      reloadBusinessPersonas,
       retryBootstrap,
     ],
   );

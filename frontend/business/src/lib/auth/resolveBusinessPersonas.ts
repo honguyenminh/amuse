@@ -58,3 +58,58 @@ export function contextLabel(
   );
   return match ? getPersonaLabel(match) : context.type;
 }
+
+export function formatPersonaType(persona: AvailablePersona): string {
+  if (persona.type === "platform") {
+    return "Platform operator";
+  }
+  if (persona.type === "org") {
+    if (persona.orgClass === "backingOrg") {
+      return "Backing organization";
+    }
+    if (persona.orgClass === "indieGroup") {
+      return "Indie group";
+    }
+    return "Organization";
+  }
+  return persona.type;
+}
+
+export function formatOnboardingStatus(
+  status: string | null | undefined,
+): string | null {
+  if (!status) {
+    return null;
+  }
+  switch (status) {
+    case "pendingReview":
+      return "Pending approval";
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "notRequired":
+      return null;
+    default:
+      return status;
+  }
+}
+
+export function isPlatformPersonaActive(
+  activePersona: PersonaContextRequest | null,
+): boolean {
+  return activePersona?.type === "platform";
+}
+
+export function defaultPortalPathForPersona(
+  persona: AvailablePersona,
+  fallback = "/dashboard",
+): string {
+  if (persona.type === "platform") {
+    return "/platform/applications";
+  }
+  if (persona.type === "org") {
+    return fallback.startsWith("/platform") ? "/dashboard" : fallback;
+  }
+  return fallback;
+}

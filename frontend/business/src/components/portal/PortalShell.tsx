@@ -1,5 +1,6 @@
 "use client";
 
+import { OrganizationStatusBanner } from "@/components/portal/OrganizationStatusBanner";
 import { PersonaSwitcher } from "@/components/portal/PersonaSwitcher";
 import { PortalNav } from "@/components/portal/PortalNav";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,10 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { contextLabel } from "@/lib/auth/resolveBusinessPersonas";
+import {
+  contextLabel,
+  isPlatformPersonaActive,
+} from "@/lib/auth/resolveBusinessPersonas";
 import { LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -24,6 +28,7 @@ import type { ReactNode } from "react";
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/settings": "Settings",
+  "/platform/applications": "Applications",
 };
 
 type PortalShellProps = {
@@ -34,7 +39,9 @@ export function PortalShell({ children }: PortalShellProps) {
   const auth = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const title = pageTitles[pathname] ?? "Console";
+  const isPlatform = isPlatformPersonaActive(auth.activePersona);
+  const title =
+    pageTitles[pathname] ?? (isPlatform ? "Platform console" : "Console");
 
   async function onSignOut() {
     await auth.logout();
@@ -59,7 +66,7 @@ export function PortalShell({ children }: PortalShellProps) {
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Amuse</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    Console
+                    {isPlatform ? "Platform" : "Organization"}
                   </span>
                 </div>
               </SidebarMenuButton>
@@ -102,6 +109,7 @@ export function PortalShell({ children }: PortalShellProps) {
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 bg-muted/40 p-4 md:p-6">
+          <OrganizationStatusBanner />
           {children}
         </div>
       </SidebarInset>

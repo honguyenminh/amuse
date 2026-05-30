@@ -28,10 +28,6 @@ internal sealed class RefreshTokenHandler(
         if (string.IsNullOrWhiteSpace(refreshToken))
             return Result<AuthTokenResponse>.Failure(IdentityErrors.InvalidRefreshToken);
 
-        var personaResult = PersonaContextMapper.ToDomain(request.Context);
-        if (!personaResult.IsSuccess)
-            return Result<AuthTokenResponse>.Failure(personaResult.Error!);
-
         var now = clock.UtcNow;
         var hash = TokenIssuer.HashRefreshToken(refreshToken);
         var session = await dbContext.RefreshSessions
@@ -43,6 +39,14 @@ internal sealed class RefreshTokenHandler(
         var account = await dbContext.Accounts.FirstOrDefaultAsync(a => a.Id == session.AccountId, cancellationToken);
         if (account is null || !account.IsEnabled)
             return Result<AuthTokenResponse>.Failure(IdentityErrors.AccountDisabled);
+
+        var personaResult = await PersonaContextBootstrap.ResolveAsync(
+            request.Context,
+            account.Id,
+            listenerReadModel,
+            cancellationToken);
+        if (!personaResult.IsSuccess)
+            return Result<AuthTokenResponse>.Failure(personaResult.Error!);
 
         session.Revoke(now);
 

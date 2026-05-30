@@ -19,6 +19,8 @@ public static class TokenTransport
             .GetRequiredService<IHostEnvironment>()
             .IsDevelopment();
 
+        var sameSite = useSecureCookies ? SameSiteMode.Strict : SameSiteMode.Lax;
+
         httpContext.Response.Cookies.Append(
             AuthConstants.RefreshCookieName,
             refreshToken,
@@ -26,7 +28,7 @@ public static class TokenTransport
             {
                 HttpOnly = true,
                 Secure = useSecureCookies,
-                SameSite = SameSiteMode.Strict,
+                SameSite = sameSite,
                 Expires = expiresAt,
             });
     }

@@ -26,8 +26,23 @@ Action: revoke session and blacklist current token jti.
 ### GET /organizations
 Return organizations user belongs to.
 
-### POST /organizations
-Create organization (status PENDING approval).
+### POST /tenancy/organizations
+Create organization. Indie groups: `onboarding_status=not_required`, active immediately with restricted capabilities. Backing orgs: `onboarding_status=pending_review` until platform approval.
+
+### GET /tenancy/organizations
+List organizations for the signed-in account.
+
+### GET /tenancy/organizations/{id}
+Organization profile and derived capabilities for the caller's membership.
+
+### GET /platform/organizations/applications
+List backing organizations pending platform review (platform persona).
+
+### POST /platform/organizations/{id}/approve
+Approve backing organization (platform persona).
+
+### POST /platform/organizations/{id}/reject
+Reject backing organization with reason (platform persona).
 
 ### GET /organizations/{id}
 Get organization profile and approval state.

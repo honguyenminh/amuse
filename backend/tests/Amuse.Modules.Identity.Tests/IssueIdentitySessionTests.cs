@@ -2,6 +2,7 @@ using Amuse.Domain.Identity;
 using Amuse.Modules.Identity.Auth;
 using Amuse.Modules.Identity.Options;
 using Amuse.Modules.Identity.Persistence;
+using Amuse.Modules.Common.Time;
 using Amuse.Modules.Listener.Persistence;
 using Amuse.Modules.Listener.Services;
 using Amuse.Modules.Platform.Persistence;
@@ -40,7 +41,7 @@ public sealed class IssueIdentitySessionTests
             identityDb,
             new TokenIssuer(jwt),
             new TenancyPersonaReadModel(tenancyDb),
-            new ListenerPersonaReadModel(listenerDb),
+            new ListenerPersonaReadModel(listenerDb, new EnsureListenerProfileService(listenerDb, new SystemClock())),
             new PlatformPersonaReadModel(platformDb),
             jwt.Value,
             account,

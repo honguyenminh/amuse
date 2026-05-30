@@ -17,4 +17,29 @@ public sealed class OrganizationMember
     }
 
     public bool IsActive => Status == MembershipStatus.Active;
+
+    public static OrganizationMember CreateOwner(
+        OrganizationId organizationId,
+        AccountId accountId,
+        string presetRoleLabel,
+        IReadOnlyList<string> claims)
+    {
+        var normalizedClaims = claims
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(c => c, StringComparer.Ordinal)
+            .ToArray();
+
+        return new OrganizationMember
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organizationId,
+            AccountId = accountId,
+            Status = MembershipStatus.Active,
+            PresetRoleLabel = presetRoleLabel,
+            Claims = normalizedClaims,
+            IsOwner = true,
+        };
+    }
 }

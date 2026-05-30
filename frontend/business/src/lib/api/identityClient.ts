@@ -97,3 +97,44 @@ export function listPersonas(
     accessToken,
   });
 }
+
+export type RegistrationPortal = "consumer" | "business";
+
+export type RegisterPasswordResponse = {
+  message: string;
+  email: string;
+};
+
+export function registerPassword(
+  email: string,
+  password: string,
+  portal: RegistrationPortal,
+): Promise<RegisterPasswordResponse> {
+  return identityFetch<RegisterPasswordResponse>(
+    "/api/v1/identity/register/password",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password, portal }),
+    },
+  );
+}
+
+export function confirmEmail(userId: string, token: string): Promise<void> {
+  return identityFetch<void>("/api/v1/identity/confirm-email", {
+    method: "POST",
+    body: JSON.stringify({ userId, token }),
+  });
+}
+
+export function resendConfirmation(
+  email: string,
+  portal: RegistrationPortal,
+): Promise<{ message: string }> {
+  return identityFetch<{ message: string }>(
+    "/api/v1/identity/resend-confirmation",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, portal }),
+    },
+  );
+}

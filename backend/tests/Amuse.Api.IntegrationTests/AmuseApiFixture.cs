@@ -1,3 +1,4 @@
+using Amuse.Modules.Identity.Email;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Catalog.Seeding;
@@ -22,10 +23,13 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
         .Build();
 
     private readonly InMemoryObjectStorage _objectStorage = new();
+    private readonly CaptureEmailSender _captureEmailSender = new();
 
     private string? _connectionString;
 
     public InMemoryObjectStorage ObjectStorage => _objectStorage;
+
+    public CaptureEmailSender CaptureEmailSender => _captureEmailSender;
 
     public async Task InitializeAsync()
     {
@@ -81,6 +85,10 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
 
             services.RemoveAll<IAudioTranscodeJobQueue>();
             services.AddSingleton<IAudioTranscodeJobQueue, InMemoryAudioTranscodeJobQueue>();
+
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton(_captureEmailSender);
+            services.AddSingleton<IEmailSender>(_captureEmailSender);
         });
     }
 

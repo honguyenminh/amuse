@@ -6,6 +6,8 @@ Always answer in English. Do not assume anything, ask clarifying questions if ne
 
 After an entire feature is completed (and prompted by me, do not automatically do it), document all relevant informations, which includes (but not limited to) what you did, concrete behavior/flows/..., verifying steps, conventions and rules we established, learnings made, etc., into `ai-docs/backend` or `ai-docs/frontend` for which project is being made.
 
+When planning, be as detailed and specific as possible, covering and documenting all possible major painpoints and possible hurdles, and if unsure ask the user, do not assume or gloss over decisions. The plan will be read and implemented by an inexperienced intern who will take shortcuts whenever possible, so guard against that.
+
 # .NET C#
 
 Adhere to DDD-style patterns, like rich domain models, only valid state (if a state is invalid, it shouldn't be able to exist/instatiate into a domain model), etc.

@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resendConfirmation } from "@/lib/api/identityClient";
+import { ApiError } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -33,6 +35,9 @@ function LoginInner() {
   const [password, setPassword] = useState("ChangeMe_Root123!");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!auth.isReady) {
@@ -61,11 +66,22 @@ function LoginInner() {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setResendMessage(null);
+    setPendingEmail(null);
     try {
       const result = await auth.login(email, password);
+      if (result.needsOrganizationSetup) {
+        router.replace("/create-organization?returnTo=/dashboard");
+        return;
+      }
       router.replace(result.needsSelection ? "/select-persona" : next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed.");
+      if (err instanceof ApiError && err.code === "identity.email_not_confirmed") {
+        setPendingEmail(email);
+        setError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : "Login failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -77,7 +93,7 @@ function LoginInner() {
         <CardHeader>
           <CardTitle>Sign in to Amuse Console</CardTitle>
           <CardDescription>
-            Business and platform administration portal
+            Business and platform administration portal.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -110,6 +126,45 @@ function LoginInner() {
             <Button type="submit" disabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
             </Button>
+            {pendingEmail ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resending}
+                onClick={() => {
+                  void (async () => {
+                    setResending(true);
+                    setResendMessage(null);
+                    try {
+                      const result = await resendConfirmation(
+                        pendingEmail,
+                        "business",
+                      );
+                      setResendMessage(result.message);
+                    } catch (resendErr) {
+                      setResendMessage(
+                        resendErr instanceof Error
+                          ? resendErr.message
+                          : "Could not resend confirmation email.",
+                      );
+                    } finally {
+                      setResending(false);
+                    }
+                  })();
+                }}
+              >
+                {resending ? "Sending…" : "Resend confirmation email"}
+              </Button>
+            ) : null}
+            {resendMessage ? (
+              <p className="text-sm text-muted-foreground">{resendMessage}</p>
+            ) : null}
+            <p className="text-center text-sm text-muted-foreground">
+              New here?{" "}
+              <a href="/signup" className="underline-offset-4 hover:underline">
+                Create an account
+              </a>
+            </p>
           </form>
         </CardContent>
       </Card>

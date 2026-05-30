@@ -30,6 +30,12 @@
       timeout: 5s
       retries: 5
 
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
   rabbitmq:
     image: rabbitmq:3-management
     environment:
@@ -67,25 +73,40 @@
       "
     restart: "no"
 
+  # One-shot: applies EF migrations before the API starts. Idempotent.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   amuse.api:
     image: amuse.api
     build:
       context: src
       dockerfile: Amuse.Api/Dockerfile
-    profiles:
-      - full
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
-        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=amuse_development;Username=postgres;Password=postgres
       Media__Endpoint: http://minio:9000
-      Media__PublicBaseUrl: http://minio:9000
+      # Browser-facing URLs must use localhost, not the in-compose hostname.
+      Media__PublicBaseUrl: http://localhost:9000
       Media__AccessKey: amuse
       Media__SecretKey: amuse_dev_secret
       Media__ForcePathStyle: "true"
@@ -98,6 +119,12 @@
       RabbitMq__Password: amuse_dev_secret
       RabbitMq__QueueName: amuse.transcode.jobs
       RabbitMq__PrefetchCount: "1"
+      Identity__Email__Smtp__Enabled: "true"
+      Identity__Email__Smtp__Host: mailpit
+      Identity__Email__Smtp__Port: "1025"
+      Identity__Email__Smtp__UseSsl: "false"
+      Identity__Email__Smtp__FromAddress: noreply@amuse.local
+      Identity__Email__Smtp__FromName: Amuse
     ports:
       - "5000:8080"
 
@@ -106,13 +133,12 @@
     build:
       context: src
       dockerfile: Amuse.Worker.Transcoder/Dockerfile
-    profiles:
-      - full
+    restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=amuse_development;Username=postgres;Password=postgres
       Media__Endpoint: http://minio:9000
-      Media__PublicBaseUrl: http://minio:9000
+      Media__PublicBaseUrl: http://localhost:9000
       Media__AccessKey: amuse
       Media__SecretKey: amuse_dev_secret
       Media__ForcePathStyle: "true"
@@ -128,10 +154,12 @@
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
-        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   minio-data:

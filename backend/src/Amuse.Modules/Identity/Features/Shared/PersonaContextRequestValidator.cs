@@ -18,11 +18,9 @@ public sealed class PersonaContextRequestValidator : AbstractValidator<PersonaCo
                 .WithMessage("orgId cannot be empty.");
         });
 
-        When(x => x.Type == PersonaContextType.Listener, () =>
+        When(x => x.Type == PersonaContextType.Listener && x.ListenerId is not null, () =>
         {
             RuleFor(x => x.ListenerId)
-                .NotNull()
-                .WithMessage("listenerId is required when type is listener.")
                 .NotEqual(Guid.Empty)
                 .WithMessage("listenerId cannot be empty.");
         });

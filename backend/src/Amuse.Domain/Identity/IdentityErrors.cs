@@ -21,4 +21,22 @@ public static class IdentityErrors
 
     public static readonly DomainError TokenRevoked =
         new("identity.token_revoked", "Token has been revoked.");
+
+    public static readonly DomainError EmailAlreadyRegistered =
+        new("identity.email_already_registered", "An account with this email already exists.");
+
+    public static readonly DomainError EmailNotConfirmed =
+        new("identity.email_not_confirmed", "Confirm your email before signing in.");
+
+    public static readonly DomainError InvalidConfirmationToken =
+        new("identity.invalid_confirmation_token", "Email confirmation link is invalid or expired.");
+
+    public static readonly DomainError RegistrationFailed =
+        new("identity.registration_failed", "Registration could not be completed.");
+
+    public static readonly DomainError ResendConfirmationRateLimited =
+        new("identity.resend_confirmation_rate_limited", "Please wait before requesting another confirmation email.");
+
+    public static DomainError RegistrationFailedWithDetails(string details) =>
+        new("identity.registration_failed", details);
 }

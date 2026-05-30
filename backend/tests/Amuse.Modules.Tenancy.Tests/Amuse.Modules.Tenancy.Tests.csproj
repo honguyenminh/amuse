@@ -18,4 +18,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.7" />
+    <ProjectReference Include="..\..\src\Amuse.Modules\Amuse.Modules.csproj" />
+    <ProjectReference Include="..\..\src\Amuse.Domain\Amuse.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

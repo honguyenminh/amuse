@@ -4,4 +4,6 @@ public sealed record AvailablePersona(
     string Type,
     Guid? OrgId,
     Guid? ListenerId,
-    string? Label);
+    string? Label,
+    string? OrgClass = null,
+    string? OnboardingStatus = null);

@@ -41,8 +41,9 @@ Interfaces in `Amuse.Modules/Identity/Contracts/`:
 - `ITenancyPersonaReadModel` — org context + `ListAvailableOrgsAsync`
 - `IListenerPersonaReadModel` — listener context + profile lookup
 - `IPlatformPersonaReadModel` — platform context + `IsPlatformOperatorAsync`
+- `IOrganizationCreatorContactLookup` (Tenancy) — creator email/IdP snapshot for backing-org application review; **implemented** in Identity as a persistence adapter only (B2B tenancy concern, not auth domain)
 
-Registered in each BC’s `*Module.cs`. Identity **must not** inject `TenancyDbContext` / `ListenerDbContext` / `PlatformDbContext` in feature handlers.
+Registered in each BC’s `*Module.cs` (consumer defines port, provider implements). Identity **must not** inject `TenancyDbContext` / `ListenerDbContext` / `PlatformDbContext` in feature handlers.
 
 ## Validation & API errors
 

@@ -31,7 +31,11 @@ internal sealed class LoginPasswordHandler(
         if (!accountResult.IsSuccess)
             return Result<AuthTokenResponse>.Failure(accountResult.Error!);
 
-        var personaResult = PersonaContextMapper.ToDomain(request.Context);
+        var personaResult = await PersonaContextBootstrap.ResolveAsync(
+            request.Context,
+            accountResult.Value!.Id,
+            listenerReadModel,
+            cancellationToken);
         if (!personaResult.IsSuccess)
             return Result<AuthTokenResponse>.Failure(personaResult.Error!);
 
@@ -69,6 +73,9 @@ internal sealed class LoginPasswordHandler(
         var signIn = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
         if (!signIn.Succeeded)
             return Result<Account>.Failure(IdentityErrors.InvalidCredentials);
+
+        if (!user.EmailConfirmed)
+            return Result<Account>.Failure(IdentityErrors.EmailNotConfirmed);
 
         if (user.AccountId is null)
         {

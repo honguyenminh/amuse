@@ -14,4 +14,8 @@ public interface IListenerPersonaReadModel
     Task<ListenerProfileId?> GetProfileIdForAccountAsync(
         AccountId accountId,
         CancellationToken cancellationToken);
+
+    Task<Result<ListenerProfileId>> EnsureProfileForAccountAsync(
+        AccountId accountId,
+        CancellationToken cancellationToken);
 }

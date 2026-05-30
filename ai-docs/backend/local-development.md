@@ -2,11 +2,52 @@
 
 ## Prerequisites
 
-- .NET 10 SDK
-- Docker (for Postgres via Compose; required for integration tests)
+- Docker or Podman with Compose (for the local backend stack)
+- .NET 10 SDK (only if you run the API/worker on the host instead of Compose)
 - `dotnet-ef` tool (repo: [`backend/dotnet-tools.json`](../../backend/dotnet-tools.json))
 
-## Start Postgres
+## Quick start (recommended)
+
+From [`backend/`](../../backend/), start infra + migrations + API + transcoder worker in one shot:
+
+```bash
+cd backend
+./scripts/dev-up.sh
+# or: docker compose up -d --build
+```
+
+Then run a frontend **on the host** (Compose bind mounts are awkward with Podman/SELinux):
+
+```bash
+cd frontend/business   # port 3001
+pnpm dev
+
+# or consumer app on port 3000
+cd frontend/consumer
+pnpm dev
+```
+
+| Service | URL |
+|---------|-----|
+| API | http://localhost:5000 |
+| OpenAPI | http://localhost:5000/openapi/v1.json |
+| MinIO console | http://localhost:9001 (`amuse` / `amuse_dev_secret`) |
+| RabbitMQ UI | http://localhost:15672 (`amuse` / `amuse_dev_secret`) |
+| Mailpit (dev email) | http://localhost:8025 (SMTP `localhost:1025`) |
+
+The API listens on **HTTP port 5000** with CORS enabled for local Next.js dev servers
+(`localhost` and `127.0.0.1` on ports 3000/3001). Override with `NEXT_PUBLIC_API_BASE_URL`
+if needed (defaults to `http://localhost:5000` in both frontends).
+
+Infra-only (no API/worker containers):
+
+```bash
+docker compose up -d postgres minio minio-init rabbitmq mailpit
+```
+
+Registration confirmation emails use **Mailpit** when `Identity:Email:Smtp:Enabled` is true (default in `appsettings.Development.json`). After sign-up, open Mailpit and click the confirm link. With `dotnet run` on the host, SMTP targets `localhost:1025`; API-in-compose uses hostname `mailpit`. Set `Smtp.Enabled` to `false` to log links only.
+
+## Start Postgres only
 
 From [`backend/`](../../backend/):
 
@@ -27,6 +68,9 @@ Override with `ConnectionStrings__DefaultConnection` if needed.
 ## Migrations policy
 
 **The API never applies migrations on startup** (not Development, not Production).
+
+In Compose, a one-shot **`migrate`** service runs [`scripts/migrate-all.sh`](../../backend/scripts/migrate-all.sh)
+before `amuse.api` starts. On the host, run the same script manually.
 
 Schema changes are:
 
@@ -85,7 +129,8 @@ dotnet run --project src/Amuse.Api
 
 Development opens OpenAPI at `/openapi/v1.json` when `ASPNETCORE_ENVIRONMENT=Development`.
 
-HTTPS redirection is enabled; for local HTTP testing use the HTTP port from `launchSettings.json` or disable redirection in dev if needed.
+HTTPS redirection is **disabled in Development** so browser clients can call `http://localhost:5000`
+without redirect/CORS preflight issues. Production still redirects to HTTPS.
 
 ## Run the transcoder worker
 
@@ -101,12 +146,7 @@ Run from repo **`backend/`** root (as above) or set `ConnectionStrings__DefaultC
 
 `TranscodingWorker` emits **structured logs** (Information) for: RabbitMQ connect settings, message received (`JobId`, `TrackId`, delivery tag), job processing / skip-if-already-packaged, ffmpeg start/end timing, artifact upload counts, success/failure with elapsed ms. On ffmpeg failure, stderr is included in the error log. For verbose per-object upload lines in dev, `src/Amuse.Worker.Transcoder/appsettings.Development.json` sets `Amuse.Worker.Transcoder.TranscodingWorker` to Debug.
 
-For containerized local stack:
-
-```bash
-cd backend
-docker compose --profile full up -d amuse.api amuse.worker.transcoder
-```
+For containerized local stack, `./scripts/dev-up.sh` (or `docker compose up -d --build`) starts the worker with the API.
 
 ## Seeded dev data
 
@@ -115,7 +155,13 @@ Seeding is **not** part of `migrate-all.sh`. The dotnet-ef CLI uses the design-t
 1. `PlatformRootSeeding.SeedAsync` — creates the root account, identity user, and platform operator.
 2. `CatalogDevSeeding.SeedAsync` — populates a small fixture of artists/releases/tracks, uploads dev media to MinIO, and **enqueues transcode jobs** for tracks that have a master but no DASH stream yet (requires RabbitMQ + worker for playback to succeed via `stream-info`).
 
-Flow for a fresh DB:
+Flow for a fresh DB (Compose):
+
+1. `docker compose up -d --build` — runs `migrate`, then starts API + worker + infra.
+2. API startup (Development) runs platform + catalog seeds and enqueues transcode jobs.
+3. Worker consumes jobs; DASH playback works once packaging finishes.
+
+Flow for a fresh DB (host API):
 
 1. `./scripts/migrate-all.sh` — applies schema for every bounded context.
 2. `docker compose up -d postgres minio minio-init rabbitmq` — infra for storage + queue.
@@ -221,7 +267,9 @@ curl -s -b cookies.txt -c cookies.txt -X POST "$BASE/api/v1/identity/refresh" \
 | Issue | Check |
 |-------|--------|
 | Connection refused to DB | `docker compose ps`, port 5432 free |
-| Relation does not exist | Run `./scripts/migrate-all.sh` |
+| Relation does not exist | Re-run migrate: `docker compose run --rm migrate` or `./scripts/migrate-all.sh` |
 | Login 400 invalid persona | Root seed failed; check Platform migration/seed logs |
 | Cookie refresh fails on HTTP | `ASPNETCORE_ENVIRONMENT=Development` (non-Secure cookies) |
+| Browser CORS errors to API | Frontend origin must be `localhost` or `127.0.0.1` on port 3000/3001; API must be `http://localhost:5000` |
+| Cover/audio URLs broken in browser | Compose `Media__PublicBaseUrl` must be `http://localhost:9000`, not `http://minio:9000` |
 | 401 not `token_revoked` | Ensure `Authorization` header sent on revoke |

@@ -1,7 +1,14 @@
 using Amuse.Modules.Identity.Contracts;
+using Amuse.Modules.Platform.Contracts;
+using Amuse.Modules.Platform.Features.ApproveOrganization;
+using Amuse.Modules.Platform.Features.ListOrganizationApplications;
+using Amuse.Modules.Platform.Features.RejectOrganization;
 using Amuse.Modules.Platform.Options;
 using Amuse.Modules.Platform.Persistence;
 using Amuse.Modules.Platform.Services;
+using FluentValidation;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +32,22 @@ public static class PlatformModule
                 npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_platform", "platform")));
 
         services.AddScoped<IPlatformPersonaReadModel, PlatformPersonaReadModel>();
+        services.AddScoped<IPlatformOperatorLookup, PlatformOperatorLookup>();
+
+        services.AddValidatorsFromAssemblyContaining<RejectOrganizationRequestValidator>();
+        services.AddScoped<ListOrganizationApplicationsHandler>();
+        services.AddScoped<ApproveOrganizationHandler>();
+        services.AddScoped<RejectOrganizationHandler>();
+
         return services;
+    }
+
+    public static IEndpointRouteBuilder MapPlatformModule(this IEndpointRouteBuilder endpoints)
+    {
+        var group = endpoints.MapGroup("/api/v1/platform");
+        group.MapListOrganizationApplicationsEndpoint();
+        group.MapApproveOrganizationEndpoint();
+        group.MapRejectOrganizationEndpoint();
+        return endpoints;
     }
 }

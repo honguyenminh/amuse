@@ -96,8 +96,8 @@ Acceptance: API rejects operations outside token org scope.
 FR-004: System shall blacklist revoked JWTs in Redis.
 Acceptance: revoked token is rejected before expiration.
 
-FR-005: New organization creation shall require admin approval before activation.
-Acceptance: unapproved org cannot publish content or execute payout operations.
+FR-005: Backing organizations shall require platform approval before publish and payout operations; indie groups self-activate with restricted capabilities.
+Acceptance: pending backing org cannot publish content or execute payout operations; indie group may upload drafts but not publish to public catalog until promotion rules apply.
 
 ### 4.2 Organization and Membership
 FR-006: System shall support two organization classes: Indie Group and Backing Organization.

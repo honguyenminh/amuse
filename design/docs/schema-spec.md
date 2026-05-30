@@ -20,11 +20,16 @@
 
 - organization
   - id (uuid, pk)
-  - name
-  - org_class (enum: INDIE_GROUP, BACKING_ORG)
-  - approval_status (PENDING, APPROVED, REJECTED)
+  - display_name
+  - org_class (enum: indie_group, backing_org)
+  - lifecycle_status (enum: draft, active, suspended, closed)
+  - onboarding_status (enum: not_required, pending_review, approved, rejected)
+  - trust_tier (enum: unverified, identity_verified, platform_verified)
   - created_by_account_id (fk -> account.id)
-  - created_at, updated_at
+  - approved_at (timestamptz, nullable)
+  - approved_by_operator_id (nullable)
+  - rejection_reason (nullable)
+  - created_at, updated_at (timestamptz)
 
 - organization_member
   - id (uuid, pk)

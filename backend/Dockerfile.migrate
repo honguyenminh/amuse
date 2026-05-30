@@ -1,0 +1,15 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /app
+
+COPY dotnet-tools.json ./
+RUN dotnet tool restore
+
+COPY scripts/migrate-all.sh ./scripts/
+COPY src ./src
+
+RUN chmod +x ./scripts/migrate-all.sh
+
+ENV ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=amuse_development;Username=postgres;Password=postgres
+
+ENTRYPOINT ["./scripts/migrate-all.sh"]
