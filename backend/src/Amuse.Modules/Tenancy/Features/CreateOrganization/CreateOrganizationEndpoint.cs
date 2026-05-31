@@ -26,7 +26,7 @@ public static class CreateOrganizationEndpoint
             .WithName("CreateOrganization")
             .WithSummary("Create an organization and assign the caller as owner.")
             .WithDescription(
-                "Indie groups self-activate with restricted capabilities. Backing organizations enter pending_review until platform approval.")
+                "Indie groups self-activate with restricted capabilities. Backing organizations enter pending_review until platform approval, unless the creator is a platform operator with instant-approve claims (platform:root, review:platform:organizations, or manage:platform:organizations).")
             .Produces<OrganizationResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesValidationProblem();

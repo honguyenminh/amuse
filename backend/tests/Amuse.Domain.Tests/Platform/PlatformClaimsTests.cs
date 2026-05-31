@@ -8,6 +8,10 @@ public sealed class PlatformClaimsTests
     public void Root_can_assume_any_organization_persona()
     {
         Assert.True(PlatformClaims.CanAssumeAnyOrganizationPersona(["platform:root"]));
+        Assert.True(PlatformClaims.CanInstantApproveOrganizationsOnCreate(["platform:root"]));
+        Assert.True(
+            PlatformClaims.CanInstantApproveOrganizationsOnCreate(["review:platform:organizations"]));
+        Assert.False(PlatformClaims.CanInstantApproveOrganizationsOnCreate(["read:org:all"]));
     }
 
     [Fact]

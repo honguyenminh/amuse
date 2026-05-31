@@ -31,6 +31,7 @@ internal sealed class GetOrganizationHandler(TenancyDbContext dbContext)
             where member.AccountId == accountId
                   && member.OrganizationId == orgId
                   && member.Status == MembershipStatus.Active
+                  && organization.LifecycleStatus != OrganizationLifecycleStatus.Closed
             select new { organization, member.IsOwner }
         ).FirstOrDefaultAsync(cancellationToken);
 

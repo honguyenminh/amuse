@@ -27,7 +27,7 @@ Action: revoke session and blacklist current token jti.
 Return organizations user belongs to.
 
 ### POST /tenancy/organizations
-Create organization. Indie groups: `onboarding_status=not_required`, active immediately with restricted capabilities. Backing orgs: `onboarding_status=pending_review` until platform approval.
+Create organization. Indie groups: `onboarding_status=not_required`, active immediately with restricted capabilities. Backing orgs: `onboarding_status=pending_review` until platform approval, unless the creator is a platform operator with instant-approve claims (`platform:root`, `review:platform:organizations`, or `manage:platform:organizations`) — then `approved` immediately.
 
 ### GET /tenancy/organizations
 List organizations for the signed-in account.

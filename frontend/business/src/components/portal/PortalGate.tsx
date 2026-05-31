@@ -37,14 +37,33 @@ export function PortalGate({ children }: PortalGateProps) {
     }
     if (!isPlatform && pathname.startsWith("/platform")) {
       router.replace("/dashboard");
+      return;
+    }
+
+    if (auth.activePersona?.type === "org" && auth.activePersona.orgId) {
+      const orgStillAvailable = auth.businessPersonas.some(
+        (persona) => persona.type === "org" && persona.orgId === auth.activePersona?.orgId,
+      );
+      if (!orgStillAvailable) {
+        void auth.reloadBusinessPersonas().then((personas) => {
+          const fallback = personas[0];
+          if (fallback) {
+            void auth.selectPersona(fallback).then(() => router.replace("/dashboard"));
+          } else {
+            router.replace("/select-persona?switch=1&returnTo=/dashboard");
+          }
+        });
+      }
     }
   }, [
     auth.isReady,
     auth.isAuthenticated,
     auth.needsPersonaSelection,
     auth.activePersona,
+    auth.businessPersonas,
     pathname,
     router,
+    auth,
   ]);
 
   if (!auth.isReady) {

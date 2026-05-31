@@ -16,6 +16,9 @@
 |-------|-----------|--------------|-------------------------|
 | Indie group | `active` + `notRequired` | Yes | No (upload/draft only) |
 | Backing org | `active` + `pendingReview` | Yes (limited claims) | After platform `approve` |
+| Backing org (creator has instant-approve platform claims) | `active` + `approved` on create | Yes | Yes immediately |
+
+Instant approve on `POST /organizations` when the creating account is a platform operator with `platform:root`, `review:platform:organizations`, `manage:platform:organizations`, or `manage:platform:all` (same set as `PlatformClaims.CanInstantApproveOrganizationsOnCreate`). Writes `organization_approved` audit entry.
 | Backing org approved | `approved` + `platformVerified` | Yes | Yes (`catalog:publish_public`, `payout:read`) |
 
 ## HTTP API (`/api/v1/tenancy`)

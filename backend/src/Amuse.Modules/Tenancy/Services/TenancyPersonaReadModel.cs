@@ -40,6 +40,7 @@ internal sealed class TenancyPersonaReadModel(
 
         var assumedOrgs = await dbContext.Organizations
             .AsNoTracking()
+            .Where(o => o.LifecycleStatus != OrganizationLifecycleStatus.Closed)
             .OrderBy(o => o.DisplayName)
             .Select(o => new OrgPersonaListing(
                 o.Id.Value,
@@ -115,7 +116,7 @@ internal sealed class TenancyPersonaReadModel(
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == organizationId, cancellationToken);
 
-        if (organization is null)
+        if (organization is null || organization.IsClosed)
             return null;
 
         var capabilities = organization.EvaluateCapabilities();

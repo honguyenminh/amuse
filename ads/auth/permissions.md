@@ -65,8 +65,8 @@ Merged into the org persona JWT from `Organization.EvaluateCapabilities()`; not 
 
 | Claim | Meaning |
 |-------|---------|
-| `review:platform:organizations` | List/approve/reject backing organization applications |
-| `manage:platform:organizations` | Force-transfer organization ownership; recover soft-deleted organizations; **assume any organization persona** with owner-admin claims at token mint |
-| `platform:root` | Break-glass full platform access (operator id `1` only, appended at mint); may assume any organization persona |
+| `review:platform:organizations` | List/approve/reject backing organization applications; backing orgs created by this operator are **approved immediately** |
+| `manage:platform:organizations` | Force-transfer organization ownership; recover soft-deleted organizations; **assume any organization persona** with owner-admin claims at token mint; backing orgs created by this operator are **approved immediately** |
+| `platform:root` | Break-glass full platform access (operator id `1` only, appended at mint); may assume any organization persona; backing orgs created by root are **approved immediately** |
 
 Legacy strings (`org:read`, `platform:organizations:review`, …) are migrated in the database and accepted only when normalizing stored rows.

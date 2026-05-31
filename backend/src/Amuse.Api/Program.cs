@@ -85,6 +85,7 @@ else
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<TenantGuardMiddleware>();
+app.UseMiddleware<ActiveOrganizationMiddleware>();
 
 app.MapIdentityModule();
 app.MapTenancyModule();

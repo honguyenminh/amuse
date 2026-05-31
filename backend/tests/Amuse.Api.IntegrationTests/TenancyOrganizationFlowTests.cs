@@ -5,6 +5,7 @@ using System.Text.Json;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Identity.Features.Shared;
 using Amuse.Modules.Tenancy.Features.Shared;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Amuse.Api.IntegrationTests;
 
@@ -54,13 +55,39 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
     }
 
     [Fact]
-    public async Task Platform_can_approve_backing_org_application()
+    public async Task Platform_root_creates_backing_org_as_approved_immediately()
     {
         using var client = fixture.CreateClient();
         var accountTokens = await LoginPlatformTokensAsync(client);
 
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new { displayName = "Root Instant Label", orgClass = OrganizationClass.BackingOrg },
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions);
+        Assert.NotNull(created);
+        Assert.Equal("approved", created.OnboardingStatus);
+        Assert.True(created.Capabilities.CanPublishPublic);
+    }
+
+    [Fact]
+    public async Task Platform_can_approve_backing_org_application()
+    {
+        using var client = fixture.CreateClient();
+        var accountTokens = await LoginPlatformTokensAsync(client);
+
+        const string applicantEmail = "backing-applicant@amuse.test";
+        const string applicantPassword = "Password1234!";
+        await RegisterAndConfirmAsync(client, applicantEmail, applicantPassword);
+        var applicantTokens = await LoginListenerTokensAsync(client, applicantEmail, applicantPassword);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", applicantTokens.AccessToken);
 
         var create = await client.PostAsJsonAsync(
             "/api/v1/tenancy/organizations",
@@ -97,7 +124,7 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
                 item.GetProperty("organizationId").GetString() == created!.Id.ToString());
         Assert.NotEqual(default, match);
         Assert.Equal(
-            "root@amuse.local",
+            applicantEmail,
             match.GetProperty("owner").GetProperty("email").GetString());
 
         var approve = await client.PostAsync(
@@ -106,7 +133,7 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
         Assert.Equal(HttpStatusCode.NoContent, approve.StatusCode);
 
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
+            new AuthenticationHeaderValue("Bearer", applicantTokens.AccessToken);
 
         var profile = await client.GetAsync($"/api/v1/tenancy/organizations/{created.Id}");
         profile.EnsureSuccessStatusCode();
@@ -140,6 +167,24 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
 
         var delete = await client.DeleteAsync($"/api/v1/tenancy/organizations/{created.Id}");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+
+        var membersAfterDelete = await client.GetAsync(
+            $"/api/v1/tenancy/organizations/{created.Id}/members");
+        Assert.Equal(HttpStatusCode.NotFound, membersAfterDelete.StatusCode);
+
+        var profileAfterDelete = await client.GetAsync(
+            $"/api/v1/tenancy/organizations/{created.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, profileAfterDelete.StatusCode);
+
+        var refreshClosedOrg = await client.PostAsJsonAsync(
+            "/api/v1/identity/refresh",
+            new
+            {
+                refreshToken = orgTokens.RefreshToken,
+                context = new { type = "org", orgId = created.Id, listenerId = (Guid?)null },
+            },
+            JsonOptions);
+        Assert.NotEqual(HttpStatusCode.OK, refreshClosedOrg.StatusCode);
 
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
@@ -188,6 +233,49 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
             {
                 refreshToken,
                 context = new { type = "org", orgId, listenerId = (Guid?)null },
+            },
+            JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<AuthTokenResponse>(JsonOptions))!;
+    }
+
+    private async Task RegisterAndConfirmAsync(
+        HttpClient client,
+        string email,
+        string password)
+    {
+        fixture.CaptureEmailSender.Reset();
+        var register = await client.PostAsJsonAsync(
+            "/api/v1/identity/register/password",
+            new { email, password, portal = "business" },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Accepted, register.StatusCode);
+
+        var confirmUri = new Uri(fixture.CaptureEmailSender.LastConfirmUrl!);
+        var confirmQuery = QueryHelpers.ParseQuery(confirmUri.Query);
+        var confirm = await client.PostAsJsonAsync(
+            "/api/v1/identity/confirm-email",
+            new
+            {
+                userId = Guid.Parse(confirmQuery["userId"]!),
+                token = Uri.UnescapeDataString(confirmQuery["token"]!),
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.NoContent, confirm.StatusCode);
+    }
+
+    private static async Task<AuthTokenResponse> LoginListenerTokensAsync(
+        HttpClient client,
+        string email,
+        string password)
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/identity/login/password",
+            new
+            {
+                email,
+                password,
+                context = new { type = "listener", orgId = (Guid?)null, listenerId = (Guid?)null },
             },
             JsonOptions);
         response.EnsureSuccessStatusCode();
