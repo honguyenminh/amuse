@@ -98,4 +98,53 @@ public sealed class OrganizationLifecycleService(
         await dbContext.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
+
+    public async Task<Result> ForceTransferOwnershipAsync(
+        OrganizationId organizationId,
+        Guid targetMemberId,
+        CancellationToken cancellationToken)
+    {
+        var organization = await dbContext.Organizations
+            .FirstOrDefaultAsync(o => o.Id == organizationId, cancellationToken);
+        if (organization is null || organization.IsClosed)
+            return Result.Failure(TenancyErrors.OrganizationNotFound);
+
+        var currentOwner = await dbContext.OrganizationMembers
+            .FirstOrDefaultAsync(
+                m => m.OrganizationId == organizationId && m.IsOwner && m.Status == MembershipStatus.Active,
+                cancellationToken);
+
+        var target = await dbContext.OrganizationMembers
+            .FirstOrDefaultAsync(
+                m => m.Id == targetMemberId
+                     && m.OrganizationId == organizationId
+                     && m.Status == MembershipStatus.Active,
+                cancellationToken);
+        if (target is null)
+            return Result.Failure(TenancyErrors.MemberNotFound);
+
+        var transfer = target.ForceOwnershipFrom(currentOwner);
+        if (!transfer.IsSuccess)
+            return transfer;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+
+    public async Task<Result> RecoverClosedOrganizationAsync(
+        OrganizationId organizationId,
+        CancellationToken cancellationToken)
+    {
+        var organization = await dbContext.Organizations
+            .FirstOrDefaultAsync(o => o.Id == organizationId, cancellationToken);
+        if (organization is null || !organization.IsClosed)
+            return Result.Failure(TenancyErrors.OrganizationNotFound);
+
+        var recover = organization.RecoverFromClosed(clock.UtcNow);
+        if (!recover.IsSuccess)
+            return recover;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
 }

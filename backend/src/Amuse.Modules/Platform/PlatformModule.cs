@@ -2,6 +2,8 @@ using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Platform.Contracts;
 using Amuse.Modules.Platform.Features.ApproveOrganization;
 using Amuse.Modules.Platform.Features.ListOrganizationApplications;
+using Amuse.Modules.Platform.Features.ForceTransferOwnership;
+using Amuse.Modules.Platform.Features.RecoverOrganization;
 using Amuse.Modules.Platform.Features.RejectOrganization;
 using Amuse.Modules.Platform.Options;
 using Amuse.Modules.Platform.Persistence;
@@ -38,6 +40,8 @@ public static class PlatformModule
         services.AddScoped<ListOrganizationApplicationsHandler>();
         services.AddScoped<ApproveOrganizationHandler>();
         services.AddScoped<RejectOrganizationHandler>();
+        services.AddScoped<ForceTransferOwnershipHandler>();
+        services.AddScoped<RecoverOrganizationHandler>();
 
         return services;
     }
@@ -48,6 +52,8 @@ public static class PlatformModule
         group.MapListOrganizationApplicationsEndpoint();
         group.MapApproveOrganizationEndpoint();
         group.MapRejectOrganizationEndpoint();
+        group.MapForceTransferOwnershipEndpoint();
+        group.MapRecoverOrganizationEndpoint();
         return endpoints;
     }
 }

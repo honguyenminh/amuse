@@ -101,11 +101,31 @@ export function isPlatformPersonaActive(
   return activePersona?.type === "platform";
 }
 
+/** Routes that require an active org workspace persona. */
+export function isOrgScopedPortalPath(pathname: string): boolean {
+  return (
+    pathname === "/dashboard"
+    || pathname.startsWith("/dashboard/")
+    || pathname.startsWith("/members")
+  );
+}
+
+/** Routes platform operators may use without switching to an org persona. */
+export function isPlatformPersonaAllowedPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/platform")
+    || pathname.startsWith("/settings")
+  );
+}
+
 export function defaultPortalPathForPersona(
   persona: AvailablePersona,
   fallback = "/dashboard",
 ): string {
   if (persona.type === "platform") {
+    if (isPlatformPersonaAllowedPath(fallback)) {
+      return fallback;
+    }
     return "/platform/applications";
   }
   if (persona.type === "org") {

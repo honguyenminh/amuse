@@ -13,31 +13,30 @@ import { Label } from "@/components/ui/label";
 import { resendConfirmation } from "@/lib/api/identityClient";
 import { ApiError } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { readReturnPath } from "@/lib/auth/safeReturnPath";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-
-function safeNextPath(value: string | null): string {
-  if (!value) {
-    return "/dashboard";
-  }
-  if (!value.startsWith("/") || value.startsWith("//")) {
-    return "/dashboard";
-  }
-  return value;
-}
 
 function LoginInner() {
   const auth = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = safeNextPath(searchParams.get("next"));
-  const [email, setEmail] = useState("root@amuse.local");
-  const [password, setPassword] = useState("ChangeMe_Root123!");
+  const next = readReturnPath(searchParams);
+  const emailFromQuery = searchParams.get("email") ?? "";
+  const [email, setEmail] = useState(emailFromQuery);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (emailFromQuery) {
+      setEmail(emailFromQuery);
+    }
+  }, [emailFromQuery]);
 
   useEffect(() => {
     if (!auth.isReady) {
@@ -46,11 +45,11 @@ function LoginInner() {
     if (!auth.isAuthenticated) {
       return;
     }
-    if (auth.needsPersonaSelection) {
-      router.replace("/select-persona");
+    if (auth.needsPersonaSelection && !next.startsWith("/accept-invite")) {
+      router.replace(`/select-persona?next=${encodeURIComponent(next)}`);
       return;
     }
-    if (auth.activePersona) {
+    if (auth.activePersona || next.startsWith("/accept-invite")) {
       router.replace(next);
     }
   }, [
@@ -70,11 +69,15 @@ function LoginInner() {
     setPendingEmail(null);
     try {
       const result = await auth.login(email, password);
-      if (result.needsOrganizationSetup) {
-        router.replace("/create-organization?returnTo=/dashboard");
+      if (next.startsWith("/accept-invite")) {
+        router.replace(next);
         return;
       }
-      router.replace(result.needsSelection ? "/select-persona" : next);
+      if (result.needsOrganizationSetup) {
+        router.replace(`/create-organization?returnTo=${encodeURIComponent(next)}`);
+        return;
+      }
+      router.replace(result.needsSelection ? `/select-persona?next=${encodeURIComponent(next)}` : next);
     } catch (err) {
       if (err instanceof ApiError && err.code === "identity.email_not_confirmed") {
         setPendingEmail(email);
@@ -86,6 +89,10 @@ function LoginInner() {
       setLoading(false);
     }
   }
+
+  const signupHref = `/signup?next=${encodeURIComponent(next)}${
+    email ? `&email=${encodeURIComponent(email)}` : ""
+  }`;
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-muted/40 p-6">
@@ -161,9 +168,9 @@ function LoginInner() {
             ) : null}
             <p className="text-center text-sm text-muted-foreground">
               New here?{" "}
-              <a href="/signup" className="underline-offset-4 hover:underline">
+              <Link href={signupHref} className="underline-offset-4 hover:underline">
                 Create an account
-              </a>
+              </Link>
             </p>
           </form>
         </CardContent>

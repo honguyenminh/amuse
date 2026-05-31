@@ -29,4 +29,13 @@ public interface IOrganizationLifecycleCommands
         OrganizationId organizationId,
         string reason,
         CancellationToken cancellationToken);
+
+    Task<Result> ForceTransferOwnershipAsync(
+        OrganizationId organizationId,
+        Guid targetMemberId,
+        CancellationToken cancellationToken);
+
+    Task<Result> RecoverClosedOrganizationAsync(
+        OrganizationId organizationId,
+        CancellationToken cancellationToken);
 }

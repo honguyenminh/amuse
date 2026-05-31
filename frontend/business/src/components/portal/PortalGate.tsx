@@ -4,7 +4,7 @@ import { PortalShell } from "@/components/portal/PortalShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { isPlatformPersonaActive } from "@/lib/auth/resolveBusinessPersonas";
+import { isPlatformPersonaActive, isOrgScopedPortalPath } from "@/lib/auth/resolveBusinessPersonas";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -31,7 +31,7 @@ export function PortalGate({ children }: PortalGateProps) {
     }
 
     const isPlatform = isPlatformPersonaActive(auth.activePersona);
-    if (isPlatform && !pathname.startsWith("/platform")) {
+    if (isPlatform && isOrgScopedPortalPath(pathname)) {
       router.replace("/platform/applications");
       return;
     }

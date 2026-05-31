@@ -8,4 +8,8 @@ public interface IPlatformOperatorLookup
     Task<PlatformOperatorId?> GetOperatorIdForAccountAsync(
         AccountId accountId,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<string>?> GetEffectiveClaimsForAccountAsync(
+        AccountId accountId,
+        CancellationToken cancellationToken);
 }

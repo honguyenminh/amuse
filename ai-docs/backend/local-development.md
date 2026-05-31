@@ -177,6 +177,19 @@ Production/staging never auto-seed — operators provision the root account thro
 | Account ID | `00000000-0000-7000-8000-000000000001` |
 | Persona | `platform` (platform operator id `1`) |
 
+## Integration tests (`Amuse.Api.IntegrationTests`)
+
+Requires **Docker** (Testcontainers spins up an ephemeral Postgres 16 container with database `amuse_test`).
+
+```bash
+cd backend
+dotnet test tests/Amuse.Api.IntegrationTests
+```
+
+Tests use environment **`Testing`**, not `Development`, so they do **not** read `appsettings.Development.json` or write to `amuse_development`. The fixture refuses to start if the connection string targets `amuse_development`.
+
+If you see leftover rows such as `Member Flow Org` or `Integration Indie` in your local dev database, they were almost certainly created before this isolation was enforced (when the fixture used `Development` and could fall through to the host Postgres). Safe cleanup: delete those org rows from `tenancy.organization` in `amuse_development`, or reset the dev DB and re-run migrations + API seed.
+
 ## Manual verification (curl)
 
 ### 1. Login (mobile-style, tokens in body)

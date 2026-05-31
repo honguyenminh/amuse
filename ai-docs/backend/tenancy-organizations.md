@@ -25,10 +25,17 @@
 | POST | `/organizations` | Bearer (account) |
 | GET | `/organizations` | Bearer (account) |
 | GET | `/organizations/{id}` | Bearer (account, member) |
+| DELETE | `/organizations/{id}` | Org persona, owner only — sets `lifecycle_status = closed` (soft delete) |
+
+Closed organizations are excluded from `GET /organizations` and org persona refresh. Platform operators may recover via `POST /api/v1/platform/organizations/{id}/recover` (`manage:platform:organizations`).
 
 ## Platform approval (`/api/v1/platform`)
 
-Requires `ctx=platform` and claim `platform:organizations:review` or `platform:root`.
+Requires `ctx=platform` and claim `review:platform:organizations` (legacy `platform:organizations:review` still accepted on review policy) or `platform:root`.
+
+## Members and invites
+
+See [tenancy-members.md](tenancy-members.md). Capability-derived JWT claims use the new format, e.g. `upload:catalog:all`, `publish_public:catalog:all`, `read:payout:all`.
 
 | Method | Path |
 |--------|------|
@@ -37,8 +44,9 @@ Requires `ctx=platform` and claim `platform:organizations:review` or `platform:r
 Owner contact is resolved in **Tenancy** (`IOrganizationCreatorContactLookup` on `ListPendingBackingApplicationsAsync`), not Identity auth APIs. Identity only supplies the adapter that reads `ApplicationUser` / `Account` rows.
 | POST | `/organizations/{id}/approve` |
 | POST | `/organizations/{id}/reject` |
+| POST | `/organizations/{id}/recover` | Restore soft-deleted org (`closed` → `active`) |
 
-Audit actions: `organization_approved`, `organization_rejected`.
+Audit actions: `organization_approved`, `organization_rejected`, `organization_recovered`.
 
 ## Persistence
 

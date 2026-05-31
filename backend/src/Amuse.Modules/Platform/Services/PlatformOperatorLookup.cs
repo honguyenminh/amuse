@@ -20,4 +20,25 @@ internal sealed class PlatformOperatorLookup(PlatformDbContext dbContext) : IPla
 
         return operatorId is null ? null : PlatformOperatorId.From(operatorId.Value);
     }
+
+    public async Task<IReadOnlyList<string>?> GetEffectiveClaimsForAccountAsync(
+        AccountId accountId,
+        CancellationToken cancellationToken)
+    {
+        var platformOperator = await dbContext.PlatformOperators
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.AccountId == accountId, cancellationToken);
+
+        if (platformOperator is null)
+            return null;
+
+        var claims = platformOperator.Claims.ToList();
+        if (platformOperator.Id == PlatformOperatorId.Root)
+            claims.Add(PlatformClaims.Root);
+
+        return claims
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(c => c, StringComparer.Ordinal)
+            .ToArray();
+    }
 }

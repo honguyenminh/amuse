@@ -25,13 +25,28 @@ Amuse MUST support proper multi-tenant auth. As such, we will:
 
 First, `OrganizationMember` **IS NOT** an `Account`. An `OrganizationMember` only belongs to one `Organization`, but an `Account` can have many `OrganizationMember`, and as such, `Account` can practically be member of many `Organization`.
 
-We support **claims-based access control**. This means, each member will have a claims array describing what they can do in the org, instead of relying on a "role".
+We support **claims-based access control**. Each member has a `claims[]` array describing what they can do in the org, instead of relying on a persisted role enum.
 
-A claim is in the form of `resource:action`. Examples include `catalog:read`, `membership:manage`, `analytics:read`, etc. (note that these example claims is not representative of actual claims used in the app, that will be denoted in its own document).
+### Claim format
 
-However, to simplify member management, there will be "preset roles" available to select, which will hold a set of claims to quickly assign to members, like "admin", "accountant", etc. These "preset roles" are **UI/FRONTEND ONLY**, and does not mean anything under-the-hood. 
+Claims use **`{action}:{scope}:{target}`** (three or four colon-separated segments):
 
-Also, there is NO GUARANTEE that a "preset role" will not change. If later on, the presets are updated, existing members' claims will **NOT get updated**. These are purely presets.
+- **Scope-wide:** `read:catalog:all`, `manage:membership:all`
+- **Per-resource (catalog):** `read:catalog:artist:{guid}` — resource kind and id are separated by `:` so GUIDs may contain hyphens.
+
+The keyword **`all`** means the entire scope. Authorization matches an exact claim or the corresponding `action:scope:all` grant. See [permissions.md](permissions.md) for the catalog and presets.
+
+### Preset roles (UI only)
+
+Preset labels (`admin`, `member_manager`, `catalog_editor`, `viewer`, …) are **UI/frontend convenience**. Selecting a preset **copies** its claim list onto the member or invite row at assign time. Changing preset definitions later does **not** update existing members.
+
+There is NO GUARANTEE that a preset will not change over time.
+
+### Membership management (implemented)
+
+- Email invite with token link (signup or login, then accept).
+- List/update/remove members; transfer ownership (owner + `manage:org:all`).
+- Org persona JWT must be **refreshed** after claim changes (FR-007).
 
 ## Listener
 
@@ -43,4 +58,4 @@ This represent all platform operators for Amuse platform as a whole, this includ
 
 Platform operator account uses a counting-up system instead of UUID like other tables. (Also a fun way to track our company's employees history, imagine having account number 67.)
 
-Only exception to the default claims-based system is the root account, which **only one will exists ever**, with its Platform operators table record's `id` as `1`, call it `player one` or something to keep it cool (lmao), and will have control over all endpoints. This account may be seeded along with migrations.
+Only exception to the default claims-based system is the root account, which **only one will exists ever**, with its Platform operators table record's `id` as `1`, call it `player one` or something to keep it cool (lmao), and will have control over all endpoints. This account may be seeded along with migrations. At token mint, root receives `platform:root` in addition to stored claims.

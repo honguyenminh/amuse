@@ -27,6 +27,7 @@ export type CurrentAccountResponse = {
   idpIssuer: string;
   idpSubject: string;
   status: string;
+  email: string | null;
 };
 
 export type ApiProblem = {

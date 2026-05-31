@@ -8,6 +8,8 @@ After an entire feature is completed (and prompted by me, do not automatically d
 
 When planning, be as detailed and specific as possible, covering and documenting all possible major painpoints and possible hurdles, and if unsure ask the user, do not assume or gloss over decisions. The plan will be read and implemented by an inexperienced intern who will take shortcuts whenever possible, so guard against that.
 
+When making changes, implementing a new features etc. You MUST ALWAYS consider whether the feature is properly gated by an appropriate claims (either new or existing) and whether improvements will be needed for a soundly designed claim system. More details on claims and auth can be found in the docs.
+
 # .NET C#
 
 Adhere to DDD-style patterns, like rich domain models, only valid state (if a state is invalid, it shouldn't be able to exist/instatiate into a domain model), etc.

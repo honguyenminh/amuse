@@ -14,7 +14,9 @@ public sealed class PlatformOrganizationReviewHandler : AuthorizationHandler<Pla
             return Task.CompletedTask;
 
         var claims = context.User.FindAll("claims").Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
-        if (claims.Contains("platform:root") || claims.Contains("platform:organizations:review"))
+        if (claims.Contains("platform:root")
+            || claims.Contains("review:platform:organizations")
+            || claims.Contains("platform:organizations:review"))
             context.Succeed(requirement);
 
         return Task.CompletedTask;

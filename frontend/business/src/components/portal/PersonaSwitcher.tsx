@@ -20,9 +20,10 @@ import {
 import {
   contextLabel,
   getPersonaLabel,
+  isOrgScopedPortalPath,
+  isPlatformPersonaActive,
   personaMatchesContext,
 } from "@/lib/auth/resolveBusinessPersonas";
-import { isPlatformPersonaActive } from "@/lib/auth/resolveBusinessPersonas";
 import { ChevronsUpDown, LayoutGrid, Loader2, Plus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -60,7 +61,6 @@ export function PersonaSwitcher({ compact = false }: PersonaSwitcherProps) {
 
   const switchHref = `/select-persona?switch=1&returnTo=${encodeURIComponent(pathname)}`;
   const createHref = `/create-organization?returnTo=${encodeURIComponent(pathname)}`;
-  const showCreateLink = !isPlatformPersonaActive(auth.activePersona);
 
   async function onSelect(persona: AvailablePersona) {
     if (
@@ -73,11 +73,11 @@ export function PersonaSwitcher({ compact = false }: PersonaSwitcherProps) {
     try {
       await auth.selectPersona(persona);
       recordRecentPersona(persona);
-      if (persona.type === "platform" && !pathname.startsWith("/platform")) {
+      if (persona.type === "platform" && isOrgScopedPortalPath(pathname)) {
         router.replace("/platform/applications");
       } else if (
-        persona.type === "org" &&
-        pathname.startsWith("/platform")
+        persona.type === "org"
+        && (pathname.startsWith("/platform") || isPlatformPersonaActive(auth.activePersona))
       ) {
         router.replace("/dashboard");
       }
@@ -134,12 +134,10 @@ export function PersonaSwitcher({ compact = false }: PersonaSwitcherProps) {
             <LayoutGrid className="size-4" />
             <span>All workspaces…</span>
           </DropdownMenuItem>
-          {showCreateLink ? (
-            <DropdownMenuItem onClick={() => router.push(createHref)}>
-              <Plus className="size-4" />
-              <span>Create organization</span>
-            </DropdownMenuItem>
-          ) : null}
+          <DropdownMenuItem onClick={() => router.push(createHref)}>
+            <Plus className="size-4" />
+            <span>Create organization</span>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

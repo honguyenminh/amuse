@@ -22,6 +22,13 @@ internal static class TenancyResultExtensions
         {
             _ when error.Code == TenancyErrors.OrganizationNotFound.Code => StatusCodes.Status404NotFound,
             _ when error.Code == TenancyErrors.NotOrganizationMember.Code => StatusCodes.Status404NotFound,
+            _ when error.Code == TenancyErrors.MemberNotFound.Code => StatusCodes.Status404NotFound,
+            _ when error.Code == TenancyErrors.InviteNotFound.Code => StatusCodes.Status404NotFound,
+            _ when error.Code == TenancyErrors.InsufficientClaim.Code => StatusCodes.Status403Forbidden,
+            _ when error.Code == TenancyErrors.InviteEmailMismatch.Code => StatusCodes.Status403Forbidden,
+            _ when error.Code == TenancyErrors.DuplicateMember.Code => StatusCodes.Status409Conflict,
+            _ when error.Code == TenancyErrors.DuplicatePendingInvite.Code => StatusCodes.Status409Conflict,
+            _ when error.Code == TenancyErrors.InviteExpired.Code => StatusCodes.Status410Gone,
             _ => StatusCodes.Status400BadRequest,
         };
 

@@ -67,6 +67,9 @@ public static class IdentityModule
 
         services.AddScoped<AccountLinker>();
         services.AddScoped<IOrganizationCreatorContactLookup, OrganizationCreatorContactLookup>();
+        services.AddScoped<IAccountEmailLookup, AccountEmailLookup>();
+        services.AddScoped<IAccountMemberActivityLookup, AccountMemberActivityLookup>();
+        services.AddScoped<ITenancyInviteEmailSender, TenancyInviteEmailSender>();
         services.AddScoped<TokenIssuer>();
         services.AddScoped<ExternalIdentityResolverFactory>();
         RegisterEmailSender(services, configuration);

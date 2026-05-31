@@ -143,6 +143,16 @@ public sealed class Organization
         return Result.Success();
     }
 
+    public Result RecoverFromClosed(DateTimeOffset now)
+    {
+        if (LifecycleStatus != OrganizationLifecycleStatus.Closed)
+            return Result.Failure(TenancyErrors.InvalidLifecycleTransition);
+
+        LifecycleStatus = OrganizationLifecycleStatus.Active;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
     public OrgCapabilities EvaluateCapabilities()
     {
         if (LifecycleStatus == OrganizationLifecycleStatus.Suspended

@@ -51,4 +51,47 @@ internal sealed class SmtpEmailSender(
             smtp.Port,
             confirmUrl);
     }
+
+    public async Task SendOrganizationInviteAsync(
+        string email,
+        string organizationDisplayName,
+        string inviteUrl,
+        CancellationToken cancellationToken)
+    {
+        var smtp = options.Value.Smtp;
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(smtp.FromName, smtp.FromAddress));
+        message.To.Add(MailboxAddress.Parse(email));
+        message.Subject = $"Invitation to join {organizationDisplayName} on Amuse";
+
+        var body = new BodyBuilder
+        {
+            TextBody =
+                $"You have been invited to join {organizationDisplayName} on Amuse.\n\n" +
+                inviteUrl +
+                "\n\nIf you were not expecting this invitation, you can ignore this message.",
+            HtmlBody =
+                $"<p>You have been invited to join <strong>{organizationDisplayName}</strong> on Amuse.</p>" +
+                $"<p><a href=\"{inviteUrl}\">Accept invitation</a></p>" +
+                "<p>If you were not expecting this invitation, you can ignore this message.</p>",
+        };
+        message.Body = body.ToMessageBody();
+
+        using var client = new SmtpClient();
+        var socketOptions = smtp.UseSsl
+            ? SecureSocketOptions.StartTls
+            : SecureSocketOptions.None;
+
+        await client.ConnectAsync(smtp.Host, smtp.Port, socketOptions, cancellationToken);
+        await client.SendAsync(message, cancellationToken);
+        await client.DisconnectAsync(true, cancellationToken);
+
+        logger.LogInformation(
+            "Sent organization invite to {Email} for {Organization} via SMTP {Host}:{Port}. Link: {InviteUrl}",
+            email,
+            organizationDisplayName,
+            smtp.Host,
+            smtp.Port,
+            inviteUrl);
+    }
 }

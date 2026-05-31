@@ -40,7 +40,7 @@ public sealed class IssueIdentitySessionTests
         var issue = await IssueIdentitySession.IssueAsync(
             identityDb,
             new TokenIssuer(jwt),
-            new TenancyPersonaReadModel(tenancyDb),
+            new TenancyPersonaReadModel(tenancyDb, NullPlatformOperatorLookup.Instance),
             new ListenerPersonaReadModel(listenerDb, new EnsureListenerProfileService(listenerDb, new SystemClock())),
             new PlatformPersonaReadModel(platformDb),
             jwt.Value,

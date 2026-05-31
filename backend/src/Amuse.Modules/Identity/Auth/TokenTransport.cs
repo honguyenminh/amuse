@@ -15,9 +15,8 @@ public static class TokenTransport
 
     public static void SetRefreshCookie(HttpContext httpContext, string refreshToken, DateTimeOffset expiresAt)
     {
-        var useSecureCookies = !httpContext.RequestServices
-            .GetRequiredService<IHostEnvironment>()
-            .IsDevelopment();
+        var hostEnvironment = httpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        var useSecureCookies = !(hostEnvironment.IsDevelopment() || hostEnvironment.IsEnvironment("Testing"));
 
         var sameSite = useSecureCookies ? SameSiteMode.Strict : SameSiteMode.Lax;
 

@@ -95,8 +95,10 @@ Minted by `TokenIssuer` in `Amuse.Modules/Identity/Auth/`:
 | `org_id` | Org persona |
 | `listener_id` | Listener persona |
 | `org_role` | Preset role label (UI only; org persona) |
-| `claims` | Repeated claim entries from read model |
+| `claims` | Repeated permission strings from read model (`{action}:{scope}:{target}`, e.g. `read:membership:all`) |
 | `jti` | Version 7 GUID (access tokens only) |
+
+Org effective claims merge member row + `Organization.EvaluateCapabilities()` at mint time. See `ads/auth/permissions.md` and `ai-docs/backend/tenancy-members.md`.
 
 Validated on each request: issuer, audience, lifetime, signature (`Jwt` section in config).
 
@@ -201,7 +203,7 @@ See [`tenancy-organizations.md`](tenancy-organizations.md) for capability matrix
 ### 6. Authenticated reads
 
 - `GET /me` — account id, IdP issuer/subject, status.
-- `GET /personas` — aggregates org/listener/platform listings via read models (no cross-BC DbContext access from Identity handlers).
+- `GET /personas` — aggregates org/listener/platform listings via read models (no cross-BC DbContext access from Identity handlers). Platform operators with `platform:root` or `manage:platform:organizations` also see **every organization** in the org persona list and mint org tokens with owner-admin claims when switching, even without membership.
 
 ## Domain errors (`IdentityErrors`)
 

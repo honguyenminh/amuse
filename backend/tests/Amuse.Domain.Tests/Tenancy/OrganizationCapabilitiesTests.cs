@@ -55,7 +55,7 @@ public sealed class OrganizationCapabilitiesTests
 
         Assert.True(capabilities.CanReadOrg);
         Assert.False(capabilities.CanUpload);
-        Assert.DoesNotContain("catalog:upload", capabilities.ToClaimStrings());
+        Assert.DoesNotContain("upload:catalog:all", capabilities.ToClaimStrings());
     }
 
     [Fact]
@@ -64,6 +64,25 @@ public sealed class OrganizationCapabilitiesTests
         var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
         Assert.True(org.Close(Now).IsSuccess);
         Assert.True(org.IsClosed);
+    }
+
+    [Fact]
+    public void Closed_org_can_be_recovered_to_active()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        Assert.True(org.Close(Now).IsSuccess);
+        Assert.True(org.RecoverFromClosed(Now).IsSuccess);
+        Assert.False(org.IsClosed);
+        Assert.Equal(OrganizationLifecycleStatus.Active, org.LifecycleStatus);
+    }
+
+    [Fact]
+    public void RecoverFromClosed_rejects_non_closed_org()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var result = org.RecoverFromClosed(Now);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TenancyErrors.InvalidLifecycleTransition, result.Error);
     }
 
     [Fact]
@@ -76,7 +95,7 @@ public sealed class OrganizationCapabilitiesTests
             OrgClaimPresets.OwnerAdmin,
             org.EvaluateCapabilities());
 
-        Assert.Contains("org:read", filtered);
-        Assert.DoesNotContain("catalog:upload", filtered);
+        Assert.Contains("read:org:all", filtered);
+        Assert.DoesNotContain("upload:catalog:all", filtered);
     }
 }

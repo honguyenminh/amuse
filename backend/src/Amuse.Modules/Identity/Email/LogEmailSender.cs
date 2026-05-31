@@ -15,4 +15,18 @@ internal sealed class LogEmailSender(ILogger<LogEmailSender> logger) : IEmailSen
             confirmUrl);
         return Task.CompletedTask;
     }
+
+    public Task SendOrganizationInviteAsync(
+        string email,
+        string organizationDisplayName,
+        string inviteUrl,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation(
+            "Organization invite for {Email} to {Organization}. Open: {InviteUrl}",
+            email,
+            organizationDisplayName,
+            inviteUrl);
+        return Task.CompletedTask;
+    }
 }

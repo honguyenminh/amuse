@@ -27,4 +27,55 @@ public static class TenancyErrors
 
     public static readonly DomainError InvalidOnboardingStatusFilter =
         new("tenancy.invalid_onboarding_status_filter", "Onboarding status filter is invalid.");
+
+    public static readonly DomainError InsufficientClaim =
+        new("tenancy.insufficient_claim", "The current persona does not have the required permission.");
+
+    public static readonly DomainError InvalidClaim =
+        new("tenancy.invalid_claim", "One or more permission claims are invalid.");
+
+    public static readonly DomainError ClaimNotAllowedForOrganization =
+        new("tenancy.claim_not_allowed_for_organization", "One or more claims are not allowed for this organization's current capabilities.");
+
+    public static readonly DomainError CannotModifyOwner =
+        new("tenancy.cannot_modify_owner", "The organization owner cannot be removed or modified in this way.");
+
+    public static readonly DomainError CannotRemoveSelf =
+        new("tenancy.cannot_remove_self", "You cannot remove yourself from the organization.");
+
+    public static readonly DomainError CannotDemoteOwner =
+        new("tenancy.cannot_demote_owner", "The organization owner must retain full administrator permissions.");
+
+    public static readonly DomainError NotOrganizationOwner =
+        new("tenancy.not_organization_owner", "Only the organization owner can perform this action.");
+
+    public static readonly DomainError CannotTransferOwnershipToOwner =
+        new("tenancy.cannot_transfer_ownership_to_owner", "Ownership is already held by the target member.");
+
+    public static readonly DomainError DuplicateMember =
+        new("tenancy.duplicate_member", "An active member already exists for this account.");
+
+    public static readonly DomainError MemberNotFound =
+        new("tenancy.member_not_found", "Organization member was not found.");
+
+    public static readonly DomainError InvalidMembershipTransition =
+        new("tenancy.invalid_membership_transition", "Membership state does not allow this action.");
+
+    public static readonly DomainError InviteNotFound =
+        new("tenancy.invite_not_found", "Organization invite was not found.");
+
+    public static readonly DomainError InviteExpired =
+        new("tenancy.invite_expired", "Organization invite has expired.");
+
+    public static readonly DomainError InviteEmailMismatch =
+        new("tenancy.invite_email_mismatch", "Signed-in account email does not match the invite email.");
+
+    public static readonly DomainError InvalidInviteEmail =
+        new("tenancy.invalid_invite_email", "Invite email is invalid.");
+
+    public static readonly DomainError InvalidInviteTransition =
+        new("tenancy.invalid_invite_transition", "Invite state does not allow this action.");
+
+    public static readonly DomainError DuplicatePendingInvite =
+        new("tenancy.duplicate_pending_invite", "A pending invite already exists for this email.");
 }

@@ -12,8 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { registerPassword } from "@/lib/api/identityClient";
 import { ApiError } from "@/lib/api/types";
+import { readReturnPath } from "@/lib/auth/safeReturnPath";
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 function isPasswordValid(password: string): boolean {
   return (
@@ -25,13 +27,26 @@ function isPasswordValid(password: string): boolean {
   );
 }
 
-export default function SignupPage() {
-  const [email, setEmail] = useState("");
+function SignupContent() {
+  const searchParams = useSearchParams();
+  const next = readReturnPath(searchParams);
+  const emailFromQuery = searchParams.get("email") ?? "";
+  const [email, setEmail] = useState(emailFromQuery);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (emailFromQuery) {
+      setEmail(emailFromQuery);
+    }
+  }, [emailFromQuery]);
+
+  const loginHref = `/login?next=${encodeURIComponent(next)}${
+    email ? `&email=${encodeURIComponent(email)}` : ""
+  }`;
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -51,7 +66,11 @@ export default function SignupPage() {
     setSuccess(null);
     try {
       const result = await registerPassword(email, password, "business");
-      setSuccess(result.message);
+      setSuccess(
+        next.startsWith("/accept-invite")
+          ? `${result.message} After confirming your email, sign in to return to your invitation.`
+          : result.message,
+      );
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -69,15 +88,16 @@ export default function SignupPage() {
         <CardHeader>
           <CardTitle>Create account</CardTitle>
           <CardDescription>
-            Sign up for the business portal. After confirming your email, you
-            can create your first organization.
+            {next.startsWith("/accept-invite")
+              ? "Use the same email address that received the organization invitation."
+              : "Sign up for the business portal. After confirming your email, you can create your first organization."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {success ? (
             <div className="flex flex-col gap-4">
               <p className="text-sm">{success}</p>
-              <Button render={<Link href="/login" />}>Back to sign in</Button>
+              <Button render={<Link href={loginHref} />}>Back to sign in</Button>
             </div>
           ) : (
             <form className="flex flex-col gap-4" onSubmit={onSubmit}>
@@ -122,10 +142,7 @@ export default function SignupPage() {
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <Link
-                  href="/login"
-                  className="underline-offset-4 hover:underline"
-                >
+                <Link href={loginHref} className="underline-offset-4 hover:underline">
                   Sign in
                 </Link>
               </p>
@@ -134,5 +151,19 @@ export default function SignupPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center p-6 text-sm text-muted-foreground">
+          Loading…
+        </div>
+      }
+    >
+      <SignupContent />
+    </Suspense>
   );
 }

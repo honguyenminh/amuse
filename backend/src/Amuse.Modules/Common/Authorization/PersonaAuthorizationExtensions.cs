@@ -23,9 +23,17 @@ public static class PersonaAuthorizationExtensions
                 policy.RequireClaim("ctx", "platform");
                 policy.Requirements.Add(new PlatformOrganizationReviewRequirement());
             });
+
+            options.AddPolicy(PlatformPolicies.RequireOrganizationManage, policy =>
+            {
+                policy.RequireClaim("ctx", "platform");
+                policy.Requirements.Add(new PlatformOrganizationManageRequirement());
+            });
         });
 
         services.AddSingleton<IAuthorizationHandler, PlatformOrganizationReviewHandler>();
+        services.AddSingleton<IAuthorizationHandler, PlatformOrganizationManageHandler>();
+        services.AddOrgClaimAuthorization();
         return services;
     }
 }

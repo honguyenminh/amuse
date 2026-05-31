@@ -27,8 +27,10 @@ import type { ReactNode } from "react";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/members": "Members",
   "/settings": "Settings",
   "/platform/applications": "Applications",
+  "/members/invites": "Pending invites",
 };
 
 type PortalShellProps = {
@@ -41,7 +43,9 @@ export function PortalShell({ children }: PortalShellProps) {
   const router = useRouter();
   const isPlatform = isPlatformPersonaActive(auth.activePersona);
   const title =
-    pageTitles[pathname] ?? (isPlatform ? "Platform console" : "Console");
+    pageTitles[pathname]
+    ?? (pathname.startsWith("/members") ? "Members" : null)
+    ?? (isPlatform ? "Platform console" : "Console");
 
   async function onSignOut() {
     await auth.logout();
@@ -96,8 +100,8 @@ export function PortalShell({ children }: PortalShellProps) {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+      <SidebarInset className="min-h-svh">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
           <SidebarTrigger className="-ml-1" />
           <h1 className="flex-1 text-sm font-medium">{title}</h1>
           <div className="flex items-center gap-2">
@@ -108,7 +112,7 @@ export function PortalShell({ children }: PortalShellProps) {
             </Button>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 bg-muted/40 p-4 md:p-6">
+        <div className="flex flex-1 flex-col gap-4 bg-muted/40 p-4 md:p-6 pb-16">
           <OrganizationStatusBanner />
           {children}
         </div>

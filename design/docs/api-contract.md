@@ -47,14 +47,44 @@ Reject backing organization with reason (platform persona).
 ### GET /organizations/{id}
 Get organization profile and approval state.
 
-### POST /organizations/{id}/members/invite
-Invite account and assign role/permissions.
+### GET /tenancy/claim-presets
+Anonymous. Returns preset roles with `label`, `displayName`, `description`, `icon`, and bundled `claims`.
 
-### PATCH /organizations/{id}/members/{memberId}
-Update role/permissions.
+### GET /tenancy/organizations/{id}/members
+List active members (org persona, `read:membership:all`).
 
-### DELETE /organizations/{id}/members/{memberId}
-Remove member.
+### POST /tenancy/organizations/{id}/members/invites
+Invite by email with preset or explicit claims (`manage:membership:all`).
+
+### GET /tenancy/organizations/{id}/members/invites
+List pending invites.
+
+### DELETE /tenancy/organizations/{id}/members/invites/{inviteId}
+Revoke pending invite.
+
+### PATCH /tenancy/organizations/{id}/members/{memberId}
+Update preset label and claims snapshot (`manage:member_permissions:all`).
+
+### DELETE /tenancy/organizations/{id}/members/{memberId}
+Remove member (not owner).
+
+### DELETE /tenancy/organizations/{id}
+Soft-delete organization (owner only; sets lifecycle to `closed`).
+
+### POST /tenancy/organizations/{id}/ownership/transfer
+Transfer ownership to another member.
+
+### GET /tenancy/invites/{token}
+Public invite preview.
+
+### POST /tenancy/invites/{token}/accept
+Accept invite (authenticated account, email must match).
+
+### POST /platform/organizations/{id}/force-transfer-ownership
+Platform force ownership transfer.
+
+### POST /platform/organizations/{id}/recover
+Platform recover soft-deleted organization.
 
 ## 3. Catalog and Upload
 

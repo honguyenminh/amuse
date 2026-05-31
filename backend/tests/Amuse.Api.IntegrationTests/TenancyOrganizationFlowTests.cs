@@ -116,6 +116,84 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
         Assert.True(updated.Capabilities.CanPublishPublic);
     }
 
+    [Fact]
+    public async Task Owner_can_soft_delete_org_and_platform_can_recover()
+    {
+        using var client = fixture.CreateClient();
+        var accountTokens = await LoginPlatformTokensAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new { displayName = "Delete Recover Org", orgClass = OrganizationClass.IndieGroup },
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions);
+        Assert.NotNull(created);
+
+        var orgTokens = await RefreshOrgPersonaAsync(client, accountTokens.RefreshToken!, created.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+
+        var delete = await client.DeleteAsync($"/api/v1/tenancy/organizations/{created.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
+
+        var list = await client.GetAsync("/api/v1/tenancy/organizations");
+        list.EnsureSuccessStatusCode();
+        var organizations = await list.Content.ReadFromJsonAsync<OrganizationResponse[]>(JsonOptions);
+        Assert.NotNull(organizations);
+        Assert.DoesNotContain(organizations, o => o.Id == created.Id);
+
+        var platformRefresh = await client.PostAsJsonAsync(
+            "/api/v1/identity/refresh",
+            new
+            {
+                refreshToken = orgTokens.RefreshToken,
+                context = new { type = "platform", orgId = (Guid?)null, listenerId = (Guid?)null },
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, platformRefresh.StatusCode);
+        var platformTokens = await platformRefresh.Content.ReadFromJsonAsync<AuthTokenResponse>(JsonOptions);
+        Assert.NotNull(platformTokens);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", platformTokens.AccessToken);
+
+        var recover = await client.PostAsync(
+            $"/api/v1/platform/organizations/{created.Id}/recover",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, recover.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
+
+        var profile = await client.GetAsync($"/api/v1/tenancy/organizations/{created.Id}");
+        Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+    }
+
+    private static async Task<AuthTokenResponse> RefreshOrgPersonaAsync(
+        HttpClient client,
+        string refreshToken,
+        Guid orgId)
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/identity/refresh",
+            new
+            {
+                refreshToken,
+                context = new { type = "org", orgId, listenerId = (Guid?)null },
+            },
+            JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<AuthTokenResponse>(JsonOptions))!;
+    }
+
     private static async Task<AuthTokenResponse> LoginPlatformTokensAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync(

@@ -34,7 +34,7 @@ public sealed class OrgPersonaTokenTests
         await identityDb.SaveChangesAsync();
         await tenancyDb.SaveChangesAsync();
 
-        var readModel = new TenancyPersonaReadModel(tenancyDb);
+        var readModel = new TenancyPersonaReadModel(tenancyDb, NullPlatformOperatorLookup.Instance);
         var persona = await readModel.GetOrgContextAsync(account.Id, org.Id, CancellationToken.None);
         Assert.True(persona.IsSuccess);
 
@@ -53,8 +53,8 @@ public sealed class OrgPersonaTokenTests
         var jwt = handler.ReadJwtToken(token);
         var claims = jwt.Claims.Where(c => c.Type == "claims").Select(c => c.Value).ToList();
 
-        Assert.Contains("catalog:upload", claims);
-        Assert.DoesNotContain("catalog:publish_public", claims);
+        Assert.Contains("upload:catalog:all", claims);
+        Assert.DoesNotContain("publish_public:catalog:all", claims);
     }
 
     private static IdentityDbContext CreateIdentityDb()
