@@ -230,6 +230,110 @@ public sealed class TenancyMemberFlowTests(AmuseApiFixture fixture)
     }
 
     [Fact]
+    public async Task Non_owner_member_can_leave_organization()
+    {
+        fixture.CaptureEmailSender.Reset();
+        using var client = fixture.CreateClient();
+        var ownerTokens = await LoginAsync(client, "root@amuse.local", "ChangeMe_Root123!");
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", ownerTokens.AccessToken);
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new { displayName = "Leave Flow Org", orgClass = OrganizationClass.IndieGroup },
+            JsonOptions);
+        create.EnsureSuccessStatusCode();
+        var org = (await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions))!;
+
+        var orgTokens = await RefreshOrgPersonaAsync(client, ownerTokens.RefreshToken!, org.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+
+        var inviteeEmail = $"leave-{Guid.CreateVersion7():N}@amuse.test";
+        var invite = await client.PostAsJsonAsync(
+            $"/api/v1/tenancy/organizations/{org.Id}/members/invites",
+            new
+            {
+                email = inviteeEmail,
+                presetRoleLabel = OrgClaimPresets.ViewerPresetLabel,
+                claims = (string[]?)null,
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, invite.StatusCode);
+
+        var inviteUri = new Uri(fixture.CaptureEmailSender.LastInviteUrl!);
+        var inviteToken = QueryHelpers.ParseQuery(inviteUri.Query)["token"].ToString();
+
+        const string inviteePassword = "Password1234!";
+        await client.PostAsJsonAsync(
+            "/api/v1/identity/register/password",
+            new { email = inviteeEmail, password = inviteePassword, portal = "business" },
+            JsonOptions);
+
+        var confirmUri = new Uri(fixture.CaptureEmailSender.LastConfirmUrl!);
+        var confirmQuery = QueryHelpers.ParseQuery(confirmUri.Query);
+        await client.PostAsJsonAsync(
+            "/api/v1/identity/confirm-email",
+            new
+            {
+                userId = Guid.Parse(confirmQuery["userId"]!),
+                token = Uri.UnescapeDataString(confirmQuery["token"]!),
+            },
+            JsonOptions);
+
+        var inviteeLogin = await LoginAsListenerAsync(client, inviteeEmail, inviteePassword);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", inviteeLogin.AccessToken);
+        await client.PostAsync(
+            $"/api/v1/tenancy/invites/{Uri.EscapeDataString(inviteToken)}/accept",
+            null);
+
+        var memberOrgTokens = await RefreshOrgPersonaAsync(client, inviteeLogin.RefreshToken!, org.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", memberOrgTokens.AccessToken);
+
+        var leave = await client.PostAsync(
+            $"/api/v1/tenancy/organizations/{org.Id}/membership/leave",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, leave.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+        var members = await client.GetAsync($"/api/v1/tenancy/organizations/{org.Id}/members");
+        members.EnsureSuccessStatusCode();
+        var memberList = await members.Content.ReadFromJsonAsync<OrganizationMemberListResponse>(JsonOptions);
+        Assert.NotNull(memberList);
+        Assert.DoesNotContain(memberList.Items, m => m.Email == inviteeEmail);
+    }
+
+    [Fact]
+    public async Task Owner_cannot_leave_organization()
+    {
+        using var client = fixture.CreateClient();
+        var ownerTokens = await LoginAsync(client, "root@amuse.local", "ChangeMe_Root123!");
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", ownerTokens.AccessToken);
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new { displayName = "Owner Leave Blocked Org", orgClass = OrganizationClass.IndieGroup },
+            JsonOptions);
+        create.EnsureSuccessStatusCode();
+        var org = (await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions))!;
+
+        var orgTokens = await RefreshOrgPersonaAsync(client, ownerTokens.RefreshToken!, org.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+
+        var leave = await client.PostAsync(
+            $"/api/v1/tenancy/organizations/{org.Id}/membership/leave",
+            null);
+        Assert.Equal(HttpStatusCode.BadRequest, leave.StatusCode);
+    }
+
+    [Fact]
     public async Task Member_cannot_remove_themselves()
     {
         fixture.CaptureEmailSender.Reset();

@@ -42,10 +42,10 @@ Preset labels (`admin`, `member_manager`, `catalog_editor`, `viewer`, …) are *
 
 There is NO GUARANTEE that a preset will not change over time.
 
-### Membership management (implemented)
+### Membership management
 
 - Email invite with token link (signup or login, then accept).
-- List/update/remove members; transfer ownership (owner + `manage:org:all`).
+- List/update/remove members; **leave** organization (any active non-owner member, org persona); transfer ownership (owner + `manage:org:all`). Owners cannot leave or be removed by other members. Transfer ownership first, or use platform support / force-transfer for exceptional cases.
 - Org persona JWT must be **refreshed** after claim changes (FR-007).
 
 ## Listener

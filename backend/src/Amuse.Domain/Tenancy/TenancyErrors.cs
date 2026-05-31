@@ -43,6 +43,11 @@ public static class TenancyErrors
     public static readonly DomainError CannotRemoveSelf =
         new("tenancy.cannot_remove_self", "You cannot remove yourself from the organization.");
 
+    public static readonly DomainError OwnerCannotLeaveOrganization =
+        new(
+            "tenancy.owner_cannot_leave_organization",
+            "Organization owners cannot leave. Transfer ownership to another member first, or contact platform support.");
+
     public static readonly DomainError CannotDemoteOwner =
         new("tenancy.cannot_demote_owner", "The organization owner must retain full administrator permissions.");
 

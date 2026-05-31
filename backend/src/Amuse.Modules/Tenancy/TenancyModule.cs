@@ -10,6 +10,7 @@ using Amuse.Modules.Tenancy.Features.GetInvitePreview;
 using Amuse.Modules.Tenancy.Features.GetOrganization;
 using Amuse.Modules.Tenancy.Features.ListClaimPresets;
 using Amuse.Modules.Tenancy.Features.ListInvites;
+using Amuse.Modules.Tenancy.Features.LeaveOrganization;
 using Amuse.Modules.Tenancy.Features.ListMembers;
 using Amuse.Modules.Tenancy.Features.ListMyOrganizations;
 using Amuse.Modules.Tenancy.Features.RemoveMember;
@@ -58,6 +59,7 @@ public static class TenancyModule
         services.AddScoped<RevokeInviteHandler>();
         services.AddScoped<UpdateMemberHandler>();
         services.AddScoped<RemoveMemberHandler>();
+        services.AddScoped<LeaveOrganizationHandler>();
         services.AddScoped<TransferOwnershipHandler>();
         services.AddScoped<DeleteOrganizationHandler>();
         services.AddScoped<GetInvitePreviewHandler>();
@@ -80,6 +82,7 @@ public static class TenancyModule
         group.MapRevokeInviteEndpoint();
         group.MapUpdateMemberEndpoint();
         group.MapRemoveMemberEndpoint();
+        group.MapLeaveOrganizationEndpoint();
         group.MapTransferOwnershipEndpoint();
         group.MapDeleteOrganizationEndpoint();
         group.MapGetInvitePreviewEndpoint();

@@ -5,6 +5,17 @@ namespace Amuse.Domain.Tenancy;
 
 public static class OwnershipPolicy
 {
+    public static Result ValidateCanLeaveOrganization(OrganizationMember member)
+    {
+        if (!member.IsActive)
+            return Result.Failure(TenancyErrors.InvalidMembershipTransition);
+
+        if (member.IsOwner)
+            return Result.Failure(TenancyErrors.OwnerCannotLeaveOrganization);
+
+        return Result.Success();
+    }
+
     public static Result ValidateCanRemoveMember(OrganizationMember target, OrganizationMember? actor)
     {
         if (target.IsOwner)

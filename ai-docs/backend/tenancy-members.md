@@ -27,6 +27,7 @@ Query params: `search`, `sortBy` (`email` \| `preset` \| `lastlogin` \| `lastact
 | DELETE | `/organizations/{orgId}/members/invites/{inviteId}` | Org persona | `manage:membership:all` |
 | PATCH | `/organizations/{orgId}/members/{memberId}` | Org persona | `manage:member_permissions:all` |
 | DELETE | `/organizations/{orgId}/members/{memberId}` | Org persona | `manage:membership:all` |
+| POST | `/organizations/{orgId}/membership/leave` | Org persona | active non-owner member (self) |
 | POST | `/organizations/{orgId}/ownership/transfer` | Org persona | owner + `manage:org:all` |
 | DELETE | `/organizations/{orgId}` | Org persona | owner + `manage:org:all` (soft-delete → `closed`) |
 | GET | `/invites/{token}` | Anonymous | — |
@@ -44,7 +45,8 @@ Platform: `POST /api/v1/platform/organizations/{id}/force-transfer-ownership` wi
 
 ## Owner rules (domain)
 
-- Owner cannot be removed or demoted below admin-equivalent claims.
+- Owner cannot be removed, cannot leave (`tenancy.owner_cannot_leave_organization`), and cannot be demoted below admin-equivalent claims.
+- Non-owners may leave via `POST .../membership/leave` (soft-remove, same as admin remove).
 - Only owner may transfer ownership to another active member.
 - Platform may force-transfer via `OrganizationMember.ForceOwnershipFrom`.
 

@@ -72,6 +72,16 @@ public sealed class OrganizationMember
         return Result.Success();
     }
 
+    public Result Leave()
+    {
+        var policy = OwnershipPolicy.ValidateCanLeaveOrganization(this);
+        if (!policy.IsSuccess)
+            return policy;
+
+        Status = MembershipStatus.Removed;
+        return Result.Success();
+    }
+
     public Result RejoinFromInvite(
         string? presetRoleLabel,
         IReadOnlyList<string> claims,

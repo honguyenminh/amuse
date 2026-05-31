@@ -207,6 +207,13 @@ export function removeOrganizationMember(
   );
 }
 
+export function leaveOrganization(organizationId: string): Promise<void> {
+  return authFetch(
+    `/api/v1/tenancy/organizations/${organizationId}/membership/leave`,
+    { method: "POST" },
+  );
+}
+
 export function transferOrganizationOwnership(
   organizationId: string,
   targetMemberId: string,

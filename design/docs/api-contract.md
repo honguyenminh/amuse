@@ -65,6 +65,9 @@ Revoke pending invite.
 ### PATCH /tenancy/organizations/{id}/members/{memberId}
 Update preset label and claims snapshot (`manage:member_permissions:all`).
 
+### POST /tenancy/organizations/{id}/membership/leave
+Leave the current org as the signed-in member (org persona). Non-owners only; owners must transfer ownership first.
+
 ### DELETE /tenancy/organizations/{id}/members/{memberId}
 Remove member (not owner).
 

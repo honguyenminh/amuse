@@ -34,6 +34,37 @@ public sealed class OrganizationMemberRejoinTests
     }
 
     [Fact]
+    public void Leave_succeeds_for_non_owner_member()
+    {
+        var member = OrganizationMember.CreateFromInvite(
+            OrgId,
+            Account,
+            OrgClaimPresets.ViewerPresetLabel,
+            OrgClaimPresets.Viewer).Value!;
+
+        var leave = member.Leave();
+
+        Assert.True(leave.IsSuccess);
+        Assert.Equal(MembershipStatus.Removed, member.Status);
+    }
+
+    [Fact]
+    public void Leave_fails_for_owner()
+    {
+        var owner = OrganizationMember.CreateOwner(
+            OrgId,
+            Account,
+            OrgClaimPresets.OwnerPresetLabel,
+            OrgClaimPresets.OwnerAdmin);
+
+        var leave = owner.Leave();
+
+        Assert.False(leave.IsSuccess);
+        Assert.Equal(TenancyErrors.OwnerCannotLeaveOrganization.Code, leave.Error!.Code);
+        Assert.Equal(MembershipStatus.Active, owner.Status);
+    }
+
+    [Fact]
     public void RejoinFromInvite_fails_when_member_is_still_active()
     {
         var org = Amuse.Domain.Tenancy.Organization.RegisterIndieGroup("Band", Account, Now).Value!;
