@@ -69,6 +69,8 @@ Platform: `POST /api/v1/platform/organizations/{id}/force-transfer-ownership` wi
 
 ## Business portal UI
 
+See [business-portal-tenancy.md](../frontend/business-portal-tenancy.md) for settings (leave/delete), closed-org client handling, and platform ops UI.
+
 | Route | Purpose |
 |-------|---------|
 | `/members` | Sidebar tab: list members/invites, invite, role assignment dialog, transfer/remove (JWT claim gating) |

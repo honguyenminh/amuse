@@ -20,6 +20,9 @@ public interface IOrganizationLifecycleCommands
     Task<IReadOnlyList<OrganizationApplicationSummary>> ListPendingBackingApplicationsAsync(
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<OrganizationApplicationSummary>> ListClosedOrganizationsAsync(
+        CancellationToken cancellationToken);
+
     Task<Result> ApproveBackingOrganizationAsync(
         OrganizationId organizationId,
         PlatformOperatorId operatorId,

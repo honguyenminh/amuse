@@ -10,6 +10,8 @@ When planning, be as detailed and specific as possible, covering and documenting
 
 When making changes, implementing a new features etc. You MUST ALWAYS consider whether the feature is properly gated by an appropriate claims (either new or existing) and whether improvements will be needed for a soundly designed claim system. More details on claims and auth can be found in the docs.
 
+**Platform operator claims:** Never gate features with a raw JWT check for only `manage:platform:organizations`. The break-glass `platform:root` operator must receive full platform access via `PlatformClaims` (`Amuse.Domain/Platform/PlatformClaims.cs`) on the backend and `frontend/business/src/lib/auth/platformClaims.ts` on the business portal. Token mint expands root to explicit manage/review claims, but handlers and UI must still use the shared helpers so implied grants are not missed.
+
 # .NET C#
 
 Adhere to DDD-style patterns, like rich domain models, only valid state (if a state is invalid, it shouldn't be able to exist/instatiate into a domain model), etc.

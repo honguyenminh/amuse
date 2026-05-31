@@ -20,9 +20,9 @@ internal sealed class PlatformPersonaReadModel(PlatformDbContext dbContext) : IP
         if (op is null)
             return Result<PersonaAccessContext>.Failure(IdentityErrors.InvalidPersonaContext);
 
-        var claims = op.Id == PlatformOperatorId.Root
-            ? op.Claims.Concat(["platform:root"]).Distinct().ToList()
-            : op.Claims.ToList();
+        var claims = PlatformClaims.ExpandEffectiveClaims(
+            op.Claims,
+            op.Id == PlatformOperatorId.Root);
 
         return Result<PersonaAccessContext>.Success(new PersonaAccessContext(
             "platform",

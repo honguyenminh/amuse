@@ -96,5 +96,31 @@ export function PortalGate({ children }: PortalGateProps) {
     );
   }
 
-  return <PortalShell>{children}</PortalShell>;
+  return (
+    <PortalShell>
+      {auth.orgUnavailableNotice ? (
+        <div
+          role="status"
+          className="border-b border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm"
+        >
+          <p className="font-medium text-amber-950 dark:text-amber-50">
+            Organization unavailable
+          </p>
+          <p className="mt-1 text-amber-900/80 dark:text-amber-100/80">
+            {auth.orgUnavailableNotice} You have been switched to another workspace.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={auth.clearOrgUnavailableNotice}
+          >
+            Dismiss
+          </Button>
+        </div>
+      ) : null}
+      {children}
+    </PortalShell>
+  );
 }

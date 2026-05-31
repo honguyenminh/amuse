@@ -49,6 +49,38 @@ public sealed class OrganizationLifecycleService(
             .ToList();
     }
 
+    public async Task<IReadOnlyList<OrganizationApplicationSummary>> ListClosedOrganizationsAsync(
+        CancellationToken cancellationToken)
+    {
+        var organizations = await dbContext.Organizations
+            .AsNoTracking()
+            .Where(o => o.LifecycleStatus == OrganizationLifecycleStatus.Closed)
+            .OrderByDescending(o => o.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+        if (organizations.Count == 0)
+            return [];
+
+        var accountIds = organizations
+            .Select(o => o.CreatedByAccountId)
+            .Distinct()
+            .ToArray();
+
+        var contacts = await creatorContacts.GetByAccountIdsAsync(accountIds, cancellationToken);
+
+        return organizations
+            .Select(o => new OrganizationApplicationSummary(
+                o.Id.Value,
+                o.DisplayName,
+                o.OrgClass,
+                o.OnboardingStatus,
+                o.TrustTier,
+                o.CreatedAt,
+                o.UpdatedAt,
+                ResolveOwner(o.CreatedByAccountId.Value, contacts)))
+            .ToList();
+    }
+
     private static OrganizationApplicationOwner ResolveOwner(
         Guid accountId,
         IReadOnlyDictionary<Guid, OrganizationApplicationOwner> contacts) =>

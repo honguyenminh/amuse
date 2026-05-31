@@ -1,6 +1,7 @@
 using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Platform.Contracts;
 using Amuse.Modules.Platform.Features.ApproveOrganization;
+using Amuse.Modules.Platform.Features.ListClosedOrganizations;
 using Amuse.Modules.Platform.Features.ListOrganizationApplications;
 using Amuse.Modules.Platform.Features.ForceTransferOwnership;
 using Amuse.Modules.Platform.Features.RecoverOrganization;
@@ -38,6 +39,7 @@ public static class PlatformModule
 
         services.AddValidatorsFromAssemblyContaining<RejectOrganizationRequestValidator>();
         services.AddScoped<ListOrganizationApplicationsHandler>();
+        services.AddScoped<ListClosedOrganizationsHandler>();
         services.AddScoped<ApproveOrganizationHandler>();
         services.AddScoped<RejectOrganizationHandler>();
         services.AddScoped<ForceTransferOwnershipHandler>();
@@ -50,6 +52,7 @@ public static class PlatformModule
     {
         var group = endpoints.MapGroup("/api/v1/platform");
         group.MapListOrganizationApplicationsEndpoint();
+        group.MapListClosedOrganizationsEndpoint();
         group.MapApproveOrganizationEndpoint();
         group.MapRejectOrganizationEndpoint();
         group.MapForceTransferOwnershipEndpoint();

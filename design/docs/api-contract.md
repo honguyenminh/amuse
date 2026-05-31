@@ -83,11 +83,14 @@ Public invite preview.
 ### POST /tenancy/invites/{token}/accept
 Accept invite (authenticated account, email must match).
 
+### GET /platform/organizations/closed
+List soft-deleted organizations (platform persona, `manage:platform:organizations`).
+
 ### POST /platform/organizations/{id}/force-transfer-ownership
-Platform force ownership transfer.
+Platform force ownership transfer (`manage:platform:organizations`).
 
 ### POST /platform/organizations/{id}/recover
-Platform recover soft-deleted organization.
+Recover soft-deleted organization (`manage:platform:organizations`).
 
 ## 3. Catalog and Upload
 

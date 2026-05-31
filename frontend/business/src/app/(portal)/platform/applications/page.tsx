@@ -1,6 +1,13 @@
 "use client";
 
+import { PlatformClosedOrganizationsCard } from "@/components/platform/PlatformClosedOrganizationsCard";
+import { PlatformForceTransferCard } from "@/components/platform/PlatformForceTransferCard";
 import { PlatformPersonaGate } from "@/components/portal/PlatformPersonaGate";
+import {
+  canManagePlatformOrganizations,
+  canReviewPlatformOrganizations,
+} from "@/lib/auth/platformClaims";
+import { getAccessToken } from "@/lib/auth/sessionStore";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,6 +53,10 @@ export default function PlatformApplicationsPage() {
 }
 
 function ApplicationsContent() {
+  const token = getAccessToken();
+  const canReviewApplications = canReviewPlatformOrganizations(token);
+  const canManageOrganizations = canManagePlatformOrganizations(token);
+
   const [applications, setApplications] = useState<
     OrganizationApplicationSummary[]
   >([]);
@@ -126,7 +137,15 @@ function ApplicationsContent() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      {!canReviewApplications && !canManageOrganizations ? (
+        <p className="text-sm text-muted-foreground">
+          Your platform token does not include organization review or manage permissions.
+          Switch to the platform workspace and sign in again if you were recently granted access.
+        </p>
+      ) : null}
+
+      {canReviewApplications ? (
       <Card>
         <CardHeader>
           <CardTitle>Organization applications</CardTitle>
@@ -272,6 +291,14 @@ function ApplicationsContent() {
           </ul>
         </CardContent>
       </Card>
+      ) : null}
+
+      {canManageOrganizations ? (
+        <>
+          <PlatformClosedOrganizationsCard />
+          <PlatformForceTransferCard />
+        </>
+      ) : null}
     </div>
   );
 }

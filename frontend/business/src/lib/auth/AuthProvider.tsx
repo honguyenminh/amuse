@@ -19,6 +19,7 @@ import {
 } from "@/lib/auth/resolveBusinessPersonas";
 import { listenerBootstrapContext } from "@/lib/auth/listenerBootstrapContext";
 import { recordRecentPersona } from "@/lib/auth/recentPersonas";
+import { setOrgUnavailableHandler } from "@/lib/auth/orgSessionEvents";
 import {
   clearSession,
   getAccessToken,
@@ -47,6 +48,8 @@ type AuthState = {
   needsPersonaSelection: boolean;
   needsOrganizationSetup: boolean;
   bootstrapError: string | null;
+  orgUnavailableNotice: string | null;
+  clearOrgUnavailableNotice: () => void;
   login: (email: string, password: string) => Promise<{
     needsSelection: boolean;
     needsOrganizationSetup: boolean;
@@ -81,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [orgUnavailableNotice, setOrgUnavailableNotice] = useState<string | null>(
+    null,
+  );
 
   const resolveSession = useCallback(async (initialToken: string) => {
     setBootstrapError(null);
@@ -264,6 +270,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return personas;
   }, []);
 
+  const switchAwayFromOrg = useCallback(
+    async (orgId: string | null) => {
+      const personas = await reloadBusinessPersonas();
+      const nextPersona =
+        orgId === null
+          ? personas[0]
+          : personas.find(
+              (persona) => persona.type !== "org" || persona.orgId !== orgId,
+            ) ?? personas[0];
+      if (nextPersona) {
+        await selectPersona(nextPersona);
+        router.replace("/dashboard");
+      } else {
+        setActivePersona(null);
+        setActivePersonaState(null);
+        router.replace("/select-persona?switch=1&returnTo=/dashboard");
+      }
+    },
+    [reloadBusinessPersonas, selectPersona, router],
+  );
+
+  const clearOrgUnavailableNotice = useCallback(() => {
+    setOrgUnavailableNotice(null);
+  }, []);
+
+  useEffect(() => {
+    setOrgUnavailableHandler(async (message) => {
+      const closedOrgId =
+        activePersonaState?.type === "org" ? activePersonaState.orgId : null;
+      setOrgUnavailableNotice(message);
+      try {
+        await switchAwayFromOrg(closedOrgId);
+      } catch {
+        router.replace("/select-persona?switch=1&returnTo=/dashboard");
+      }
+    });
+    return () => setOrgUnavailableHandler(null);
+  }, [activePersonaState, switchAwayFromOrg, router]);
+
   const retryBootstrap = useCallback(async () => {
     const token = getAccessToken();
     if (!token) {
@@ -300,6 +345,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       needsPersonaSelection,
       needsOrganizationSetup,
       bootstrapError,
+      orgUnavailableNotice,
+      clearOrgUnavailableNotice,
       login,
       logout,
       selectPersona,
@@ -315,6 +362,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       needsPersonaSelection,
       needsOrganizationSetup,
       bootstrapError,
+      orgUnavailableNotice,
+      clearOrgUnavailableNotice,
       login,
       logout,
       selectPersona,

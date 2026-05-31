@@ -43,6 +43,7 @@ See [tenancy-members.md](tenancy-members.md). Capability-derived JWT claims use 
 | Method | Path |
 |--------|------|
 | GET | `/organizations/applications?status=pendingReview` — backing org queue with **owner contact** (email, IdP, account status) for off-platform review |
+| GET | `/organizations/closed` — soft-deleted orgs for recovery (`manage:platform:organizations`) |
 
 Owner contact is resolved in **Tenancy** (`IOrganizationCreatorContactLookup` on `ListPendingBackingApplicationsAsync`), not Identity auth APIs. Identity only supplies the adapter that reads `ApplicationUser` / `Account` rows.
 | POST | `/organizations/{id}/approve` |
@@ -69,16 +70,12 @@ Audit actions: `organization_approved`, `organization_rejected`, `organization_r
 
 ## Business portal UI
 
-Routes (business Next.js app, **sign-in required**; no account signup page):
+See [business-portal-tenancy.md](../frontend/business-portal-tenancy.md) for the full portal map (members, settings leave/delete, closed-org client handling, platform recover/force-transfer).
 
 | Route | Purpose |
 |-------|---------|
-| `/login` | Password sign-in |
-| `/signup` | Register account (email confirmation required) |
-| `/confirm-email` | Complete registration from email link |
-| `/create-organization` | Create `indieGroup` or `backingOrg` (`?returnTo=` supported) |
-| `/select-persona` | Workspace picker; footer link to create-organization |
-| `/settings` | **Add organization** when active persona is org (hidden in platform persona) |
+| `/settings` | Leave (non-owner), delete organization (owner), add organization |
+| `/platform/applications` | Review applications; list/recover closed orgs; force-transfer (platform manage claim) |
 
 After create: reload personas → switch to new org → navigate to `returnTo` (default `/dashboard`). Backing orgs with `onboardingStatus: pendingReview` show `OrganizationStatusBanner` in `PortalShell`.
 

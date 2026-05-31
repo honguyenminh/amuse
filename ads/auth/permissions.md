@@ -63,10 +63,13 @@ Merged into the org persona JWT from `Organization.EvaluateCapabilities()`; not 
 
 ## Platform operator claims
 
+**Implementation rule:** All platform authorization and UI gating must use `PlatformClaims` in `Amuse.Domain.Platform` (backend) and `lib/auth/platformClaims.ts` (business frontend). Do **not** check only `manage:platform:organizations` — `platform:root` implies full manage + review.
+
 | Claim | Meaning |
 |-------|---------|
 | `review:platform:organizations` | List/approve/reject backing organization applications; backing orgs created by this operator are **approved immediately** |
 | `manage:platform:organizations` | Force-transfer organization ownership; recover soft-deleted organizations; **assume any organization persona** with owner-admin claims at token mint; backing orgs created by this operator are **approved immediately** |
-| `platform:root` | Break-glass full platform access (operator id `1` only, appended at mint); may assume any organization persona; backing orgs created by root are **approved immediately** |
+| `manage:platform:all` | Same effective access as manage organizations (scope-wide) |
+| `platform:root` | Break-glass full platform access (operator id `1` only). At token mint, expanded to include manage + review claims. Implies everything in this table. |
 
 Legacy strings (`org:read`, `platform:organizations:review`, …) are migrated in the database and accepted only when normalizing stored rows.

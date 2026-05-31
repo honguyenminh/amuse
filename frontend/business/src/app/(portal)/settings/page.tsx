@@ -65,16 +65,8 @@ export default function SettingsPage() {
     try {
       await leaveOrganization(orgId);
       setLeaveDialogOpen(false);
-      const personas = await auth.reloadBusinessPersonas();
-      const nextPersona =
-        personas.find((persona) => persona.type !== "org" || persona.orgId !== orgId) ??
-        personas[0];
-      if (nextPersona) {
-        await auth.selectPersona(nextPersona);
-        router.replace("/dashboard");
-      } else {
-        router.replace("/select-persona?switch=1&returnTo=/dashboard");
-      }
+      await auth.reloadBusinessPersonas();
+      router.replace("/select-persona?switch=1&returnTo=/dashboard");
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to leave organization.";
       setLeaveError(message);
@@ -93,16 +85,9 @@ export default function SettingsPage() {
     try {
       await deleteOrganization(orgId);
       setDeleteDialogOpen(false);
-      const personas = await auth.reloadBusinessPersonas();
-      const nextPersona =
-        personas.find((persona) => persona.type !== "org" || persona.orgId !== orgId) ??
-        personas[0];
-      if (nextPersona) {
-        await auth.selectPersona(nextPersona);
-        router.replace("/dashboard");
-      } else {
-        router.replace("/select-persona?switch=1&returnTo=/dashboard");
-      }
+      await auth.reloadBusinessPersonas();
+      auth.clearOrgUnavailableNotice();
+      router.replace("/select-persona?switch=1&returnTo=/dashboard");
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "Failed to delete organization.";
@@ -129,9 +114,12 @@ export default function SettingsPage() {
           <CardContent className="flex flex-col gap-4">
             {organization.isOwner ? (
               <p className="text-sm text-muted-foreground">
-                As the organization owner, you cannot leave this organization. Transfer
-                ownership to another member first, or contact platform support if you need
-                an owner change.
+                As the organization owner, you cannot leave this organization.{" "}
+                <Link href="/members" className="font-medium text-foreground underline-offset-4 hover:underline">
+                  Transfer ownership
+                </Link>{" "}
+                to another member first, or contact platform support if you need an owner
+                change.
               </p>
             ) : (
               <>

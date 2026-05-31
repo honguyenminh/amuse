@@ -1,6 +1,10 @@
 import { refreshTokens } from "@/lib/api/identityClient";
 import { ApiError } from "@/lib/api/types";
 import {
+  isOrganizationUnavailableError,
+  notifyOrgUnavailable,
+} from "@/lib/auth/orgSessionEvents";
+import {
   getAccessToken,
   getActivePersonaContext,
   setAccessToken,
@@ -62,7 +66,18 @@ async function fetchJson<T>(
     } catch {
       /* empty */
     }
-    throw new ApiError(detail, response.status, code);
+    const apiError = new ApiError(detail, response.status, code);
+    const persona = getActivePersonaContext();
+    if (
+      persona?.type === "org" &&
+      response.status === 404 &&
+      isOrganizationUnavailableError(code)
+    ) {
+      notifyOrgUnavailable(
+        detail || "This organization is no longer available in your workspace.",
+      );
+    }
+    throw apiError;
   }
 
   if (response.status === 204) {

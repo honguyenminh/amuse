@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Identity.Features.Shared;
+using Amuse.Modules.Platform.Features.ListOrganizationApplications;
 using Amuse.Modules.Tenancy.Features.Shared;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -144,6 +145,19 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
     }
 
     [Fact]
+    public async Task Platform_root_token_can_list_closed_organizations()
+    {
+        using var client = fixture.CreateClient();
+        var platformTokens = await LoginPlatformTokensAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", platformTokens.AccessToken);
+
+        var closedList = await client.GetAsync("/api/v1/platform/organizations/closed");
+        Assert.Equal(HttpStatusCode.OK, closedList.StatusCode);
+    }
+
+    [Fact]
     public async Task Owner_can_soft_delete_org_and_platform_can_recover()
     {
         using var client = fixture.CreateClient();
@@ -204,11 +218,17 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
             },
             JsonOptions);
         Assert.Equal(HttpStatusCode.OK, platformRefresh.StatusCode);
-        var platformTokens = await platformRefresh.Content.ReadFromJsonAsync<AuthTokenResponse>(JsonOptions);
-        Assert.NotNull(platformTokens);
+        var platformTokensAfterDelete = await platformRefresh.Content.ReadFromJsonAsync<AuthTokenResponse>(JsonOptions);
+        Assert.NotNull(platformTokensAfterDelete);
 
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", platformTokens.AccessToken);
+            new AuthenticationHeaderValue("Bearer", platformTokensAfterDelete.AccessToken);
+
+        var closedList = await client.GetAsync("/api/v1/platform/organizations/closed");
+        closedList.EnsureSuccessStatusCode();
+        var closedOrganizations = await closedList.Content.ReadFromJsonAsync<OrganizationApplicationResponse[]>(JsonOptions);
+        Assert.NotNull(closedOrganizations);
+        Assert.Contains(closedOrganizations, o => o.OrganizationId == created.Id);
 
         var recover = await client.PostAsync(
             $"/api/v1/platform/organizations/{created.Id}/recover",

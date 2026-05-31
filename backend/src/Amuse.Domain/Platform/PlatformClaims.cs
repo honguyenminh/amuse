@@ -1,5 +1,10 @@
 namespace Amuse.Domain.Platform;
 
+/// <summary>
+/// Single source of truth for platform operator claim semantics.
+/// Authorization handlers, token mint, and tenancy instant-approve must use these helpers —
+/// do not duplicate claim string checks elsewhere.
+/// </summary>
 public static class PlatformClaims
 {
     public const string Root = "platform:root";
@@ -9,27 +14,52 @@ public static class PlatformClaims
 
     private const string LegacyReviewOrganizations = "platform:organizations:review";
 
-    public static bool CanInstantApproveOrganizationsOnCreate(IReadOnlyList<string>? claims)
+    /// <summary>
+    /// Expands stored operator claims for JWT mint and lookups.
+    /// <see cref="Root"/> implies full platform organization manage + review capabilities.
+    /// </summary>
+    public static IReadOnlyList<string> ExpandEffectiveClaims(
+        IReadOnlyList<string> storedClaims,
+        bool isRootOperator)
+    {
+        var set = ToSet(storedClaims);
+        if (isRootOperator)
+            set.Add(Root);
+
+        if (set.Contains(Root) || set.Contains(ManageAll))
+        {
+            set.Add(ManageOrganizations);
+            set.Add(ReviewOrganizations);
+            set.Add(ManageAll);
+        }
+
+        return set.OrderBy(c => c, StringComparer.Ordinal).ToArray();
+    }
+
+    public static bool CanReviewOrganizations(IReadOnlyList<string>? claims) =>
+        HasAny(claims, Root, ReviewOrganizations, ManageOrganizations, ManageAll, LegacyReviewOrganizations);
+
+    public static bool CanManageOrganizations(IReadOnlyList<string>? claims) =>
+        HasAny(claims, Root, ManageOrganizations, ManageAll);
+
+    public static bool CanInstantApproveOrganizationsOnCreate(IReadOnlyList<string>? claims) =>
+        CanReviewOrganizations(claims);
+
+    public static bool CanAssumeAnyOrganizationPersona(IReadOnlyList<string>? claims) =>
+        CanManageOrganizations(claims);
+
+    private static bool HasAny(IReadOnlyList<string>? claims, params string[] required)
     {
         if (claims is null || claims.Count == 0)
             return false;
 
-        var set = claims.ToHashSet(StringComparer.Ordinal);
-        return set.Contains(Root)
-               || set.Contains(ManageOrganizations)
-               || set.Contains(ManageAll)
-               || set.Contains(ReviewOrganizations)
-               || set.Contains(LegacyReviewOrganizations);
+        var set = ToSet(claims);
+        return required.Any(set.Contains);
     }
 
-    public static bool CanAssumeAnyOrganizationPersona(IReadOnlyList<string>? claims)
-    {
-        if (claims is null || claims.Count == 0)
-            return false;
-
-        var set = claims.ToHashSet(StringComparer.Ordinal);
-        return set.Contains(Root)
-               || set.Contains(ManageOrganizations)
-               || set.Contains(ManageAll);
-    }
+    private static HashSet<string> ToSet(IReadOnlyList<string> claims) =>
+        claims
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .ToHashSet(StringComparer.Ordinal);
 }

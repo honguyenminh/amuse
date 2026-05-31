@@ -32,13 +32,8 @@ internal sealed class PlatformOperatorLookup(PlatformDbContext dbContext) : IPla
         if (platformOperator is null)
             return null;
 
-        var claims = platformOperator.Claims.ToList();
-        if (platformOperator.Id == PlatformOperatorId.Root)
-            claims.Add(PlatformClaims.Root);
-
-        return claims
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(c => c, StringComparer.Ordinal)
-            .ToArray();
+        return PlatformClaims.ExpandEffectiveClaims(
+            platformOperator.Claims,
+            platformOperator.Id == PlatformOperatorId.Root);
     }
 }

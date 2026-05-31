@@ -1,3 +1,4 @@
+using Amuse.Domain.Platform;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Amuse.Modules.Common.Authorization;
@@ -13,10 +14,8 @@ public sealed class PlatformOrganizationReviewHandler : AuthorizationHandler<Pla
         if (!string.Equals(context.User.FindFirst("ctx")?.Value, "platform", StringComparison.OrdinalIgnoreCase))
             return Task.CompletedTask;
 
-        var claims = context.User.FindAll("claims").Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
-        if (claims.Contains("platform:root")
-            || claims.Contains("review:platform:organizations")
-            || claims.Contains("platform:organizations:review"))
+        var claims = context.User.FindAll("claims").Select(c => c.Value).ToList();
+        if (PlatformClaims.CanReviewOrganizations(claims))
             context.Succeed(requirement);
 
         return Task.CompletedTask;

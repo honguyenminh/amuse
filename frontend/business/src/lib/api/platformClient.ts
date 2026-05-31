@@ -47,3 +47,29 @@ export function rejectOrganization(
     },
   );
 }
+
+export function listClosedOrganizations(): Promise<OrganizationApplicationSummary[]> {
+  return authFetch<OrganizationApplicationSummary[]>(
+    "/api/v1/platform/organizations/closed",
+  );
+}
+
+export function recoverOrganization(organizationId: string): Promise<void> {
+  return authFetch<void>(
+    `/api/v1/platform/organizations/${organizationId}/recover`,
+    { method: "POST" },
+  );
+}
+
+export function forceTransferOrganizationOwnership(
+  organizationId: string,
+  targetMemberId: string,
+): Promise<void> {
+  return authFetch<void>(
+    `/api/v1/platform/organizations/${organizationId}/force-transfer-ownership`,
+    {
+      method: "POST",
+      body: JSON.stringify({ targetMemberId }),
+    },
+  );
+}
