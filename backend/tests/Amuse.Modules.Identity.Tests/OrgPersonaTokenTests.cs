@@ -15,7 +15,7 @@ namespace Amuse.Modules.Identity.Tests;
 public sealed class OrgPersonaTokenTests
 {
     [Fact]
-    public async Task Indie_org_token_includes_upload_but_not_publish_public()
+    public async Task Indie_org_token_includes_upload_and_publish_to_discover()
     {
         await using var tenancyDb = CreateTenancyDb();
         await using var identityDb = CreateIdentityDb();
@@ -54,7 +54,7 @@ public sealed class OrgPersonaTokenTests
         var claims = jwt.Claims.Where(c => c.Type == "claims").Select(c => c.Value).ToList();
 
         Assert.Contains("upload:catalog:all", claims);
-        Assert.DoesNotContain("publish_public:catalog:all", claims);
+        Assert.Contains("publish_public:catalog:all", claims);
     }
 
     private static IdentityDbContext CreateIdentityDb()

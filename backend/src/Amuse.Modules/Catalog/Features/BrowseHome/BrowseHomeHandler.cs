@@ -1,3 +1,4 @@
+using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
@@ -15,6 +16,7 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage stor
     {
         var recentReleaseRows = await db.Releases
             .AsNoTracking()
+            .Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published)
             .OrderByDescending(r => r.ReleaseDate)
             .Take(RecentReleaseCount)
             .Join(
@@ -50,6 +52,8 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage stor
 
         var featuredArtistRows = await db.Artists
             .AsNoTracking()
+            .Where(a => db.Releases.Any(r =>
+                r.ArtistId == a.Id && r.LifecycleStatus == ReleaseLifecycleStatus.Published))
             .OrderBy(a => a.Name)
             .Take(FeaturedArtistCount)
             .Select(a => new

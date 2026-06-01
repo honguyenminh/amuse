@@ -15,6 +15,10 @@ public sealed record OrganizationCapabilitiesDto(
 public sealed record OrganizationResponse(
     Guid Id,
     string DisplayName,
+    string? Description,
+    string? WebsiteUrl,
+    string? CountryCode,
+    string? ImprintName,
     string OrgClass,
     string LifecycleStatus,
     string OnboardingStatus,
@@ -46,6 +50,10 @@ internal static class OrganizationDtoMapper
         return new OrganizationResponse(
             organization.Id.Value,
             organization.DisplayName,
+            organization.Description,
+            organization.WebsiteUrl,
+            organization.CountryCode,
+            organization.ImprintName,
             ToJsonEnum(organization.OrgClass),
             ToJsonEnum(organization.LifecycleStatus),
             ToJsonEnum(organization.OnboardingStatus),

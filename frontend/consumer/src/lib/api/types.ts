@@ -85,6 +85,15 @@ export type GetArtistDetailResponse = {
   releases: ReleaseSummary[];
 };
 
+export type ReleaseEditionSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  releaseType: ReleaseType;
+  releaseDate: string;
+  coverArtUrl: string | null;
+};
+
 export type GetReleaseDetailResponse = {
   id: string;
   slug: string;
@@ -94,8 +103,18 @@ export type GetReleaseDetailResponse = {
   artistSlug: string;
   releaseType: ReleaseType;
   releaseDate: string;
+  releaseGroupId: string | null;
+  releaseGroupTitle: string | null;
+  releaseGroupSlug: string | null;
+  description: string | null;
+  upc: string | null;
+  primaryGenre: string | null;
+  tags: string | null;
+  languageCode: string | null;
+  labelName: string | null;
   coverArtUrl: string | null;
   tracks: TrackResponse[];
+  otherEditions: ReleaseEditionSummary[];
 };
 
 export type ApiProblem = {

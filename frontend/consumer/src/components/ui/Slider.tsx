@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import type { InputHTMLAttributes } from "react";
+import { useRef, type InputHTMLAttributes } from "react";
 
 type SliderProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -54,6 +54,7 @@ export function Slider({
   const span = max - min || 1;
   const clamped = Math.max(min, Math.min(max, value));
   const percent = ((clamped - min) / span) * 100;
+  const scrubbingRef = useRef(false);
 
   return (
     <span className={cn("group relative block w-full select-none", className)}>
@@ -78,13 +79,40 @@ export function Slider({
         aria-label={label}
         onChange={(event) => onChange(Number(event.target.value))}
         onInput={(event) => onChange(Number(event.currentTarget.value))}
-        onPointerDown={() => onScrubStart?.()}
-        onPointerUp={(event) =>
-          onScrubEnd?.(Number((event.target as HTMLInputElement).value))
-        }
-        onPointerCancel={(event) =>
-          onScrubEnd?.(Number((event.target as HTMLInputElement).value))
-        }
+        onPointerDown={(event) => {
+          // Keep receiving pointer events even if the pointer leaves the input,
+          // so we always end scrubbing and re-enable progress updates.
+          scrubbingRef.current = true;
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            // Ignore browsers that don't support pointer capture here.
+          }
+          onScrubStart?.();
+        }}
+        onPointerUp={(event) => {
+          if (scrubbingRef.current) {
+            scrubbingRef.current = false;
+            onScrubEnd?.(Number(event.currentTarget.value));
+          }
+          try {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          } catch {
+            // Ignore.
+          }
+        }}
+        onPointerCancel={(event) => {
+          if (scrubbingRef.current) {
+            scrubbingRef.current = false;
+            onScrubEnd?.(Number(event.currentTarget.value));
+          }
+        }}
+        onLostPointerCapture={(event) => {
+          if (scrubbingRef.current) {
+            scrubbingRef.current = false;
+            onScrubEnd?.(Number(event.currentTarget.value));
+          }
+        }}
         className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-on-primary [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-on-primary"
         {...props}
       />

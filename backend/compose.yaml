@@ -161,5 +161,22 @@
       migrate:
         condition: service_completed_successfully
 
+  amuse.worker.scheduler:
+    image: amuse.worker.scheduler
+    build:
+      context: src
+      dockerfile: Amuse.Worker.Scheduler/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=amuse_development;Username=postgres;Password=postgres
+      CatalogScheduler__PollIntervalSeconds: "60"
+      CatalogScheduler__BatchSize: "50"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   minio-data:

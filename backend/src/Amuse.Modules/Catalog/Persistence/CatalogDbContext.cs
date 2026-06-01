@@ -12,8 +12,10 @@ public sealed class CatalogDbContext : ModuleDbContextBase
     }
 
     public DbSet<Artist> Artists => Set<Artist>();
+    public DbSet<ReleaseGroup> ReleaseGroups => Set<ReleaseGroup>();
     public DbSet<Release> Releases => Set<Release>();
     public DbSet<Track> Tracks => Set<Track>();
+    public DbSet<ReleaseCollaborator> ReleaseCollaborators => Set<ReleaseCollaborator>();
     public DbSet<AudioTranscodeJob> AudioTranscodeJobs => Set<AudioTranscodeJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -23,6 +25,10 @@ public sealed class CatalogDbContext : ModuleDbContextBase
 
         modelBuilder.HasPostgresEnum<ReleaseType>(schema: "catalog", name: "release_type");
         modelBuilder.HasPostgresEnum<AudioTranscodeJobStatus>(schema: "catalog", name: "audio_transcode_job_status");
+        modelBuilder.HasPostgresEnum<ArtistVisibilityTier>(schema: "catalog", name: "artist_visibility_tier");
+        modelBuilder.HasPostgresEnum<ReleaseLifecycleStatus>(schema: "catalog", name: "release_lifecycle_status");
+        modelBuilder.HasPostgresEnum<TrackLifecycleStatus>(schema: "catalog", name: "track_lifecycle_status");
+        modelBuilder.HasPostgresEnum<ReleaseCollaboratorRole>(schema: "catalog", name: "release_collaborator_role");
 
         modelBuilder.ApplyConfigurationsFromNamespace(
             typeof(CatalogDbContext),

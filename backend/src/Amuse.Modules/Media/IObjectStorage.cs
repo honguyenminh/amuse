@@ -44,14 +44,32 @@ public interface IObjectStorage
     string GetPublicUrl(MediaBucket bucket, string key);
 
     /// <summary>
-    /// Returns a time-limited presigned GET URL for an object. Suitable for audio
-    /// streams that must not be guessable from the URL pattern.
+    /// Returns a time-limited presigned GET URL for an object, signed for
+    /// <see cref="Options.MediaOptions.PublicBaseUrl"/> so browsers and other external
+    /// clients can reach the host.
     /// </summary>
     string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl);
+
+    /// <summary>
+    /// Returns a time-limited presigned GET URL signed for
+    /// <see cref="Options.MediaOptions.Endpoint"/>. Use for server-side consumers
+    /// (e.g. ffmpeg in the transcoder worker) that run in the same network as the S3 API.
+    /// </summary>
+    string GetInternalSignedUrl(MediaBucket bucket, string key, TimeSpan ttl);
 
     /// <summary>
     /// Returns a time-limited presigned PUT URL for uploading an object directly from a client.
     /// Intended for large masters (audio/video) so the API does not proxy bytes.
     /// </summary>
     string GetSignedUploadUrl(MediaBucket bucket, string key, TimeSpan ttl, string contentType);
+
+    /// <summary>
+    /// Deletes a single object. No-op when the key does not exist.
+    /// </summary>
+    Task DeleteAsync(MediaBucket bucket, string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all objects whose keys start with <paramref name="prefix"/>.
+    /// </summary>
+    Task DeleteByPrefixAsync(MediaBucket bucket, string prefix, CancellationToken cancellationToken = default);
 }

@@ -8,6 +8,8 @@ After an entire feature is completed (and prompted by me, do not automatically d
 
 When planning, be as detailed and specific as possible, covering and documenting all possible major painpoints and possible hurdles, and if unsure ask the user, do not assume or gloss over decisions. The plan will be read and implemented by an inexperienced intern who will take shortcuts whenever possible, so guard against that.
 
+Plan extremely carefully. Give very detailed implementations steps with proper code changes plan, not just a vague bulletpoint list. Any ambiguity and unclear points should be asked, and asked as much as possible, do not assume anything or rely on training data.
+
 When making changes, implementing a new features etc. You MUST ALWAYS consider whether the feature is properly gated by an appropriate claims (either new or existing) and whether improvements will be needed for a soundly designed claim system. More details on claims and auth can be found in the docs.
 
 **Platform operator claims:** Never gate features with a raw JWT check for only `manage:platform:organizations`. The break-glass `platform:root` operator must receive full platform access via `PlatformClaims` (`Amuse.Domain/Platform/PlatformClaims.cs`) on the backend and `frontend/business/src/lib/auth/platformClaims.ts` on the business portal. Token mint expands root to explicit manage/review claims, but handlers and UI must still use the shared helpers so implied grants are not missed.

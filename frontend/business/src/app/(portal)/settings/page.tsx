@@ -1,5 +1,7 @@
 "use client";
 
+import { ResourceAuditPanel } from "@/components/catalog/ResourceAuditPanel";
+import { EditOrganizationProfileDialog } from "@/components/portal/EditOrganizationProfileDialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +18,7 @@ import {
   deleteOrganization,
   getOrganization,
   leaveOrganization,
+  listOrganizationAudits,
 } from "@/lib/api/tenancyClient";
 import type { OrganizationResponse } from "@/lib/api/tenancyClient";
 import Link from "next/link";
@@ -28,9 +31,11 @@ export default function SettingsPage() {
   const orgId = auth.activePersona?.type === "org" ? auth.activePersona.orgId : null;
   const token = getAccessToken();
   const canManageOrg = hasClaim(token, "manage:org:all");
+  const canReadOrg = hasClaim(token, "read:org:all");
 
   const [organization, setOrganization] = useState<OrganizationResponse | null>(null);
   const [orgLoadError, setOrgLoadError] = useState<string | null>(null);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [leaveBusy, setLeaveBusy] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
@@ -104,6 +109,47 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       {orgId && organization ? (
+        <>
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle>Organization profile</CardTitle>
+                <CardDescription>{organization.displayName}</CardDescription>
+              </div>
+              {canManageOrg ? (
+                <Button variant="outline" size="sm" onClick={() => setEditProfileOpen(true)}>
+                  Edit profile
+                </Button>
+              ) : null}
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>Description: {organization.description ?? "—"}</p>
+              <p>Country: {organization.countryCode ?? "—"}</p>
+              <p>Imprint: {organization.imprintName ?? "—"}</p>
+              <p>Website: {organization.websiteUrl ?? "—"}</p>
+            </CardContent>
+          </Card>
+
+          {canReadOrg ? (
+            <ResourceAuditPanel
+              targetId={organization.id}
+              title="Organization audit"
+              loadAudits={() => listOrganizationAudits(organization.id)}
+            />
+          ) : null}
+
+          <EditOrganizationProfileDialog
+            open={editProfileOpen}
+            onOpenChange={setEditProfileOpen}
+            organization={organization}
+            onUpdated={setOrganization}
+          />
+        </>
+      ) : orgId && orgLoadError ? (
+        <p className="text-sm text-destructive">{orgLoadError}</p>
+      ) : null}
+
+      {orgId && organization ? (
         <Card>
           <CardHeader>
             <CardTitle>Organization membership</CardTitle>
@@ -140,8 +186,6 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
-      ) : orgId && orgLoadError ? (
-        <p className="text-sm text-destructive">{orgLoadError}</p>
       ) : null}
 
       {showOwnerDelete ? (

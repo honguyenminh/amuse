@@ -7,8 +7,8 @@ import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import { usePlayback, usePlaybackPosition } from "@/lib/playback/PlaybackContext";
+import { useScrubPosition } from "@/lib/playback/useScrubPosition";
 import Link from "next/link";
-import { useState } from "react";
 
 /**
  * Persistent mini player docked to the bottom of the viewport (full-width on
@@ -28,12 +28,14 @@ import { useState } from "react";
 export function MiniPlayer() {
   const { state, currentTrack, toggle, next, previous, beginScrub, endScrub } = usePlayback();
   const smoothMs = usePlaybackPosition();
-  const [scrubMs, setScrubMs] = useState<number | null>(null);
+  const max = Math.max(state.durationMs, 1);
+  const { displayMs: value, sliderProps } = useScrubPosition(smoothMs, max, {
+    beginScrub,
+    endScrub,
+  });
 
   if (!currentTrack) return null;
 
-  const max = Math.max(state.durationMs, 1);
-  const value = scrubMs ?? Math.min(smoothMs, max);
   const canNext = state.currentIndex < state.queue.length - 1 || state.repeat === "queue";
 
   return (
@@ -48,15 +50,7 @@ export function MiniPlayer() {
         min={0}
         max={max}
         step={1}
-        onChange={(next) => setScrubMs(next)}
-        onScrubStart={() => {
-          beginScrub();
-          setScrubMs(value);
-        }}
-        onScrubEnd={(final) => {
-          setScrubMs(null);
-          endScrub(final);
-        }}
+        {...sliderProps}
         label="Seek within current track"
         size="sm"
         className="px-0"

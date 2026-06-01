@@ -22,8 +22,12 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "artist_visibility_tier", new[] { "unverified", "platform_verified" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "audio_transcode_job_status", new[] { "queued", "processing", "succeeded", "failed" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "release_collaborator_role", new[] { "featured" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "release_lifecycle_status", new[] { "draft", "processing", "ready", "published", "hidden", "archived", "scheduled" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "release_type", new[] { "single", "ep", "album", "compilation" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "track_lifecycle_status", new[] { "draft", "processing", "ready", "published", "hidden" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Amuse.Domain.Catalog.Artist", b =>
@@ -31,6 +35,11 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("Aliases")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("aliases");
 
                     b.Property<string>("AvatarKey")
                         .HasMaxLength(512)
@@ -42,6 +51,11 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("bio");
 
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("country_code");
+
                     b.Property<string>("CoverKey")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
@@ -50,6 +64,10 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at");
+
+                    b.Property<Guid?>("ManagingOrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("managing_organization_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -63,7 +81,18 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("character varying(96)")
                         .HasColumnName("slug");
 
+                    b.Property<ArtistVisibilityTier>("VisibilityTier")
+                        .HasColumnType("catalog.artist_visibility_tier")
+                        .HasColumnName("visibility_tier");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("website_url");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ManagingOrganizationId");
 
                     b.HasIndex("Slug")
                         .IsUnique();
@@ -81,6 +110,11 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("artist_id");
 
+                    b.Property<string>("CLine")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("c_line");
+
                     b.Property<string>("CoverArtKey")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
@@ -90,13 +124,154 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("LabelName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("label_name");
+
+                    b.Property<string>("LanguageCode")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("language_code");
+
+                    b.Property<ReleaseLifecycleStatus>("LifecycleStatus")
+                        .HasColumnType("catalog.release_lifecycle_status")
+                        .HasColumnName("lifecycle_status");
+
+                    b.Property<bool>("MetadataComplete")
+                        .HasColumnType("boolean")
+                        .HasColumnName("metadata_complete");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset?>("OriginalReleaseDate")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("original_release_date");
+
+                    b.Property<string>("PLine")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("p_line");
+
+                    b.Property<string>("PrimaryGenre")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("primary_genre");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("published_at");
+
                     b.Property<DateTimeOffset>("ReleaseDate")
                         .HasColumnType("timestamptz")
                         .HasColumnName("release_date");
 
+                    b.Property<Guid?>("ReleaseGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("release_group_id");
+
                     b.Property<ReleaseType>("ReleaseType")
                         .HasColumnType("catalog.release_type")
                         .HasColumnName("release_type");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(96)
+                        .HasColumnType("character varying(96)")
+                        .HasColumnName("slug");
+
+                    b.Property<string>("Tags")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tags");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Upc")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("upc");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReleaseDate");
+
+                    b.HasIndex("ReleaseGroupId");
+
+                    b.HasIndex("Upc");
+
+                    b.HasIndex("ArtistId", "Slug")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId", "LifecycleStatus", "ReleaseDate");
+
+                    b.ToTable("release", "catalog");
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Catalog.ReleaseCollaborator", b =>
+                {
+                    b.Property<Guid>("ReleaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("release_id");
+
+                    b.Property<Guid>("ArtistId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("artist_id");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("catalog.release_collaborator_role")
+                        .HasColumnName("role");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.HasKey("ReleaseId", "ArtistId", "Role");
+
+                    b.HasIndex("ArtistId");
+
+                    b.HasIndex("ReleaseId", "DisplayOrder");
+
+                    b.ToTable("release_collaborator", "catalog");
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Catalog.ReleaseGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ArtistId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("artist_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
 
                     b.Property<string>("Slug")
                         .IsRequired()
@@ -110,14 +285,18 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("title");
 
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ReleaseDate");
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("ArtistId", "Slug")
                         .IsUnique();
 
-                    b.ToTable("release", "catalog");
+                    b.ToTable("release_group", "catalog");
                 });
 
             modelBuilder.Entity("Amuse.Domain.Catalog.Track", b =>
@@ -136,9 +315,41 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("audio_stream_key");
 
+                    b.Property<string>("ComposerCredits")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("composer_credits");
+
                     b.Property<int>("Duration")
                         .HasColumnType("integer")
                         .HasColumnName("duration_ms");
+
+                    b.Property<bool>("ExplicitFlag")
+                        .HasColumnType("boolean")
+                        .HasColumnName("explicit_flag");
+
+                    b.Property<string>("Isrc")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("isrc");
+
+                    b.Property<string>("LanguageCode")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("language_code");
+
+                    b.Property<TrackLifecycleStatus>("LifecycleStatus")
+                        .HasColumnType("catalog.track_lifecycle_status")
+                        .HasColumnName("lifecycle_status");
+
+                    b.Property<string>("Lyrics")
+                        .HasMaxLength(12000)
+                        .HasColumnType("character varying(12000)")
+                        .HasColumnName("lyrics");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
 
                     b.Property<Guid>("ReleaseId")
                         .HasColumnType("uuid")
@@ -154,7 +365,14 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("track_number");
 
+                    b.Property<string>("VersionTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("version_title");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "LifecycleStatus");
 
                     b.HasIndex("ReleaseId", "TrackNumber")
                         .IsUnique();
@@ -214,6 +432,38 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     b.HasIndex("Status", "CreatedAt");
 
                     b.ToTable("audio_transcode_job", "catalog");
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Catalog.Release", b =>
+                {
+                    b.HasOne("Amuse.Domain.Catalog.ReleaseGroup", null)
+                        .WithMany()
+                        .HasForeignKey("ReleaseGroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Catalog.ReleaseCollaborator", b =>
+                {
+                    b.HasOne("Amuse.Domain.Catalog.Artist", null)
+                        .WithMany()
+                        .HasForeignKey("ArtistId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Amuse.Domain.Catalog.Release", null)
+                        .WithMany()
+                        .HasForeignKey("ReleaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Catalog.ReleaseGroup", b =>
+                {
+                    b.HasOne("Amuse.Domain.Catalog.Artist", null)
+                        .WithMany()
+                        .HasForeignKey("ArtistId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Amuse.Domain.Catalog.Track", b =>

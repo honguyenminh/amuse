@@ -8,9 +8,17 @@ public sealed class Organization
 {
     public const int MaxDisplayNameLength = 200;
     public const int MaxRejectionReasonLength = 2000;
+    public const int MaxDescriptionLength = 2000;
+    public const int MaxWebsiteUrlLength = 500;
+    public const int MaxCountryCodeLength = 2;
+    public const int MaxImprintNameLength = 200;
 
     public OrganizationId Id { get; private set; }
     public string DisplayName { get; private set; } = null!;
+    public string? Description { get; private set; }
+    public string? WebsiteUrl { get; private set; }
+    public string? CountryCode { get; private set; }
+    public string? ImprintName { get; private set; }
     public OrganizationClass OrgClass { get; private set; }
     public OrganizationLifecycleStatus LifecycleStatus { get; private set; }
     public OrganizationOnboardingStatus OnboardingStatus { get; private set; }
@@ -29,6 +37,10 @@ public sealed class Organization
     private Organization(
         OrganizationId id,
         string displayName,
+        string? description,
+        string? websiteUrl,
+        string? countryCode,
+        string? imprintName,
         OrganizationClass orgClass,
         OrganizationLifecycleStatus lifecycleStatus,
         OrganizationOnboardingStatus onboardingStatus,
@@ -38,6 +50,10 @@ public sealed class Organization
     {
         Id = id;
         DisplayName = displayName;
+        Description = description;
+        WebsiteUrl = websiteUrl;
+        CountryCode = countryCode;
+        ImprintName = imprintName;
         OrgClass = orgClass;
         LifecycleStatus = lifecycleStatus;
         OnboardingStatus = onboardingStatus;
@@ -52,9 +68,17 @@ public sealed class Organization
     public static Result<Organization> RegisterIndieGroup(
         string displayName,
         AccountId createdBy,
-        DateTimeOffset now) =>
+        DateTimeOffset now,
+        string? description = null,
+        string? websiteUrl = null,
+        string? countryCode = null,
+        string? imprintName = null) =>
         Create(
             displayName,
+            description,
+            websiteUrl,
+            countryCode,
+            imprintName,
             OrganizationClass.IndieGroup,
             OrganizationLifecycleStatus.Active,
             OrganizationOnboardingStatus.NotRequired,
@@ -65,9 +89,17 @@ public sealed class Organization
     public static Result<Organization> RegisterBackingOrg(
         string displayName,
         AccountId createdBy,
-        DateTimeOffset now) =>
+        DateTimeOffset now,
+        string? description = null,
+        string? websiteUrl = null,
+        string? countryCode = null,
+        string? imprintName = null) =>
         Create(
             displayName,
+            description,
+            websiteUrl,
+            countryCode,
+            imprintName,
             OrganizationClass.BackingOrg,
             OrganizationLifecycleStatus.Active,
             OrganizationOnboardingStatus.PendingReview,
@@ -153,6 +185,41 @@ public sealed class Organization
         return Result.Success();
     }
 
+    public Result UpdateProfile(
+        string? description,
+        string? websiteUrl,
+        string? countryCode,
+        string? imprintName,
+        DateTimeOffset now)
+    {
+        if (IsClosed)
+            return Result.Failure(TenancyErrors.OrganizationClosed);
+
+        if (description is { Length: > MaxDescriptionLength })
+            return Result.Failure(TenancyErrors.InvalidOrganizationDescription);
+
+        var normalizedDescription = NormalizeOptionalDescription(description);
+
+        var normalizedWebsiteUrl = NormalizeUrl(websiteUrl);
+        if (websiteUrl is not null && normalizedWebsiteUrl is null)
+            return Result.Failure(TenancyErrors.InvalidOrganizationWebsiteUrl);
+
+        var normalizedCountryCode = NormalizeOptionalText(countryCode, MaxCountryCodeLength)?.ToUpperInvariant();
+        if (countryCode is not null && normalizedCountryCode is null)
+            return Result.Failure(TenancyErrors.InvalidOrganizationCountryCode);
+
+        var normalizedImprintName = NormalizeOptionalText(imprintName, MaxImprintNameLength);
+        if (imprintName is not null && normalizedImprintName is null)
+            return Result.Failure(TenancyErrors.InvalidOrganizationImprintName);
+
+        Description = normalizedDescription;
+        WebsiteUrl = normalizedWebsiteUrl;
+        CountryCode = normalizedCountryCode;
+        ImprintName = normalizedImprintName;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
     public OrgCapabilities EvaluateCapabilities()
     {
         if (LifecycleStatus == OrganizationLifecycleStatus.Suspended
@@ -180,7 +247,7 @@ public sealed class Organization
                     CanReadMembership: true,
                     CanUpload: true,
                     CanWriteDraft: true,
-                    CanPublishPublic: false,
+                    CanPublishPublic: true,
                     CanReadPayout: false),
 
             OrganizationClass.BackingOrg when OnboardingStatus == OrganizationOnboardingStatus.PendingReview =>
@@ -207,6 +274,10 @@ public sealed class Organization
 
     private static Result<Organization> Create(
         string displayName,
+        string? description,
+        string? websiteUrl,
+        string? countryCode,
+        string? imprintName,
         OrganizationClass orgClass,
         OrganizationLifecycleStatus lifecycleStatus,
         OrganizationOnboardingStatus onboardingStatus,
@@ -218,9 +289,29 @@ public sealed class Organization
         if (normalized is null)
             return Result<Organization>.Failure(TenancyErrors.InvalidDisplayName);
 
+        var normalizedDescription = NormalizeOptionalText(description, MaxDescriptionLength);
+        if (description is not null && normalizedDescription is null)
+            return Result<Organization>.Failure(TenancyErrors.InvalidOrganizationDescription);
+
+        var normalizedWebsiteUrl = NormalizeUrl(websiteUrl);
+        if (websiteUrl is not null && normalizedWebsiteUrl is null)
+            return Result<Organization>.Failure(TenancyErrors.InvalidOrganizationWebsiteUrl);
+
+        var normalizedCountryCode = NormalizeOptionalText(countryCode, MaxCountryCodeLength)?.ToUpperInvariant();
+        if (countryCode is not null && normalizedCountryCode is null)
+            return Result<Organization>.Failure(TenancyErrors.InvalidOrganizationCountryCode);
+
+        var normalizedImprintName = NormalizeOptionalText(imprintName, MaxImprintNameLength);
+        if (imprintName is not null && normalizedImprintName is null)
+            return Result<Organization>.Failure(TenancyErrors.InvalidOrganizationImprintName);
+
         return Result<Organization>.Success(new Organization(
             OrganizationId.New(),
             normalized,
+            normalizedDescription,
+            normalizedWebsiteUrl,
+            normalizedCountryCode,
+            normalizedImprintName,
             orgClass,
             lifecycleStatus,
             onboardingStatus,
@@ -236,5 +327,38 @@ public sealed class Organization
             return null;
 
         return trimmed;
+    }
+
+    private static string? NormalizeOptionalText(string? value, int maxLength)
+    {
+        if (value is null)
+            return null;
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0 || trimmed.Length > maxLength)
+            return null;
+        return trimmed;
+    }
+
+    private static string? NormalizeOptionalDescription(string? description)
+    {
+        if (description is null)
+            return null;
+        var trimmed = description.Trim();
+        if (trimmed.Length == 0)
+            return null;
+        if (trimmed.Length > MaxDescriptionLength)
+            return null;
+        return trimmed;
+    }
+
+    private static string? NormalizeUrl(string? url)
+    {
+        var normalized = NormalizeOptionalText(url, MaxWebsiteUrlLength);
+        if (normalized is null)
+            return null;
+        return Uri.TryCreate(normalized, UriKind.Absolute, out var parsed)
+               && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps)
+            ? normalized
+            : null;
     }
 }

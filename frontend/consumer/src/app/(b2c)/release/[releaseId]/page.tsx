@@ -134,6 +134,46 @@ export default function ReleasePage({
               </div>
             </Card>
 
+            {release.otherEditions.length > 0 ? (
+              <Card>
+                <Text variant="title-large">
+                  {release.releaseGroupTitle
+                    ? `Other editions of ${release.releaseGroupTitle}`
+                    : "Other editions"}
+                </Text>
+                <ul className="mt-2 flex flex-col divide-y divide-outline/40">
+                  {release.otherEditions.map((edition) => (
+                    <li key={edition.id}>
+                      <Link
+                        href={`/release/${edition.id}`}
+                        className="flex items-center gap-3 py-3 transition-colors hover:text-primary"
+                      >
+                        {edition.coverArtUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={edition.coverArtUrl}
+                            alt={edition.title}
+                            className="size-12 rounded object-cover"
+                          />
+                        ) : (
+                          <div className="size-12 rounded bg-surface-container-high" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <Text variant="body-medium" className="truncate">
+                            {edition.title}
+                          </Text>
+                          <Text variant="label-medium" className="text-on-surface-variant">
+                            {releaseTypeLabel[edition.releaseType]} ·{" "}
+                            {new Date(edition.releaseDate).getFullYear()}
+                          </Text>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
+
             <Card>
               <Text variant="title-large">Tracks</Text>
               <ol className="mt-2 flex flex-col divide-y divide-outline/40">

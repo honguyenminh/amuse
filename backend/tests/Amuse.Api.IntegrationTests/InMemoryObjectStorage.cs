@@ -42,14 +42,38 @@ public sealed class InMemoryObjectStorage : IObjectStorage
             : throw new InvalidOperationException("Audio bucket is not public.");
 
     public string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl) =>
-        $"https://test.media.amuse.local/{BucketName(bucket)}/{Uri.EscapeDataString(key)}" +
-        $"?X-Amz-Signature=test&X-Amz-Expires={(int)ttl.TotalSeconds}";
+        BuildSignedGetUrl(bucket, key, ttl, "public");
+
+    public string GetInternalSignedUrl(MediaBucket bucket, string key, TimeSpan ttl) =>
+        BuildSignedGetUrl(bucket, key, ttl, "internal");
 
     public string GetSignedUploadUrl(MediaBucket bucket, string key, TimeSpan ttl, string contentType) =>
         $"https://test.media.amuse.local/{BucketName(bucket)}/{Uri.EscapeDataString(key)}" +
         $"?X-Amz-Signature=test&X-Amz-Expires={(int)ttl.TotalSeconds}&X-Amz-Verb=PUT&ContentType={Uri.EscapeDataString(contentType)}";
 
+    public Task DeleteAsync(MediaBucket bucket, string key, CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(key))
+            _objects.TryRemove((bucket, key), out _);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteByPrefixAsync(MediaBucket bucket, string prefix, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            return Task.CompletedTask;
+
+        foreach (var entry in _objects.Keys.Where(k => k.Item1 == bucket && k.Item2.StartsWith(prefix, StringComparison.Ordinal)))
+            _objects.TryRemove(entry, out _);
+
+        return Task.CompletedTask;
+    }
+
     public bool Contains(MediaBucket bucket, string key) => _objects.ContainsKey((bucket, key));
+
+    private static string BuildSignedGetUrl(MediaBucket bucket, string key, TimeSpan ttl, string audience) =>
+        $"https://test.media.amuse.local/{BucketName(bucket)}/{Uri.EscapeDataString(key)}" +
+        $"?X-Amz-Signature=test&X-Amz-Expires={(int)ttl.TotalSeconds}&audience={audience}";
 
     private static string BucketName(MediaBucket bucket) => bucket switch
     {

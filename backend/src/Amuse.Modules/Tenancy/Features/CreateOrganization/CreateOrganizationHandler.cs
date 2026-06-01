@@ -5,6 +5,7 @@ using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Audit;
 using Amuse.Modules.Audit.Persistence;
+using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Platform.Contracts;
 using Amuse.Modules.Tenancy.Features.Shared;
@@ -16,7 +17,9 @@ internal sealed class CreateOrganizationHandler(
     TenancyDbContext dbContext,
     IClock clock,
     IPlatformOperatorLookup platformOperatorLookup,
-    IAuditWriter auditWriter)
+    IAuditWriter auditWriter,
+    TenancyAuditWriter tenancyAuditWriter,
+    ICatalogOrganizationBootstrap catalogBootstrap)
 {
     public async Task<Result<OrganizationResponse>> HandleAsync(
         CreateOrganizationRequest request,
@@ -35,11 +38,19 @@ internal sealed class CreateOrganizationHandler(
             OrganizationClass.IndieGroup => Organization.RegisterIndieGroup(
                 request.DisplayName,
                 accountId,
-                now),
+                now,
+                request.Description,
+                request.WebsiteUrl,
+                request.CountryCode,
+                request.ImprintName),
             OrganizationClass.BackingOrg => Organization.RegisterBackingOrg(
                 request.DisplayName,
                 accountId,
-                now),
+                now,
+                request.Description,
+                request.WebsiteUrl,
+                request.CountryCode,
+                request.ImprintName),
             _ => Result<Organization>.Failure(TenancyErrors.InvalidDisplayName),
         };
 
@@ -64,6 +75,25 @@ internal sealed class CreateOrganizationHandler(
         dbContext.Organizations.Add(organization);
         dbContext.OrganizationMembers.Add(owner);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await tenancyAuditWriter.WriteCreateAsync(
+            TenancyAuditTables.Organization,
+            organization.Id.Value,
+            TenancyAuditSnapshotMapper.FromOrganization(organization),
+            accountId.Value,
+            cancellationToken);
+
+        if (organization.OrgClass == OrganizationClass.IndieGroup && request.CreateDefaultArtist)
+        {
+            var bootstrap = await catalogBootstrap.CreateDefaultArtistAsync(
+                organization.Id,
+                organization.DisplayName,
+                organization.TrustTier,
+                now,
+                cancellationToken);
+            if (!bootstrap.IsSuccess)
+                return Result<OrganizationResponse>.Failure(bootstrap.Error!);
+        }
 
         if (organization.OnboardingStatus == OrganizationOnboardingStatus.Approved)
         {

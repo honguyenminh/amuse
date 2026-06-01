@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
+using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Media;
 using Amuse.Modules.Media.Options;
@@ -47,10 +49,15 @@ internal sealed class PresignAudioMasterUploadHandler(
     public async Task<Result<PresignAudioMasterUploadResponse>> HandleAsync(
         Guid trackId,
         PresignAudioMasterUploadRequest request,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
         if (trackId == Guid.Empty)
             return Result<PresignAudioMasterUploadResponse>.Failure(CatalogErrors.TrackNotFound);
+
+        var orgResult = CatalogPersonaAccessor.GetOrganizationId(principal);
+        if (!orgResult.IsSuccess)
+            return Result<PresignAudioMasterUploadResponse>.Failure(orgResult.Error!);
 
         if (string.IsNullOrWhiteSpace(request.FileName) || string.IsNullOrWhiteSpace(request.ContentType))
             return Result<PresignAudioMasterUploadResponse>.Failure(CatalogErrors.InvalidAudioUploadRequest);
@@ -58,14 +65,17 @@ internal sealed class PresignAudioMasterUploadHandler(
         if (!AllowedContentTypes.Contains(request.ContentType))
             return Result<PresignAudioMasterUploadResponse>.Failure(CatalogErrors.InvalidAudioUploadRequest);
 
-        var exists = await db.Tracks
+        var typedId = TrackId.From(trackId);
+        var track = await db.Tracks
             .AsNoTracking()
-            .Where(t => t.Id == TrackId.From(trackId))
-            .Select(_ => 1)
-            .AnyAsync(cancellationToken);
+            .FirstOrDefaultAsync(t => t.Id == typedId, cancellationToken);
 
-        if (!exists)
+        if (track is null)
             return Result<PresignAudioMasterUploadResponse>.Failure(CatalogErrors.TrackNotFound);
+
+        var scope = CatalogScopeGuard.EnsureOrganizationScope(orgResult.Value!, track.OrganizationId);
+        if (!scope.IsSuccess)
+            return Result<PresignAudioMasterUploadResponse>.Failure(scope.Error!);
 
         var ext = ExtensionFromContentType(request.ContentType, request.FileName);
         var key = $"masters/{trackId}/{Guid.CreateVersion7()}{ext}";
@@ -95,4 +105,3 @@ internal sealed class PresignAudioMasterUploadHandler(
         };
     }
 }
-

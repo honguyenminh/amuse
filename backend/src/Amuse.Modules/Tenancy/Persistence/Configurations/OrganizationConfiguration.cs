@@ -23,6 +23,22 @@ internal sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organ
             .HasMaxLength(Organization.MaxDisplayNameLength)
             .IsRequired();
 
+        builder.Property(o => o.Description)
+            .HasColumnName("description")
+            .HasMaxLength(Organization.MaxDescriptionLength);
+
+        builder.Property(o => o.WebsiteUrl)
+            .HasColumnName("website_url")
+            .HasMaxLength(Organization.MaxWebsiteUrlLength);
+
+        builder.Property(o => o.CountryCode)
+            .HasColumnName("country_code")
+            .HasMaxLength(Organization.MaxCountryCodeLength);
+
+        builder.Property(o => o.ImprintName)
+            .HasColumnName("imprint_name")
+            .HasMaxLength(Organization.MaxImprintNameLength);
+
         builder.Property(o => o.OrgClass)
             .HasColumnName("org_class")
             .HasColumnType("tenancy.org_class");

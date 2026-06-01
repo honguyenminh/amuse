@@ -2,6 +2,9 @@
   <Folder Name="/Solution Items/">
     <File Path="compose.yaml" />
   </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Amuse.Worker.Scheduler/Amuse.Worker.Scheduler.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Amuse.Api.IntegrationTests/Amuse.Api.IntegrationTests.csproj" />
     <Project Path="tests/Amuse.Domain.Tests/Amuse.Domain.Tests.csproj" />

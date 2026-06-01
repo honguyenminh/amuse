@@ -285,4 +285,5 @@ curl -s -b cookies.txt -c cookies.txt -X POST "$BASE/api/v1/identity/refresh" \
 | Cookie refresh fails on HTTP | `ASPNETCORE_ENVIRONMENT=Development` (non-Secure cookies) |
 | Browser CORS errors to API | Frontend origin must be `localhost` or `127.0.0.1` on port 3000/3001; API must be `http://localhost:5000` |
 | Cover/audio URLs broken in browser | Compose `Media__PublicBaseUrl` must be `http://localhost:9000`, not `http://minio:9000` |
+| Transcoder ffmpeg `Connection refused` to `localhost:9000` | Worker must presign masters with `Media__Endpoint` (`http://minio:9000` in compose), not `PublicBaseUrl`; see `GetInternalSignedUrl` |
 | 401 not `token_revoked` | Ensure `Authorization` header sent on revoke |

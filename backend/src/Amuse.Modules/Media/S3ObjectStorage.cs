@@ -6,7 +6,8 @@ using Microsoft.Extensions.Options;
 namespace Amuse.Modules.Media;
 
 internal sealed class S3ObjectStorage(
-    IAmazonS3 client,
+    IAmazonS3 internalClient,
+    IAmazonS3 presignClient,
     IOptions<MediaOptions> options) : IObjectStorage
 {
     private readonly MediaOptions _options = options.Value;
@@ -18,7 +19,7 @@ internal sealed class S3ObjectStorage(
     {
         try
         {
-            await client.GetObjectMetadataAsync(
+            await internalClient.GetObjectMetadataAsync(
                 new GetObjectMetadataRequest { BucketName = BucketName(bucket), Key = key },
                 cancellationToken);
             return true;
@@ -37,15 +38,13 @@ internal sealed class S3ObjectStorage(
         CancellationToken cancellationToken = default)
     {
         using var stream = new MemoryStream(data.ToArray(), writable: false);
-        await client.PutObjectAsync(
+        await internalClient.PutObjectAsync(
             new PutObjectRequest
             {
                 BucketName = BucketName(bucket),
                 Key = key,
                 InputStream = stream,
                 ContentType = contentType,
-                // Payload signing must remain enabled when talking to plain-HTTP MinIO
-                // in dev. The AWS SDK refuses to skip signing on non-HTTPS endpoints.
             },
             cancellationToken);
     }
@@ -57,7 +56,7 @@ internal sealed class S3ObjectStorage(
     {
         try
         {
-            using var response = await client.GetObjectAsync(
+            using var response = await internalClient.GetObjectAsync(
                 new GetObjectRequest
                 {
                     BucketName = BucketName(bucket),
@@ -93,7 +92,18 @@ internal sealed class S3ObjectStorage(
             : $"{baseUrl.Replace("://", $"://{bucketName}.", StringComparison.Ordinal)}/{Uri.EscapeDataString(key)}";
     }
 
-    public string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl)
+    public string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl) =>
+        GetPreSignedGetUrl(presignClient, bucket, key, ttl, _options.PublicBaseUrl);
+
+    public string GetInternalSignedUrl(MediaBucket bucket, string key, TimeSpan ttl) =>
+        GetPreSignedGetUrl(internalClient, bucket, key, ttl, _options.Endpoint);
+
+    private string GetPreSignedGetUrl(
+        IAmazonS3 client,
+        MediaBucket bucket,
+        string key,
+        TimeSpan ttl,
+        string serviceBaseUrl)
     {
         var url = client.GetPreSignedURL(new GetPreSignedUrlRequest
         {
@@ -103,10 +113,7 @@ internal sealed class S3ObjectStorage(
             Expires = DateTime.UtcNow.Add(ttl),
         });
 
-        // AWSSDK.S3 always emits https:// in presigned URLs even when the endpoint and
-        // UseHttp config say otherwise. For local MinIO we need to honour the configured
-        // endpoint scheme so the browser can actually fetch the signed URL.
-        return RewriteToHttpIfNeeded(url);
+        return RewriteToHttpIfNeeded(url, serviceBaseUrl);
     }
 
     public string GetSignedUploadUrl(MediaBucket bucket, string key, TimeSpan ttl, string contentType)
@@ -114,7 +121,7 @@ internal sealed class S3ObjectStorage(
         if (string.IsNullOrWhiteSpace(contentType))
             throw new ArgumentException("Content type is required for upload URLs.", nameof(contentType));
 
-        var url = client.GetPreSignedURL(new GetPreSignedUrlRequest
+        var url = presignClient.GetPreSignedURL(new GetPreSignedUrlRequest
         {
             BucketName = BucketName(bucket),
             Key = key,
@@ -123,7 +130,73 @@ internal sealed class S3ObjectStorage(
             ContentType = contentType,
         });
 
-        return RewriteToHttpIfNeeded(url);
+        return RewriteToHttpIfNeeded(url, _options.PublicBaseUrl);
+    }
+
+    public async Task DeleteAsync(
+        MediaBucket bucket,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return;
+
+        try
+        {
+            await internalClient.DeleteObjectAsync(
+                new DeleteObjectRequest
+                {
+                    BucketName = BucketName(bucket),
+                    Key = key,
+                },
+                cancellationToken);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+        }
+    }
+
+    public async Task DeleteByPrefixAsync(
+        MediaBucket bucket,
+        string prefix,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            return;
+
+        var bucketName = BucketName(bucket);
+        string? continuationToken = null;
+
+        do
+        {
+            var listing = await internalClient.ListObjectsV2Async(
+                new ListObjectsV2Request
+                {
+                    BucketName = bucketName,
+                    Prefix = prefix,
+                    ContinuationToken = continuationToken,
+                },
+                cancellationToken);
+
+            var keys = listing.S3Objects
+                .Select(obj => obj.Key)
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .ToList();
+
+            if (keys.Count > 0)
+            {
+                await internalClient.DeleteObjectsAsync(
+                    new DeleteObjectsRequest
+                    {
+                        BucketName = bucketName,
+                        Objects = keys.Select(key => new KeyVersion { Key = key }).ToList(),
+                    },
+                    cancellationToken);
+            }
+
+            continuationToken = listing.IsTruncated == true ? listing.NextContinuationToken : null;
+        }
+        while (continuationToken is not null);
     }
 
     private string BucketName(MediaBucket bucket) => bucket switch
@@ -133,13 +206,15 @@ internal sealed class S3ObjectStorage(
         _ => throw new ArgumentOutOfRangeException(nameof(bucket), bucket, null),
     };
 
-    private string RewriteToHttpIfNeeded(string url)
+    private static string RewriteToHttpIfNeeded(string url, string serviceBaseUrl)
     {
-        if (_options.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        var presignBase = serviceBaseUrl.TrimEnd('/');
+        if (presignBase.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
             && url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             return string.Concat("http://", url.AsSpan("https://".Length));
         }
+
         return url;
     }
 }

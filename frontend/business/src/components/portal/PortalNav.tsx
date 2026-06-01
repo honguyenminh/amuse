@@ -12,16 +12,22 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { isPlatformPersonaActive } from "@/lib/auth/resolveBusinessPersonas";
 import { hasClaim } from "@/lib/auth/jwtClaims";
 import { getAccessToken } from "@/lib/auth/sessionStore";
-import { ClipboardList, LayoutDashboard, Settings, Users } from "lucide-react";
+import { ClipboardList, Disc3, LayoutDashboard, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 
-const orgNavBase = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+};
+
+const orgNavBase: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/members", label: "Members", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 const platformNavItems = [
   {
@@ -36,14 +42,16 @@ export function PortalNav() {
   const pathname = usePathname();
   const auth = useAuth();
   const isPlatform = isPlatformPersonaActive(auth.activePersona);
-  const canReadMembers = hasClaim(getAccessToken(), "read:membership:all");
-  const orgNavItems = useMemo(
-    () =>
-      orgNavBase.filter(
-        (item) => item.href !== "/members" || canReadMembers,
-      ),
-    [canReadMembers],
-  );
+  const token = getAccessToken();
+  const canReadMembers = hasClaim(token, "read:membership:all");
+  const canReadCatalog = hasClaim(token, "read:catalog:all");
+  const orgNavItems = useMemo(() => {
+    const items = [...orgNavBase];
+    if (canReadCatalog) {
+      items.splice(1, 0, { href: "/catalog", label: "Catalog", icon: Disc3 });
+    }
+    return items.filter((item) => item.href !== "/members" || canReadMembers);
+  }, [canReadMembers, canReadCatalog]);
   const navItems = isPlatform ? platformNavItems : orgNavItems;
   const groupLabel = isPlatform ? "Platform" : "Organization";
 

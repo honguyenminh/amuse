@@ -38,7 +38,7 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage
 
         var releaseRows = await db.Releases
             .AsNoTracking()
-            .Where(r => r.ArtistId == typedId)
+            .Where(r => r.ArtistId == typedId && r.LifecycleStatus == ReleaseLifecycleStatus.Published)
             .OrderByDescending(r => r.ReleaseDate)
             .Select(r => new
             {

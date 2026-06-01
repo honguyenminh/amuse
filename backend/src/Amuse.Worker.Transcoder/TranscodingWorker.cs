@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 
 namespace Amuse.Worker.Transcoder;
 
@@ -42,7 +43,7 @@ internal sealed class TranscodingWorker(
             Password = rabbit.Password,
         };
 
-        var connection = await factory.CreateConnectionAsync(stoppingToken);
+        var connection = await ConnectWithRetryAsync(factory, rabbit, stoppingToken);
         var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
         await channel.QueueDeclareAsync(
@@ -150,6 +151,7 @@ internal sealed class TranscodingWorker(
                 if (track is not null)
                 {
                     track.SetAudioStream(job.StreamKey);
+                    track.MarkReady();
                 }
 
                 job.MarkSucceeded(DateTimeOffset.UtcNow);
@@ -239,7 +241,7 @@ internal sealed class TranscodingWorker(
             dashManifestKey);
 
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var inputUrl = storage.GetSignedUrl(MediaBucket.Audio, audioMasterKey, ttl);
+        var inputUrl = storage.GetInternalSignedUrl(MediaBucket.Audio, audioMasterKey, ttl);
 
         var outDir = Path.Combine(
             Path.GetTempPath(),
@@ -397,5 +399,36 @@ internal sealed class TranscodingWorker(
                 trackId,
                 stderr);
         }
+    }
+
+    private async Task<IConnection> ConnectWithRetryAsync(
+        ConnectionFactory factory,
+        RabbitMqOptions rabbit,
+        CancellationToken cancellationToken)
+    {
+        var delay = TimeSpan.FromSeconds(2);
+        const int maxDelaySeconds = 30;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                return await factory.CreateConnectionAsync(cancellationToken);
+            }
+            catch (BrokerUnreachableException ex)
+            {
+                logger.LogWarning(
+                    ex,
+                    "RabbitMQ unreachable at {RabbitHost}:{RabbitPort}; retrying in {RetrySeconds}s",
+                    rabbit.HostName,
+                    rabbit.Port,
+                    delay.TotalSeconds);
+                await Task.Delay(delay, cancellationToken);
+                delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2, maxDelaySeconds));
+            }
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new OperationCanceledException(cancellationToken);
     }
 }

@@ -14,11 +14,12 @@ import { Slider } from "@/components/ui/Slider";
 import { Text } from "@/components/ui/Text";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import { usePlayback, usePlaybackPosition } from "@/lib/playback/PlaybackContext";
+import { useScrubPosition } from "@/lib/playback/useScrubPosition";
 import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
 import { usePageSeed } from "@/theme/ThemeProvider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function PlayingPage() {
   const router = useRouter();
@@ -34,7 +35,6 @@ export default function PlayingPage() {
     toggleShuffle,
   } = usePlayback();
   const smoothMs = usePlaybackPosition();
-  const [scrubMs, setScrubMs] = useState<number | null>(null);
 
   // Theme: this view IS the playing seed, so route the cover into pageSeed for
   // identical resolution to the rest of the app (page > playing > default).
@@ -56,7 +56,10 @@ export default function PlayingPage() {
   const nextRepeat: typeof state.repeat =
     state.repeat === "off" ? "queue" : state.repeat === "queue" ? "one" : "off";
   const max = Math.max(state.durationMs, 1);
-  const displayMs = scrubMs ?? Math.min(smoothMs, max);
+  const { displayMs, sliderProps } = useScrubPosition(smoothMs, max, {
+    beginScrub,
+    endScrub,
+  });
   const canNext = state.currentIndex < state.queue.length - 1 || state.repeat === "queue";
 
   return (
@@ -104,15 +107,7 @@ export default function PlayingPage() {
               min={0}
               max={max}
               step={1}
-              onChange={(next) => setScrubMs(next)}
-              onScrubStart={() => {
-                beginScrub();
-                setScrubMs(displayMs);
-              }}
-              onScrubEnd={(final) => {
-                setScrubMs(null);
-                endScrub(final);
-              }}
+              {...sliderProps}
               label="Seek within current track"
             />
             <div className="flex justify-between text-on-surface-variant tabular-nums">

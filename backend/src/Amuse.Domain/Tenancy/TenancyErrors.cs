@@ -13,6 +13,18 @@ public static class TenancyErrors
     public static readonly DomainError InvalidDisplayName =
         new("tenancy.invalid_display_name", "Organization display name is invalid.");
 
+    public static readonly DomainError InvalidOrganizationDescription =
+        new("tenancy.invalid_organization_description", "Organization description is invalid.");
+
+    public static readonly DomainError InvalidOrganizationWebsiteUrl =
+        new("tenancy.invalid_organization_website_url", "Organization website URL is invalid.");
+
+    public static readonly DomainError InvalidOrganizationCountryCode =
+        new("tenancy.invalid_organization_country_code", "Organization country code is invalid.");
+
+    public static readonly DomainError InvalidOrganizationImprintName =
+        new("tenancy.invalid_organization_imprint_name", "Organization imprint name is invalid.");
+
     public static readonly DomainError NotOrganizationMember =
         new("tenancy.not_organization_member", "Account is not a member of this organization.");
 

@@ -16,6 +16,10 @@ export type OrganizationCapabilities = {
 export type OrganizationResponse = {
   id: string;
   displayName: string;
+  description: string | null;
+  websiteUrl: string | null;
+  countryCode: string | null;
+  imprintName: string | null;
   orgClass: string;
   lifecycleStatus: string;
   onboardingStatus: string;
@@ -94,6 +98,21 @@ export type InvitePreviewResponse = {
   expiresAt: string;
 };
 
+export type TenancyAuditEntryResponse = {
+  id: string;
+  action: string;
+  tableName: string;
+  targetId: string;
+  beforeJson: string | null;
+  afterJson: string | null;
+  changedAt: string;
+  actorAccountId: string | null;
+};
+
+export type TenancyAuditListResponse = {
+  items: TenancyAuditEntryResponse[];
+};
+
 export type AcceptInviteResponse = {
   organizationId: string;
   memberId: string;
@@ -120,13 +139,61 @@ export function getOrganization(id: string): Promise<OrganizationResponse> {
   return authFetch<OrganizationResponse>(`/api/v1/tenancy/organizations/${id}`);
 }
 
+export function updateOrganizationProfile(
+  organizationId: string,
+  body: {
+    description?: string | null;
+    websiteUrl?: string | null;
+    countryCode?: string | null;
+    imprintName?: string | null;
+  },
+): Promise<OrganizationResponse> {
+  return authFetch<OrganizationResponse>(
+    `/api/v1/tenancy/organizations/${organizationId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function listOrganizationAudits(
+  organizationId: string,
+): Promise<TenancyAuditListResponse> {
+  return authFetch<TenancyAuditListResponse>(
+    `/api/v1/tenancy/organizations/${organizationId}/audit`,
+  );
+}
+
 export function createOrganization(
   displayName: string,
   orgClass: OrgClass,
+  options: {
+    createDefaultArtist?: boolean;
+    description?: string | null;
+    websiteUrl?: string | null;
+    countryCode?: string | null;
+    imprintName?: string | null;
+  } = {},
 ): Promise<OrganizationResponse> {
+  const {
+    createDefaultArtist = true,
+    description = null,
+    websiteUrl = null,
+    countryCode = null,
+    imprintName = null,
+  } = options;
   return authFetch<OrganizationResponse>("/api/v1/tenancy/organizations", {
     method: "POST",
-    body: JSON.stringify({ displayName, orgClass }),
+    body: JSON.stringify({
+      displayName,
+      orgClass,
+      description,
+      websiteUrl,
+      countryCode,
+      imprintName,
+      createDefaultArtist,
+    }),
   });
 }
 

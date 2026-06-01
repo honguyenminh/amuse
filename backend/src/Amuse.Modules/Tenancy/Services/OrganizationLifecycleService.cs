@@ -2,6 +2,7 @@ using Amuse.Domain.Identity;
 using Amuse.Domain.Platform;
 using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
+using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Tenancy.Contracts;
 using Amuse.Modules.Tenancy.Persistence;
@@ -12,6 +13,7 @@ namespace Amuse.Modules.Tenancy.Services;
 public sealed class OrganizationLifecycleService(
     TenancyDbContext dbContext,
     IOrganizationCreatorContactLookup creatorContacts,
+    ICatalogManagedArtistVisibility catalogArtistVisibility,
     IClock clock) : IOrganizationLifecycleCommands
 {
     public async Task<IReadOnlyList<OrganizationApplicationSummary>> ListPendingBackingApplicationsAsync(
@@ -109,6 +111,12 @@ public sealed class OrganizationLifecycleService(
             return approve;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await catalogArtistVisibility.SyncManagedArtistsForOrganizationAsync(
+            organizationId,
+            organization.TrustTier,
+            cancellationToken);
+
         return Result.Success();
     }
 

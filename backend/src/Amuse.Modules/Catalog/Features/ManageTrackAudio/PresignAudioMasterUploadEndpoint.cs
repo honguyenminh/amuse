@@ -1,3 +1,4 @@
+using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Common.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -13,12 +14,17 @@ public static class PresignAudioMasterUploadEndpoint
                 Guid trackId,
                 PresignAudioMasterUploadRequest request,
                 PresignAudioMasterUploadHandler handler,
+                HttpContext httpContext,
                 CancellationToken cancellationToken) =>
             {
-                var result = await handler.HandleAsync(trackId, request, cancellationToken);
+                var result = await handler.HandleAsync(
+                    trackId,
+                    request,
+                    httpContext.User,
+                    cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization()
+            .RequireAuthorization(OrgPolicies.UploadCatalog)
             .WithRequestValidation()
             .WithName("PresignCatalogTrackAudioMasterUpload")
             .WithSummary("Return a short-lived presigned PUT URL for uploading a track master audio file.")

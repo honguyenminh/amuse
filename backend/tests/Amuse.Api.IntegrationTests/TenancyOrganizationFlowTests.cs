@@ -5,6 +5,7 @@ using System.Text.Json;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Identity.Features.Shared;
 using Amuse.Modules.Platform.Features.ListOrganizationApplications;
+using Amuse.Modules.Tenancy.Features.ListOrganizationAudit;
 using Amuse.Modules.Tenancy.Features.Shared;
 using Microsoft.AspNetCore.WebUtilities;
 
@@ -33,7 +34,7 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
         var created = await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions);
         Assert.NotNull(created);
         Assert.Equal("notRequired", created.OnboardingStatus);
-        Assert.False(created.Capabilities.CanPublishPublic);
+        Assert.True(created.Capabilities.CanPublishPublic);
 
         var refresh = await client.PostAsJsonAsync(
             "/api/v1/identity/refresh",
@@ -53,6 +54,69 @@ public sealed class TenancyOrganizationFlowTests(AmuseApiFixture fixture)
 
         var profile = await client.GetAsync($"/api/v1/tenancy/organizations/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+    }
+
+    [Fact]
+    public async Task Owner_can_update_organization_profile_and_list_audit()
+    {
+        using var client = fixture.CreateClient();
+        const string email = "org-profile@amuse.test";
+        const string password = "Password1234!";
+
+        await RegisterAndConfirmAsync(client, email, password);
+        var accountTokens = await LoginListenerTokensAsync(client, email, password);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new
+            {
+                displayName = "Profile Update Org",
+                orgClass = OrganizationClass.IndieGroup,
+                description = "Initial description",
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions);
+        Assert.NotNull(created);
+
+        var orgTokens = await RefreshOrgPersonaAsync(
+            client,
+            accountTokens.RefreshToken!,
+            created.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+
+        var update = await client.PatchAsJsonAsync(
+            $"/api/v1/tenancy/organizations/{created.Id}",
+            new
+            {
+                description = "Updated organization description",
+                websiteUrl = "https://example.com",
+                countryCode = "US",
+                imprintName = "Example Imprint",
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        var updated = await update.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions);
+        Assert.NotNull(updated);
+        Assert.Equal("Updated organization description", updated.Description);
+        Assert.Equal("https://example.com", updated.WebsiteUrl);
+        Assert.Equal("US", updated.CountryCode);
+        Assert.Equal("Example Imprint", updated.ImprintName);
+
+        var audit = await client.GetFromJsonAsync<TenancyAuditListResponse>(
+            $"/api/v1/tenancy/organizations/{created.Id}/audit",
+            JsonOptions);
+        Assert.NotNull(audit);
+        Assert.Contains(audit.Items, entry => entry.Action == "created");
+        Assert.Contains(audit.Items, entry => entry.Action == "updated");
+        Assert.Contains(
+            audit.Items,
+            entry => entry.Action == "updated"
+                     && entry.AfterJson?.Contains("Updated organization description") == true);
     }
 
     [Fact]

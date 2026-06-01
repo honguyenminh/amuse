@@ -7,4 +7,8 @@ public static class OrgPolicies
     public const string ManageMemberPermissions = "OrgManageMemberPermissions";
     public const string ReadOrg = "OrgReadOrg";
     public const string ManageOrg = "OrgManageOrg";
+    public const string ReadCatalog = "OrgReadCatalog";
+    public const string WriteDraftCatalog = "OrgWriteDraftCatalog";
+    public const string UploadCatalog = "OrgUploadCatalog";
+    public const string PublishCatalog = "OrgPublishCatalog";
 }

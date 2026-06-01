@@ -49,6 +49,11 @@ export function CreateOrganizationForm({
 }: CreateOrganizationFormProps) {
   const [displayName, setDisplayName] = useState("");
   const [orgClass, setOrgClass] = useState<OrgClass>("indieGroup");
+  const [createDefaultArtist, setCreateDefaultArtist] = useState(true);
+  const [description, setDescription] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [countryCode, setCountryCode] = useState("");
+  const [imprintName, setImprintName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,7 +72,13 @@ export function CreateOrganizationForm({
     setSubmitting(true);
     setError(null);
     try {
-      const organization = await createOrganization(trimmed, orgClass);
+      const organization = await createOrganization(trimmed, orgClass, {
+        description: description.trim() || null,
+        websiteUrl: websiteUrl.trim() || null,
+        countryCode: countryCode.trim() || null,
+        imprintName: imprintName.trim() || null,
+        createDefaultArtist: orgClass === "indieGroup" ? createDefaultArtist : false,
+      });
       await onCreated(organization);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -128,6 +139,66 @@ export function CreateOrganizationForm({
           })}
         </div>
       </fieldset>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="description">Description</Label>
+          <Input
+            id="description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Optional organization profile description"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="websiteUrl">Website</Label>
+          <Input
+            id="websiteUrl"
+            value={websiteUrl}
+            onChange={(event) => setWebsiteUrl(event.target.value)}
+            placeholder="https://example.com"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="countryCode">Country code</Label>
+          <Input
+            id="countryCode"
+            value={countryCode}
+            onChange={(event) => setCountryCode(event.target.value)}
+            placeholder="e.g. US"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="imprintName">Imprint name</Label>
+          <Input
+            id="imprintName"
+            value={imprintName}
+            onChange={(event) => setImprintName(event.target.value)}
+            placeholder="Optional label imprint"
+          />
+        </div>
+      </div>
+
+      {orgClass === "indieGroup" ? (
+        <div className="flex items-start gap-3">
+          <input
+            id="createDefaultArtist"
+            type="checkbox"
+            checked={createDefaultArtist}
+            onChange={(event) => setCreateDefaultArtist(event.target.checked)}
+            className="mt-1 size-4 rounded border border-input accent-primary"
+          />
+          <div className="grid gap-1">
+            <Label htmlFor="createDefaultArtist" className="cursor-pointer">
+              Create default artist profile
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Adds an artist roster entry using your organization name so you can start
+              uploading releases immediately.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

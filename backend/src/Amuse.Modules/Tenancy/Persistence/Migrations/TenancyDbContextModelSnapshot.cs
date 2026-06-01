@@ -42,6 +42,11 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("approved_by_operator_id");
 
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("country_code");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at");
@@ -50,11 +55,21 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_account_id");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("display_name");
+
+                    b.Property<string>("ImprintName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("imprint_name");
 
                     b.Property<OrganizationLifecycleStatus>("LifecycleStatus")
                         .HasColumnType("tenancy.organization_lifecycle_status")
@@ -80,6 +95,11 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at");
+
+                    b.Property<string>("WebsiteUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("website_url");
 
                     b.HasKey("Id");
 

@@ -65,6 +65,7 @@ public interface IObjectStorage
     Task<StoredObject?> GetAsync(MediaBucket bucket, string key, CancellationToken ct = default);
     string GetPublicUrl(MediaBucket bucket, string key);
     string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl);
+    string GetInternalSignedUrl(MediaBucket bucket, string key, TimeSpan ttl);
     string GetSignedUploadUrl(MediaBucket bucket, string key, TimeSpan ttl, string contentType);
 }
 ```
@@ -73,9 +74,13 @@ Implementation: `S3ObjectStorage` (uses `AWSSDK.S3` 4.0.x). Singleton, configure
 `MediaModule.AddMediaModule(configuration)` in `Program.cs`.
 
 `GetPublicUrl` throws if called on a non-public bucket. `GetSignedUrl` returns a
-presigned GET URL. `GetSignedUploadUrl` returns a presigned PUT URL for direct client
-uploads. `GetAsync` is used by the authenticated DASH manifest endpoint to read the MPD
-payload from object storage.
+presigned GET URL signed for `PublicBaseUrl` (browser/client reachability).
+`GetInternalSignedUrl` returns a presigned GET URL signed for `Endpoint` — use for
+server-side consumers such as the transcoder worker (`ffmpeg`), which must not use
+`localhost` when `Endpoint` is an in-compose hostname like `http://minio:9000`.
+`GetSignedUploadUrl` returns a presigned PUT URL for direct client uploads. `GetAsync`
+is used by the authenticated DASH manifest endpoint to read the MPD payload from object
+storage.
 
 ### MinIO quirks the impl handles
 

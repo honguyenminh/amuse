@@ -57,6 +57,42 @@ public static class OrgAuthorizationExtensions
                     [OrgClaim.ScopeWideClaim("manage", "org")],
                     OrgClaimMatchMode.Any));
             });
+
+            options.AddPolicy(OrgPolicies.ReadCatalog, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeWideClaim("read", "catalog")],
+                    OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.WriteDraftCatalog, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeWideClaim("write_draft", "catalog")],
+                    OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.UploadCatalog, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeWideClaim("upload", "catalog")],
+                    OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.PublishCatalog, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeWideClaim("publish_public", "catalog")],
+                    OrgClaimMatchMode.Any));
+            });
         });
 
         return services;

@@ -1,6 +1,7 @@
 using Amuse.Domain.Identity;
 using Amuse.Domain.Platform;
 using Amuse.Domain.Tenancy;
+using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Tenancy.Persistence;
 using Amuse.Modules.Tenancy.Contracts;
@@ -24,6 +25,7 @@ public sealed class OrganizationLifecycleServiceTests
     IOrganizationLifecycleCommands service = new OrganizationLifecycleService(
       db,
       new EmptyCreatorContactLookup(),
+      new NoOpCatalogManagedArtistVisibility(),
       clock);
 
     var result = await service.ApproveBackingOrganizationAsync(
@@ -58,5 +60,14 @@ public sealed class OrganizationLifecycleServiceTests
       CancellationToken cancellationToken) =>
       Task.FromResult<IReadOnlyDictionary<Guid, OrganizationApplicationOwner>>(
         new Dictionary<Guid, OrganizationApplicationOwner>());
+  }
+
+  private sealed class NoOpCatalogManagedArtistVisibility : ICatalogManagedArtistVisibility
+  {
+    public Task SyncManagedArtistsForOrganizationAsync(
+      OrganizationId organizationId,
+      OrganizationTrustTier organizationTrustTier,
+      CancellationToken cancellationToken = default) =>
+      Task.CompletedTask;
   }
 }

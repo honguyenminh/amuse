@@ -361,12 +361,27 @@ export function usePlaybackPosition(): number {
   const { state, audioRef } = usePlayback();
   const [playheadMs, setPlayheadMs] = useState(state.positionMs);
   const resumeFromPauseRef = useRef(true);
+  const prevPositionMsRef = useRef(state.positionMs);
+  const seekHoldMsRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (state.isPlaying) return;
     resumeFromPauseRef.current = true;
+    seekHoldMsRef.current = null;
     setPlayheadMs(state.positionMs);
   }, [state.isPlaying, state.positionMs, state.currentIndex]);
+
+  useEffect(() => {
+    if (!state.isPlaying) return;
+
+    const prev = prevPositionMsRef.current;
+    prevPositionMsRef.current = state.positionMs;
+    const delta = Math.abs(state.positionMs - prev);
+    if (delta > 500) {
+      seekHoldMsRef.current = state.positionMs;
+      setPlayheadMs(state.positionMs);
+    }
+  }, [state.positionMs, state.isPlaying]);
 
   useEffect(() => {
     if (!state.isPlaying) return;
@@ -382,7 +397,18 @@ export function usePlaybackPosition(): number {
 
     let raf = 0;
     const loop = () => {
-      setPlayheadMs(readAudioPositionMs(audio));
+      const fromAudio = readAudioPositionMs(audio);
+      const hold = seekHoldMsRef.current;
+      if (hold !== null) {
+        if (Math.abs(fromAudio - hold) <= 500) {
+          seekHoldMsRef.current = null;
+          setPlayheadMs(fromAudio);
+        } else {
+          setPlayheadMs(hold);
+        }
+      } else {
+        setPlayheadMs(fromAudio);
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);

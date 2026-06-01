@@ -10,14 +10,14 @@ public sealed class OrganizationCapabilitiesTests
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-05-27T00:00:00+00:00");
 
     [Fact]
-    public void Indie_group_active_allows_upload_but_not_publish_public()
+    public void Indie_group_active_allows_upload_and_publish_to_discover()
     {
         var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
         var capabilities = org.EvaluateCapabilities();
 
         Assert.True(capabilities.CanUpload);
         Assert.True(capabilities.CanWriteDraft);
-        Assert.False(capabilities.CanPublishPublic);
+        Assert.True(capabilities.CanPublishPublic);
         Assert.False(capabilities.CanReadPayout);
     }
 
