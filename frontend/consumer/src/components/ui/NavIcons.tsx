@@ -34,8 +34,12 @@ export function SearchIcon({ className }: IconProps) {
 export function SettingsIcon({ className }: IconProps) {
   return (
     <svg {...baseProps} className={className} aria-hidden>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <circle cx="8" cy="6" r="2" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <circle cx="16" cy="12" r="2" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+      <circle cx="11" cy="18" r="2" />
     </svg>
   );
 }

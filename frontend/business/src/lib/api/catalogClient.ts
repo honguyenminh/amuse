@@ -265,6 +265,20 @@ export type CompleteArtistAvatarUploadResponse = {
   avatarUrl: string | null;
 };
 
+export type PresignArtistCoverUploadResponse = {
+  artistId: string;
+  key: string;
+  url: string;
+  expiresAt: string;
+  method: string;
+};
+
+export type CompleteArtistCoverUploadResponse = {
+  artistId: string;
+  coverKey: string;
+  coverUrl: string | null;
+};
+
 export const CATALOG_AUDIT_TABLES = {
   artist: "catalog.artist",
   release: "catalog.release",
@@ -614,6 +628,32 @@ export function completeArtistAvatarUpload(
 ): Promise<CompleteArtistAvatarUploadResponse> {
   return authFetch<CompleteArtistAvatarUploadResponse>(
     `/api/v1/catalog/artists/${artistId}/avatar/complete`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function presignArtistCoverUpload(
+  artistId: string,
+  body: { fileName: string; contentType: string },
+): Promise<PresignArtistCoverUploadResponse> {
+  return authFetch<PresignArtistCoverUploadResponse>(
+    `/api/v1/catalog/artists/${artistId}/cover/presign-upload`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function completeArtistCoverUpload(
+  artistId: string,
+  body: { key: string },
+): Promise<CompleteArtistCoverUploadResponse> {
+  return authFetch<CompleteArtistCoverUploadResponse>(
+    `/api/v1/catalog/artists/${artistId}/cover/complete`,
     {
       method: "POST",
       body: JSON.stringify(body),

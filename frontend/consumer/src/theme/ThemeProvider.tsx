@@ -10,7 +10,6 @@ import {
 } from "react";
 import { applyThemeVariables } from "./applyThemeVariables";
 import { DEFAULT_APP_SEED } from "./defaultPalette";
-import { makePausedVariant } from "./makePausedVariant";
 import { resolveEffectiveSeed } from "./resolveEffectiveSeed";
 import { seedToPalette } from "./seedToPalette";
 import type { ColorSeed } from "./types";
@@ -33,18 +32,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [pageSeed, setPageSeed] = useState<ColorSeed | null>(null);
   const [isPaused, setPaused] = useState(false);
 
-  const effectiveSeed = useMemo(() => {
-    const base = resolveEffectiveSeed({
-      pageSeed,
-      playingSeed,
-      defaultSeed: DEFAULT_APP_SEED,
-    });
-    return isPaused ? makePausedVariant(base) : base;
-  }, [pageSeed, playingSeed, isPaused]);
+  const effectiveSeed = useMemo(
+    () =>
+      resolveEffectiveSeed({
+        pageSeed,
+        playingSeed,
+        defaultSeed: DEFAULT_APP_SEED,
+      }),
+    [pageSeed, playingSeed],
+  );
 
   useEffect(() => {
-    applyThemeVariables(seedToPalette(effectiveSeed));
-  }, [effectiveSeed]);
+    applyThemeVariables(seedToPalette(effectiveSeed, { paused: isPaused }));
+  }, [effectiveSeed, isPaused]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({

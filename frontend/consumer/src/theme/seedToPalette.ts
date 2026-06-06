@@ -1,64 +1,54 @@
+import { DynamicScheme, Hct } from "@material/material-color-utilities";
+import { argbToOklch, colorSeedToArgb } from "./colorConvert";
+import { makePausedPalette } from "./makePausedPalette";
+import { SCHEME_CONTRAST, SCHEME_VARIANT } from "./schemeConfig";
 import type { ColorSeed, SemanticPalette } from "./types";
 
-function oklch(l: number, c: number, h: number): string {
-  return `oklch(${clamp(l, 0, 1).toFixed(3)} ${Math.max(0, c).toFixed(3)} ${normalizeHue(h).toFixed(1)})`;
-}
+export type SeedToPaletteOptions = {
+  paused?: boolean;
+};
 
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
-
-function normalizeHue(h: number): number {
-  const x = h % 360;
-  return x < 0 ? x + 360 : x;
-}
-
-/** Foreground on a filled primary/secondary swatch (saturated). */
-function contrastOn(l: number, h: number): string {
-  return l >= 0.58 ? oklch(0.12, 0.03, h) : oklch(0.97, 0.01, h);
-}
-
-/** Foreground on a tonal container (lighter, lower chroma). Bias darker text earlier — mid-L containers need near-black, not gray-purple. */
-function contrastOnContainer(containerL: number, h: number): string {
-  return containerL >= 0.52 ? oklch(0.12, 0.04, h) : oklch(0.96, 0.02, h);
+function seedToSourceHct(seed: ColorSeed): Hct {
+  return Hct.fromInt(colorSeedToArgb(seed));
 }
 
 /**
- * Builds a Material-like semantic palette from a single OKLCH seed.
+ * Builds a semantic palette from a single OKLCH seed using Material Color
+ * Utilities (M3 scheme variant from schemeConfig).
  */
-export function seedToPalette(seed: ColorSeed): SemanticPalette {
-  const { l, c, h } = seed;
-  const primary = oklch(l, c, h);
-  const onPrimary = contrastOn(l, h);
-  const primaryContainerL = clamp(l + 0.12, 0, 1);
-  const primaryContainer = oklch(primaryContainerL, c * 0.55, h);
-  const onPrimaryContainer = contrastOnContainer(primaryContainerL, h);
-  const secondary = oklch(clamp(l - 0.05, 0, 1), c * 0.75, h + 30);
-  const onSecondary = contrastOn(l - 0.05, h);
-  const surface = oklch(0.98, c * 0.04, h);
-  const onSurface = oklch(0.15, 0.02, h);
-  const surfaceVariant = oklch(0.93, c * 0.08, h);
-  const onSurfaceVariant = oklch(0.28, 0.03, h);
-  const background = oklch(0.99, c * 0.03, h);
-  const onBackground = oklch(0.12, 0.02, h);
+export function seedToPalette(
+  seed: ColorSeed,
+  options: SeedToPaletteOptions = {},
+): SemanticPalette {
+  const paused = options.paused ?? false;
+  const scheme = new DynamicScheme({
+    sourceColorHct: seedToSourceHct(seed),
+    variant: SCHEME_VARIANT,
+    contrastLevel: SCHEME_CONTRAST,
+    isDark: false,
+  });
 
-  return {
-    primary,
-    onPrimary,
-    primaryContainer,
-    onPrimaryContainer,
-    secondary,
-    onSecondary,
-    surface,
-    onSurface,
-    surfaceVariant,
-    onSurfaceVariant,
-    outline: oklch(0.55, c * 0.12, h),
-    error: oklch(0.55, 0.22, 25),
-    onError: oklch(0.99, 0.01, 25),
-    background,
-    onBackground,
+  const palette: SemanticPalette = {
+    primary: argbToOklch(scheme.primary),
+    onPrimary: argbToOklch(scheme.onPrimary),
+    primaryContainer: argbToOklch(scheme.primaryContainer),
+    onPrimaryContainer: argbToOklch(scheme.onPrimaryContainer),
+    secondary: argbToOklch(scheme.secondary),
+    onSecondary: argbToOklch(scheme.onSecondary),
+    tertiaryContainer: argbToOklch(scheme.tertiaryContainer),
+    onTertiaryContainer: argbToOklch(scheme.onTertiaryContainer),
+    surface: argbToOklch(scheme.surface),
+    onSurface: argbToOklch(scheme.onSurface),
+    surfaceVariant: argbToOklch(scheme.surfaceVariant),
+    onSurfaceVariant: argbToOklch(scheme.onSurfaceVariant),
+    outline: argbToOklch(scheme.outline),
+    error: argbToOklch(scheme.error),
+    onError: argbToOklch(scheme.onError),
+    background: argbToOklch(scheme.background),
+    onBackground: argbToOklch(scheme.onBackground),
   };
+
+  return paused ? makePausedPalette(palette) : palette;
 }
 
 export function parseSeed(input: string | ColorSeed | undefined | null): ColorSeed | null {

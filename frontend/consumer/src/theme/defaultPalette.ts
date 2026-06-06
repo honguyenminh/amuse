@@ -1,8 +1,8 @@
 import type { ColorSeed, SemanticPalette } from "./types";
 import { seedToPalette } from "./seedToPalette";
 
-/** Default app seed - saturated violet (expressive bold baseline). */
-export const DEFAULT_APP_SEED: ColorSeed = { l: 0.52, c: 0.22, h: 285 };
+/** Default app seed before cover art loads (M3 expressive rotates hues from this). */
+export const DEFAULT_APP_SEED: ColorSeed = { l: 0.52, c: 0.28, h: 285 };
 
 export const DEFAULT_PALETTE: SemanticPalette = seedToPalette(DEFAULT_APP_SEED);
 

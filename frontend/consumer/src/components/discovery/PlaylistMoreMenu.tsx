@@ -11,10 +11,12 @@ type PlaylistMoreMenuProps = {
   onReorderModeChange: (enabled: boolean) => void;
   visibility: string;
   canEdit: boolean;
+  showEditDetails?: boolean;
   isDeletable: boolean;
   busy?: boolean;
   onToggleVisibility: () => void;
   onEditShares: () => void;
+  onEditDetails: () => void;
   onDelete: () => void;
 };
 
@@ -49,10 +51,12 @@ export function PlaylistMoreMenu({
   onReorderModeChange,
   visibility,
   canEdit,
+  showEditDetails = true,
   isDeletable,
   busy = false,
   onToggleVisibility,
   onEditShares,
+  onEditDetails,
   onDelete,
 }: PlaylistMoreMenuProps) {
   const [open, setOpen] = useState(false);
@@ -76,6 +80,16 @@ export function PlaylistMoreMenu({
         align="end"
         className="min-w-[12rem] rounded-md border-2 border-outline bg-surface py-1 shadow-lg"
       >
+        {showEditDetails ? (
+          <MenuItem
+            label="Edit details"
+            disabled={!canEdit || busy}
+            onClick={() => {
+              close();
+              onEditDetails();
+            }}
+          />
+        ) : null}
         <MenuItem
           label={reorderMode ? "Done reordering" : "Reorder tracks"}
           disabled={!canEdit || busy}

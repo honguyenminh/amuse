@@ -33,14 +33,14 @@ function NavLink({ href, icon, label, active, onClick }: NavLinkProps) {
       className={cn(
         "flex items-center gap-3 rounded-md px-3 py-2 text-label-large transition-colors",
         active
-          ? "bg-primary text-on-primary"
+          ? "bg-primary-container text-on-primary-container"
           : "text-on-surface hover:bg-surface-variant",
       )}
     >
       <span
         className={cn(
           "flex h-6 w-6 items-center justify-center",
-          active ? "text-on-primary" : "text-on-surface-variant",
+          active ? "text-on-primary-container" : "text-on-surface-variant",
         )}
       >
         {icon}
@@ -48,6 +48,28 @@ function NavLink({ href, icon, label, active, onClick }: NavLinkProps) {
       <span>{label}</span>
     </Link>
   );
+}
+
+type SidebarTab = "/home" | "/search" | "/library" | "/settings";
+
+/** Maps route `activePath` to the primary sidebar tab that should appear selected. */
+function sidebarActiveTab(activePath: string): SidebarTab {
+  if (
+    activePath === "/library" ||
+    activePath.startsWith("/library/") ||
+    activePath === "/playlist" ||
+    activePath.startsWith("/playlist/")
+  ) {
+    return "/library";
+  }
+  if (activePath === "/search" || activePath.startsWith("/search/")) {
+    return "/search";
+  }
+  if (activePath === "/settings" || activePath.startsWith("/settings/")) {
+    return "/settings";
+  }
+  // Home feed and discovery drill-downs (artist, release, hashtag, playing, …).
+  return "/home";
 }
 
 type SidebarProps = {
@@ -66,8 +88,7 @@ export function Sidebar({
 }: SidebarProps) {
   const auth = useAuth();
   const isDrawer = variant === "drawer";
-  const isActive = (prefix: string) =>
-    activePath === prefix || activePath.startsWith(`${prefix}/`);
+  const activeTab = sidebarActiveTab(activePath);
 
   return (
     <aside
@@ -106,28 +127,28 @@ export function Sidebar({
           href="/home"
           icon={<HomeIcon />}
           label="Home"
-          active={isActive("/home")}
+          active={activeTab === "/home"}
           onClick={onNavigate}
         />
         <NavLink
           href="/search"
           icon={<SearchIcon />}
           label="Search"
-          active={isActive("/search")}
+          active={activeTab === "/search"}
           onClick={onNavigate}
         />
         <NavLink
           href="/library"
           icon={<LibraryIcon />}
           label="Library"
-          active={isActive("/library")}
+          active={activeTab === "/library"}
           onClick={onNavigate}
         />
         <NavLink
           href="/settings"
           icon={<SettingsIcon />}
           label="Settings"
-          active={isActive("/settings")}
+          active={activeTab === "/settings"}
           onClick={onNavigate}
         />
       </nav>

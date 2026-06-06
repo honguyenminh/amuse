@@ -8,35 +8,35 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { uploadArtistAvatar } from "@/lib/catalog/artistAvatar";
+import { uploadArtistCover } from "@/lib/catalog/artistCover";
 import { ImageIcon, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-type AvatarUploadStatus = "idle" | "uploading" | "success" | "error";
+type CoverUploadStatus = "idle" | "uploading" | "success" | "error";
 
-type ArtistAvatarPanelProps = {
+type ArtistCoverPanelProps = {
   artistId: string;
   artistName: string;
-  avatarUrl: string | null;
+  coverUrl: string | null;
   canUpload: boolean;
-  onAvatarUpdated: (avatarUrl: string | null) => void;
+  onCoverUpdated: (coverUrl: string | null) => void;
 };
 
-export function ArtistAvatarPanel({
+export function ArtistCoverPanel({
   artistId,
   artistName,
-  avatarUrl,
+  coverUrl,
   canUpload,
-  onAvatarUpdated,
-}: ArtistAvatarPanelProps) {
+  onCoverUpdated,
+}: ArtistCoverPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [status, setStatus] = useState<AvatarUploadStatus>("idle");
+  const [status, setStatus] = useState<CoverUploadStatus>("idle");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(avatarUrl);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(coverUrl);
 
   useEffect(() => {
-    setPreviewUrl(avatarUrl);
-  }, [avatarUrl]);
+    setPreviewUrl(coverUrl);
+  }, [coverUrl]);
 
   useEffect(() => {
     if (status !== "success") {
@@ -51,20 +51,20 @@ export function ArtistAvatarPanel({
 
   async function onFileSelected(file: File) {
     setStatus("uploading");
-    setStatusMessage("Uploading profile picture…");
+    setStatusMessage("Uploading cover image…");
     setPreviewUrl(URL.createObjectURL(file));
 
     try {
-      const result = await uploadArtistAvatar(artistId, file);
-      onAvatarUpdated(result.avatarUrl);
-      setPreviewUrl(result.avatarUrl ?? URL.createObjectURL(file));
+      const result = await uploadArtistCover(artistId, file);
+      onCoverUpdated(result.coverUrl);
+      setPreviewUrl(result.coverUrl ?? URL.createObjectURL(file));
       setStatus("success");
-      setStatusMessage("Profile picture saved.");
+      setStatusMessage("Cover image saved.");
     } catch (err) {
-      setPreviewUrl(avatarUrl);
+      setPreviewUrl(coverUrl);
       setStatus("error");
       setStatusMessage(
-        err instanceof Error ? err.message : "Failed to upload profile picture.",
+        err instanceof Error ? err.message : "Failed to upload cover image.",
       );
     }
   }
@@ -74,26 +74,26 @@ export function ArtistAvatarPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile picture</CardTitle>
+        <CardTitle>Cover image</CardTitle>
         <CardDescription>
           {canUpload
             ? "Choosing a file saves immediately — there is no separate Save button."
-            : `${artistName}'s profile picture.`}
+            : `${artistName}'s cover image.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="flex shrink-0 items-center justify-center">
+        <div className="flex w-full shrink-0 items-center justify-center sm:w-auto">
           {displayUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={displayUrl}
-              alt={`${artistName} profile picture`}
-              className="aspect-square size-40 rounded-full border object-cover shadow-sm"
+              alt={`${artistName} cover`}
+              className="aspect-[3/1] w-full max-w-md rounded-md border object-cover shadow-sm sm:w-80"
             />
           ) : (
-            <div className="flex aspect-square size-40 flex-col items-center justify-center gap-2 rounded-full border border-dashed bg-muted/40 text-muted-foreground">
+            <div className="flex aspect-[3/1] w-full max-w-md flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-muted/40 text-muted-foreground sm:w-80">
               <ImageIcon className="size-8 opacity-60" />
-              <span className="text-xs">No picture yet</span>
+              <span className="text-xs">No cover yet</span>
             </div>
           )}
         </div>
@@ -113,11 +113,12 @@ export function ArtistAvatarPanel({
             </p>
           ) : displayUrl ? (
             <p className="text-muted-foreground">
-              Profile picture is set for this artist.
+              Cover image is set for this artist.
             </p>
           ) : (
             <p className="text-muted-foreground">
-              Upload a square image to show on the artist page in the consumer app.
+              Upload a wide banner image for the artist page header in the consumer
+              app.
             </p>
           )}
 
@@ -148,11 +149,11 @@ export function ArtistAvatarPanel({
                 {status === "uploading"
                   ? "Uploading…"
                   : displayUrl
-                    ? "Replace profile picture"
-                    : "Upload profile picture"}
+                    ? "Replace cover image"
+                    : "Upload cover image"}
               </Button>
               <p className="text-xs text-muted-foreground">
-                JPEG, PNG, or WebP.
+                JPEG, PNG, or WebP. A wide landscape image works best.
               </p>
             </>
           ) : null}

@@ -7,6 +7,7 @@ import { AppShell } from "@/components/ui/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PlaylistFormDialog } from "@/components/ui/PlaylistFormDialog";
 import { PageContent } from "@/components/ui/PageContent";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
@@ -66,6 +67,8 @@ export function PlaylistDetailView({
   const [busy, setBusy] = useState(false);
 
   const [makePrivateDialogOpen, setMakePrivateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [editShares, setEditShares] = useState(false);
   const [sharesDraft, setSharesDraft] = useState("");
   const [reorderMode, setReorderMode] = useState(false);
@@ -236,10 +239,30 @@ export function PlaylistDetailView({
   };
 
   const onDelete = () => {
-    if (!window.confirm("Delete this playlist? This cannot be undone.")) return;
+    setDeleteDialogOpen(true);
+  };
+
+  const onConfirmDelete = () => {
+    setDeleteDialogOpen(false);
     void runAction(async () => {
       await deletePlaylist(activePlaylistId);
       router.push("/library/playlists");
+    });
+  };
+
+  const onConfirmEditDetails = ({
+    title,
+    description,
+  }: {
+    title: string;
+    description: string;
+  }) => {
+    setEditDetailsOpen(false);
+    void runAction(async () => {
+      await updatePlaylist(activePlaylistId, {
+        title,
+        description,
+      });
     });
   };
 
@@ -276,14 +299,14 @@ export function PlaylistDetailView({
         <>
           <Card>
               <div className="flex items-start gap-2">
-                <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-end">
+                <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start">
                 <PlaylistCoverArt coverArtUrls={coverArtUrls} variant="hero" />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <Text variant="label-medium" className="text-on-surface-variant">
                     {isLikedMode ? `Liked · ${visibilityLabel.toLowerCase()}` : visibilityLabel}
                   </Text>
                   <Text variant="headline-medium">{playlist.title}</Text>
-                  {!isLikedMode && playlist.owner ? (
+                  {!isLikedMode && playlist.owner && !playlist.isOwned ? (
                     <Text variant="title-medium">{ownerName}</Text>
                   ) : null}
                   {!isLikedMode && playlist.description ? (
@@ -302,6 +325,51 @@ export function PlaylistDetailView({
                       Forked from original playlist
                     </Link>
                   ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={isPlayingThisPlaylist && state.isPlaying ? toggle : playAll}
+                      disabled={playbackTracks.length === 0}
+                    >
+                      {isPlayingThisPlaylist && state.isPlaying ? "Pause" : "Play all"}
+                    </Button>
+
+                    {!isLikedMode && !playlist.isOwned && auth.isAuthenticated ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outlined"
+                          disabled={busy}
+                          onClick={onToggleSave}
+                        >
+                          {playlist.isSaved ? "Unsave" : "Save"}
+                        </Button>
+                        {playlist.visibility === "public" ? (
+                          <Button
+                            type="button"
+                            variant="outlined"
+                            disabled={busy}
+                            onClick={onToggleFollow}
+                          >
+                            {playlist.isFollowed ? "Unfollow" : "Follow"}
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="outlined"
+                          disabled={busy}
+                          onClick={onFork}
+                        >
+                          Fork
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                  {actionError ? (
+                    <Text variant="label-medium" className="mt-2 text-error">
+                      {actionError}
+                    </Text>
+                  ) : null}
                 </div>
                 </div>
                 {playlist.isOwned && auth.isAuthenticated ? (
@@ -314,58 +382,12 @@ export function PlaylistDetailView({
                     busy={busy}
                     onToggleVisibility={onToggleVisibility}
                     onEditShares={() => setEditShares(true)}
+                    onEditDetails={() => setEditDetailsOpen(true)}
+                    showEditDetails={!isLikedMode}
                     onDelete={onDelete}
                   />
                 ) : null}
               </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    onClick={isPlayingThisPlaylist && state.isPlaying ? toggle : playAll}
-                    disabled={playbackTracks.length === 0}
-                  >
-                    {isPlayingThisPlaylist && state.isPlaying ? "Pause" : "Play all"}
-                  </Button>
-
-                  {!isLikedMode && !playlist.isOwned && auth.isAuthenticated ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        disabled={busy}
-                        onClick={onToggleSave}
-                      >
-                        {playlist.isSaved ? "Unsave" : "Save"}
-                      </Button>
-                      {playlist.visibility === "public" ? (
-                        <Button
-                          type="button"
-                          variant="outlined"
-                          disabled={busy}
-                          onClick={onToggleFollow}
-                        >
-                          {playlist.isFollowed ? "Unfollow" : "Follow"}
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        disabled={busy}
-                        onClick={onFork}
-                      >
-                        Fork
-                      </Button>
-                    </>
-                  ) : null}
-
-                </div>
-
-              {actionError ? (
-                <Text variant="label-medium" className="mt-2 text-error">
-                  {actionError}
-                </Text>
-              ) : null}
             </Card>
 
             {editShares && playlist.isOwned && playlist.visibility === "private" && canEditTracks ? (
@@ -416,37 +438,61 @@ export function PlaylistDetailView({
   );
 
   const dialog = (
-    <ConfirmDialog
-      open={makePrivateDialogOpen}
-      title="Make playlist private?"
-      destructive
-      confirmLabel="Make private"
-      confirmDisabled={busy}
-      onClose={() => setMakePrivateDialogOpen(false)}
-      onConfirm={onConfirmMakePrivate}
-      description={
-        isLikedMode ? (
-          <Text variant="body-medium">
-            Your liked collection will only be visible to you and people you share it with.
-          </Text>
-        ) : (
-          <>
+    <>
+      <ConfirmDialog
+        open={makePrivateDialogOpen}
+        title="Make playlist private?"
+        destructive
+        confirmLabel="Make private"
+        confirmDisabled={busy}
+        onClose={() => setMakePrivateDialogOpen(false)}
+        onConfirm={onConfirmMakePrivate}
+        description={
+          isLikedMode ? (
             <Text variant="body-medium">
-              Making a public playlist private has lasting effects for people who engaged with
-              it:
+              Your liked collection will only be visible to you and people you share it with.
             </Text>
-            <ul className="list-disc space-y-1 pl-5 text-body-medium">
-              <li>All forks are cut loose — they become standalone playlists, no longer linked to this one.</li>
-              <li>All followers are removed and will stop receiving updates.</li>
-              <li>People who saved it to their library can still access it.</li>
-            </ul>
-            <Text variant="label-medium">
-              This is generally discouraged unless you have a good reason.
-            </Text>
-          </>
-        )
-      }
-    />
+          ) : (
+            <>
+              <Text variant="body-medium">
+                Making a public playlist private has lasting effects for people who engaged with
+                it:
+              </Text>
+              <ul className="list-disc space-y-1 pl-5 text-body-medium">
+                <li>All forks are cut loose — they become standalone playlists, no longer linked to this one.</li>
+                <li>All followers are removed and will stop receiving updates.</li>
+                <li>People who saved it to their library can still access it.</li>
+              </ul>
+              <Text variant="label-medium">
+                This is generally discouraged unless you have a good reason.
+              </Text>
+            </>
+          )
+        }
+      />
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="Delete playlist?"
+        destructive
+        confirmLabel="Delete"
+        confirmDisabled={busy}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={onConfirmDelete}
+        description={
+          <Text variant="body-medium">This cannot be undone.</Text>
+        }
+      />
+      <PlaylistFormDialog
+        open={editDetailsOpen}
+        title="Edit playlist"
+        initialTitle={playlist?.title ?? ""}
+        initialDescription={playlist?.description ?? ""}
+        confirmLabel="Save"
+        confirmDisabled={busy}
+        onClose={() => setEditDetailsOpen(false)}
+        onConfirm={onConfirmEditDetails}
+      />
+    </>
   );
 
   if (embedded) {

@@ -25,6 +25,14 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
           <Text variant="title-medium" className="truncate">
             {playlist.title}
           </Text>
+          {playlist.kind !== "liked" && playlist.description ? (
+            <Text
+              variant="body-small"
+              className="line-clamp-2 text-on-surface-variant"
+            >
+              {playlist.description}
+            </Text>
+          ) : null}
           <Text variant="label-medium" className="truncate text-on-surface-variant">
             {subtitle}
           </Text>

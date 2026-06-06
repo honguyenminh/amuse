@@ -72,7 +72,7 @@ export default function SearchPage() {
           />
           <button
             type="submit"
-            className="rounded-full border-2 border-outline bg-primary px-4 py-2 text-label-large text-on-primary"
+            className="rounded-full border-2 border-outline bg-primary-container px-4 py-2 text-label-large text-on-primary-container"
           >
             Search
           </button>

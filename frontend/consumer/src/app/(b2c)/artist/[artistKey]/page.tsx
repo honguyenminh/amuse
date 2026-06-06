@@ -60,6 +60,16 @@ export default function ArtistPage({
         {!artist && !error && <ArtistSkeleton />}
         {artist && (
           <>
+            {artist.coverUrl ? (
+              <div className="overflow-hidden rounded-lg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={artist.coverUrl}
+                  alt=""
+                  className="aspect-[3/1] w-full object-cover"
+                />
+              </div>
+            ) : null}
             <Card>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                 {artist.avatarUrl ? (

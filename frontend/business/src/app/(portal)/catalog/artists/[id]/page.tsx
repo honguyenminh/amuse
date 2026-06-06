@@ -2,6 +2,7 @@
 
 import { FormattedCatalogText } from "@amuse/catalog-text";
 import { ArtistAvatarPanel } from "@/components/catalog/ArtistAvatarPanel";
+import { ArtistCoverPanel } from "@/components/catalog/ArtistCoverPanel";
 import { EditArtistProfileDialog } from "@/components/catalog/EditArtistProfileDialog";
 import { ResourceAuditPanel } from "@/components/catalog/ResourceAuditPanel";
 import { Button } from "@/components/ui/button";
@@ -133,13 +134,22 @@ export default function ArtistDetailPage() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       {artist ? (
-        <ArtistAvatarPanel
-          artistId={artist.id}
-          artistName={artist.name}
-          avatarUrl={artist.avatarUrl}
-          canUpload={canUpload}
-          onAvatarUpdated={(avatarUrl) => setArtist({ ...artist, avatarUrl })}
-        />
+        <>
+          <ArtistAvatarPanel
+            artistId={artist.id}
+            artistName={artist.name}
+            avatarUrl={artist.avatarUrl}
+            canUpload={canUpload}
+            onAvatarUpdated={(avatarUrl) => setArtist({ ...artist, avatarUrl })}
+          />
+          <ArtistCoverPanel
+            artistId={artist.id}
+            artistName={artist.name}
+            coverUrl={artist.coverUrl}
+            canUpload={canUpload}
+            onCoverUpdated={(coverUrl) => setArtist({ ...artist, coverUrl })}
+          />
+        </>
       ) : null}
 
       {artist ? (

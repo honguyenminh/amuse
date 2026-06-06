@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { makePausedVariant } from "../makePausedVariant";
 import { parseSeed, seedToPalette } from "../seedToPalette";
 import { resolveEffectiveSeed } from "../resolveEffectiveSeed";
+
+function hueOf(oklch: string): number {
+  return Number.parseFloat(oklch.match(/oklch\([\d.]+ [\d.]+ ([\d.]+)/)?.[1] ?? "0");
+}
+
+function hueDelta(a: number, b: number): number {
+  const d = Math.abs(a - b);
+  return Math.min(d, 360 - d);
+}
 
 describe("seedToPalette", () => {
   it("parses oklch string", () => {
@@ -16,16 +24,27 @@ describe("seedToPalette", () => {
     expect(palette.surface).toMatch(/^oklch\(/);
   });
 
-  it("onPrimaryContainer is dark when container lightness is mid-high", () => {
+  it("onPrimaryContainer contrasts with primaryContainer", () => {
     const palette = seedToPalette({ l: 0.5, c: 0.2, h: 120 });
-    // Container L = 0.62 — must not pick light-on-light (old threshold bug at exactly 0.62).
-    expect(palette.onPrimaryContainer).toMatch(/oklch\(0\.1/);
+    const containerL = Number.parseFloat(
+      palette.primaryContainer.match(/oklch\(([\d.]+)/)?.[1] ?? "0",
+    );
+    const onContainerL = Number.parseFloat(
+      palette.onPrimaryContainer.match(/oklch\(([\d.]+)/)?.[1] ?? "0",
+    );
+    expect(Math.abs(containerL - onContainerL)).toBeGreaterThan(0.35);
   });
 
-  it("paused variant lowers chroma", () => {
-    const base = { l: 0.5, c: 0.3, h: 90 };
-    const paused = makePausedVariant(base);
-    expect(paused.c).toBeLessThan(base.c);
+  it("primaryContainer hue stays near the seed", () => {
+    const seed = { l: 0.55, c: 0.28, h: 285 };
+    const palette = seedToPalette(seed);
+    expect(hueDelta(hueOf(palette.primaryContainer), seed.h)).toBeLessThan(25);
+  });
+
+  it("includes tertiary container roles", () => {
+    const palette = seedToPalette({ l: 0.5, c: 0.2, h: 120 });
+    expect(palette.tertiaryContainer).toMatch(/^oklch\(/);
+    expect(palette.onTertiaryContainer).toMatch(/^oklch\(/);
   });
 
   it("resolves page seed over playing seed", () => {

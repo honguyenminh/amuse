@@ -100,6 +100,12 @@ public static class CatalogErrors
     public static readonly DomainError ArtistAvatarObjectMissing =
         new("catalog.artist_avatar_object_missing", "Uploaded artist avatar image was not found in object storage.");
 
+    public static readonly DomainError InvalidArtistCoverUploadRequest =
+        new("catalog.invalid_artist_cover_upload_request", "Artist cover upload request is invalid.");
+
+    public static readonly DomainError ArtistCoverObjectMissing =
+        new("catalog.artist_cover_object_missing", "Uploaded artist cover image was not found in object storage.");
+
     public static readonly DomainError InvalidCollaborator =
         new("catalog.invalid_collaborator", "Collaborating artist is invalid for this release.");
 

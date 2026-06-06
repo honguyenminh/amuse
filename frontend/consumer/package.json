@@ -11,6 +11,7 @@
     "check:colors": "node scripts/check-token-colors.mjs"
   },
   "dependencies": {
+    "@material/material-color-utilities": "0.4.0",
     "@amuse/catalog-text": "file:../packages/catalog-text",
     "dashjs": "^5.1.1",
     "next": "16.2.4",

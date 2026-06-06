@@ -148,7 +148,7 @@ export function ReleaseCoverArtPanel({
                     : "Upload cover art"}
               </Button>
               <p className="text-xs text-muted-foreground">
-                JPEG, PNG, or WebP. Saved as soon as the upload completes.
+                JPEG, PNG, or WebP.
               </p>
             </>
           ) : null}

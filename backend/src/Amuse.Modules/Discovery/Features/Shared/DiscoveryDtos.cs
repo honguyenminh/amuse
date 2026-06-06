@@ -19,6 +19,7 @@ public sealed record PlaylistSummaryDto(
     Guid Id,
     string Title,
     string Kind,
+    string? Description,
     string Visibility,
     int TrackCount,
     DateTimeOffset UpdatedAt,
@@ -76,6 +77,7 @@ public sealed record SearchItemDto(
 public sealed record PublicPlaylistSearchCardDto(
     Guid Id,
     string Title,
+    string? Description,
     int TrackCount,
     PlaylistOwnerDto Owner,
     DateTimeOffset UpdatedAt,

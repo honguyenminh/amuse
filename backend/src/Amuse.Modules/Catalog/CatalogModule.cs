@@ -11,6 +11,7 @@ using Amuse.Modules.Catalog.Features.GetTrackIngestion;
 using Amuse.Modules.Catalog.Features.GetTrackStreamInfo;
 using Amuse.Modules.Catalog.Features.HideRelease;
 using Amuse.Modules.Catalog.Features.ManageArtistAvatar;
+using Amuse.Modules.Catalog.Features.ManageArtistCover;
 using Amuse.Modules.Catalog.Features.ManageArtists;
 using Amuse.Modules.Catalog.Features.ManageReleaseCover;
 using Amuse.Modules.Catalog.Features.ManageReleaseGroups;
@@ -97,6 +98,8 @@ public static class CatalogModule
         services.AddScoped<CompleteReleaseCoverUploadHandler>();
         services.AddScoped<PresignArtistAvatarUploadHandler>();
         services.AddScoped<CompleteArtistAvatarUploadHandler>();
+        services.AddScoped<PresignArtistCoverUploadHandler>();
+        services.AddScoped<CompleteArtistCoverUploadHandler>();
 
         services.AddScoped<ListResourceAuditsHandler>();
 
@@ -126,6 +129,7 @@ public static class CatalogModule
         endpoints.MapRetryTrackTranscodeEndpoint();
         endpoints.MapManageReleaseCoverEndpoint();
         endpoints.MapManageArtistAvatarEndpoint();
+        endpoints.MapManageArtistCoverEndpoint();
         endpoints.MapGetResourceAuditEndpoint();
 
         return endpoints;

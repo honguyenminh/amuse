@@ -77,7 +77,7 @@ export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
       ) : (
         <Link
           href="/login"
-          className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-outline bg-primary px-3 py-1.5 text-label-medium text-on-primary hover:opacity-90"
+          className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-outline bg-primary-container px-3 py-1.5 text-label-medium text-on-primary-container hover:opacity-90"
         >
           Log in
         </Link>

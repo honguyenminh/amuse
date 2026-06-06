@@ -131,6 +131,11 @@ function PublicPlaylistRow({ playlist }: { playlist: PublicPlaylistSearchCardDto
           <Text variant="body-medium" className="truncate">
             {playlist.title}
           </Text>
+          {playlist.description ? (
+            <Text variant="body-small" className="line-clamp-1 text-on-surface-variant">
+              {playlist.description}
+            </Text>
+          ) : null}
           <Text variant="label-medium" className="truncate text-on-surface-variant">
             {ownerName} · {playlist.trackCount} track
             {playlist.trackCount === 1 ? "" : "s"}

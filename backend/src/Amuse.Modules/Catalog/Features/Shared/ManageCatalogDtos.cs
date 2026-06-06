@@ -296,3 +296,21 @@ public sealed record CompleteArtistAvatarUploadResponse(
     Guid ArtistId,
     string AvatarKey,
     string? AvatarUrl);
+
+public sealed record PresignArtistCoverUploadRequest(
+    string FileName,
+    string ContentType);
+
+public sealed record PresignArtistCoverUploadResponse(
+    Guid ArtistId,
+    string Key,
+    string Url,
+    DateTimeOffset ExpiresAt,
+    string Method);
+
+public sealed record CompleteArtistCoverUploadRequest(string Key);
+
+public sealed record CompleteArtistCoverUploadResponse(
+    Guid ArtistId,
+    string CoverKey,
+    string? CoverUrl);

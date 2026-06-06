@@ -179,6 +179,7 @@ export type PlaylistSummaryDto = {
   id: string;
   title: string;
   kind: PlaylistKind;
+  description: string | null;
   visibility: string;
   trackCount: number;
   updatedAt: string;
@@ -242,6 +243,7 @@ export type SearchItemDto = {
 export type PublicPlaylistSearchCardDto = {
   id: string;
   title: string;
+  description: string | null;
   trackCount: number;
   owner: PlaylistOwnerDto;
   updatedAt: string;

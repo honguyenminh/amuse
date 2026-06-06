@@ -164,6 +164,14 @@ public sealed class Artist
         AvatarKey = avatarKey;
     }
 
+    public void SetCoverKey(string coverKey)
+    {
+        if (string.IsNullOrWhiteSpace(coverKey) || coverKey.Length > MaxKeyLength)
+            throw new ArgumentException("Cover key is invalid.", nameof(coverKey));
+
+        CoverKey = coverKey;
+    }
+
     private static Result ValidateKey(string? key, string paramName)
     {
         if (key is null)

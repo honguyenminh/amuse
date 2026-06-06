@@ -7,6 +7,8 @@ const CSS_VAR_MAP: Record<keyof SemanticPalette, string> = {
   onPrimaryContainer: "--amuse-on-primary-container",
   secondary: "--amuse-secondary",
   onSecondary: "--amuse-on-secondary",
+  tertiaryContainer: "--amuse-tertiary-container",
+  onTertiaryContainer: "--amuse-on-tertiary-container",
   surface: "--amuse-surface",
   onSurface: "--amuse-on-surface",
   surfaceVariant: "--amuse-surface-variant",

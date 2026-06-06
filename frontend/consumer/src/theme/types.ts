@@ -12,6 +12,8 @@ export type SemanticPalette = {
   onPrimaryContainer: string;
   secondary: string;
   onSecondary: string;
+  tertiaryContainer: string;
+  onTertiaryContainer: string;
   surface: string;
   onSurface: string;
   surfaceVariant: string;
@@ -30,6 +32,8 @@ export const SEMANTIC_PALETTE_KEYS: (keyof SemanticPalette)[] = [
   "onPrimaryContainer",
   "secondary",
   "onSecondary",
+  "tertiaryContainer",
+  "onTertiaryContainer",
   "surface",
   "onSurface",
   "surfaceVariant",

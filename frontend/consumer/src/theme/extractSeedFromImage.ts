@@ -1,3 +1,4 @@
+import { rgbToOklch } from "./colorConvert";
 import type { ColorSeed } from "./types";
 
 /**
@@ -7,8 +8,8 @@ import type { ColorSeed } from "./types";
  *  1. Load the image with `crossOrigin = "anonymous"` (server must allow CORS).
  *  2. Down-sample into a 16x16 canvas and compute an OKLab-weighted mean colour,
  *     biased toward higher-chroma pixels so muted edges do not dominate.
- *  3. Convert to OKLCH and clamp into a perceptually pleasant range for use as
- *     a `ColorSeed` (L 0.45–0.65, C 0.10–0.26).
+ *  3. Convert to OKLCH and clamp into a range suited for M3 expressive schemes
+ *     (L 0.42–0.68, C 0.14–0.38).
  *
  * On any failure (CORS, network, decode) the returned promise resolves to `null`
  * and the caller can fall back to a deterministic seed.
@@ -32,7 +33,7 @@ export function deterministicSeedFromString(input: string): ColorSeed {
     hash = (hash * 16777619) >>> 0;
   }
   const hue = hash % 360;
-  return { l: 0.55, c: 0.2, h: hue };
+  return { l: 0.55, c: 0.28, h: hue };
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -71,7 +72,7 @@ function sampleWeightedMean(img: HTMLImageElement): {
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const chromaProxy = max - min;
-    const weight = 0.1 + chromaProxy * 2;
+    const weight = 0.08 + chromaProxy * 3.5;
     weightedR += r * weight;
     weightedG += g * weight;
     weightedB += b * weight;
@@ -85,41 +86,10 @@ function sampleWeightedMean(img: HTMLImageElement): {
   };
 }
 
-/**
- * Approximate OKLab conversion (https://bottosson.github.io/posts/oklab/).
- * Inputs are sRGB in [0,1]; output is OKLCH (l in [0,1], c ≥ 0, h in degrees).
- */
-function rgbToOklch(r: number, g: number, b: number): ColorSeed {
-  const lr = srgbToLinear(r);
-  const lg = srgbToLinear(g);
-  const lb = srgbToLinear(b);
-
-  const lms_l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
-  const lms_m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
-  const lms_s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
-
-  const lp = Math.cbrt(lms_l);
-  const mp = Math.cbrt(lms_m);
-  const sp = Math.cbrt(lms_s);
-
-  const L = 0.2104542553 * lp + 0.793617785 * mp - 0.0040720468 * sp;
-  const A = 1.9779984951 * lp - 2.428592205 * mp + 0.4505937099 * sp;
-  const B = 0.0259040371 * lp + 0.7827717662 * mp - 0.808675766 * sp;
-
-  const c = Math.hypot(A, B);
-  let h = (Math.atan2(B, A) * 180) / Math.PI;
-  if (h < 0) h += 360;
-  return { l: L, c, h };
-}
-
-function srgbToLinear(v: number): number {
-  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-}
-
 function clampSeed({ l, c, h }: ColorSeed): ColorSeed {
   return {
-    l: Math.min(0.65, Math.max(0.45, l)),
-    c: Math.min(0.26, Math.max(0.1, c)),
+    l: Math.min(0.68, Math.max(0.42, l)),
+    c: Math.min(0.38, Math.max(0.14, c)),
     h: ((h % 360) + 360) % 360,
   };
 }

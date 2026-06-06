@@ -3,6 +3,7 @@
 import { PlaylistCard } from "@/components/discovery/PlaylistCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PlaylistFormDialog } from "@/components/ui/PlaylistFormDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { createPlaylist, listLibraryPlaylists } from "@/lib/api/discoveryClient";
@@ -18,6 +19,7 @@ export default function LibraryPlaylistsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -32,14 +34,13 @@ export default function LibraryPlaylistsPage() {
     void load();
   }, [load]);
 
-  const onCreate = async () => {
-    const title = window.prompt("Playlist name");
-    if (!title?.trim()) return;
+  const onCreate = async ({ title, description }: { title: string; description: string }) => {
     setCreating(true);
     try {
       const created = await createPlaylist({
-        title: title.trim(),
+        title,
         visibility: "private",
+        ...(description ? { description } : {}),
       });
       router.push(playlistPath(created.id));
     } catch (err) {
@@ -53,10 +54,27 @@ export default function LibraryPlaylistsPage() {
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <Text variant="title-large">Playlists</Text>
-        <Button type="button" variant="outlined" disabled={creating} onClick={() => void onCreate()}>
+        <Button
+          type="button"
+          variant="outlined"
+          disabled={creating}
+          onClick={() => setCreateDialogOpen(true)}
+        >
           New playlist
         </Button>
       </div>
+
+      <PlaylistFormDialog
+        open={createDialogOpen}
+        title="New playlist"
+        confirmLabel="Create"
+        confirmDisabled={creating}
+        onClose={() => setCreateDialogOpen(false)}
+        onConfirm={(values) => {
+          setCreateDialogOpen(false);
+          void onCreate(values);
+        }}
+      />
 
       {loading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">

@@ -10,7 +10,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClass: Record<ButtonVariant, string> = {
   filled:
-    "bg-primary text-on-primary border-2 border-on-background hover:opacity-90",
+    "bg-primary-container text-on-primary-container border-2 border-outline hover:opacity-90",
   outlined:
     "bg-transparent text-primary border-2 border-outline hover:bg-surface-variant",
   text: "bg-transparent text-primary border-2 border-transparent hover:bg-surface-variant",

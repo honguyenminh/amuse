@@ -68,7 +68,7 @@ export default function SettingsPage() {
                     onClick={() => update({ preferredQuality: tier })}
                     className={
                       settings.preferredQuality === tier
-                        ? "rounded-md bg-primary px-3 py-1 text-on-primary"
+                        ? "rounded-md bg-primary-container px-3 py-1 text-on-primary-container"
                         : "rounded-md border border-outline px-3 py-1"
                     }
                   >
