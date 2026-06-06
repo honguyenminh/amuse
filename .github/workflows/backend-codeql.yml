@@ -1,0 +1,50 @@
+name: Backend CodeQL
+
+on:
+  pull_request:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - backend/**
+  push:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - backend/**
+  schedule:
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: backend-codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d275c44dcc1b5870ca # v4.2.2
+
+      - uses: actions/setup-dotnet@3b948029a9c3d3a1acb55db0332f3848b20e2ffc # v4.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: github/codeql-action/init@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.28.0
+        with:
+          languages: csharp
+          queries: security-and-quality
+
+      - uses: github/codeql-action/autobuild@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.28.0
+
+      - uses: github/codeql-action/analyze@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.28.0
+        with:
+          category: /language:csharp

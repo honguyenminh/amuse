@@ -1,6 +1,6 @@
 using Amuse.Domain.Identity;
-using Amuse.Modules.Identity.Persistence;
 using Amuse.Modules.Identity.Auth;
+using Amuse.Modules.Identity.Persistence;
 using Amuse.Modules.Platform.Options;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

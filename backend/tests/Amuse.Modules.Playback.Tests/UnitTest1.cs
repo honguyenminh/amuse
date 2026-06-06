@@ -1,4 +1,4 @@
-﻿namespace Amuse.Modules.Playback.Tests;
+namespace Amuse.Modules.Playback.Tests;
 
 public class UnitTest1
 {

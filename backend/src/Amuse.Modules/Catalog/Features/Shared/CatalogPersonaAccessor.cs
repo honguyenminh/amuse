@@ -1,7 +1,7 @@
 using System.Security.Claims;
+using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
-using Amuse.Domain.Catalog;
 
 namespace Amuse.Modules.Catalog.Features.Shared;
 

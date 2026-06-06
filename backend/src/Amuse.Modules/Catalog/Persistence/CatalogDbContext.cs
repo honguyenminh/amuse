@@ -1,6 +1,6 @@
 using Amuse.Domain.Catalog;
-using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Catalog.Processing;
+using Amuse.Modules.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Persistence;

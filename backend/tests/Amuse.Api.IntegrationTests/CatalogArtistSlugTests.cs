@@ -1,3 +1,7 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Amuse.Api.IntegrationTests;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.Tenancy;
@@ -8,10 +12,6 @@ using Amuse.Modules.Tenancy.Features.Shared;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace Amuse.Api.IntegrationTests;
 

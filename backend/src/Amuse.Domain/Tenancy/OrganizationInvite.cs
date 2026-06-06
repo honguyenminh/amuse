@@ -1,7 +1,7 @@
-using Amuse.Domain.Identity;
-using Amuse.Domain.SharedKernel;
 using System.Security.Cryptography;
 using System.Text;
+using Amuse.Domain.Identity;
+using Amuse.Domain.SharedKernel;
 
 namespace Amuse.Domain.Tenancy;
 

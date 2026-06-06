@@ -1,5 +1,5 @@
-using Amuse.Domain.Tenancy;
 using Amuse.Domain.SharedKernel;
+using Amuse.Domain.Tenancy;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Tenancy.Persistence;
 using Microsoft.EntityFrameworkCore;

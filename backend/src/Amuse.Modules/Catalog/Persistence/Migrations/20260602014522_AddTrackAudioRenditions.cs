@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Amuse.Domain.Catalog;
 using Microsoft.EntityFrameworkCore.Migrations;
 

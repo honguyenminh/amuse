@@ -1,7 +1,7 @@
 using Amuse.Domain.Identity;
+using Amuse.Modules.Identity.Auth;
 using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Identity.Options;
-using Amuse.Modules.Identity.Auth;
 using Microsoft.Extensions.Options;
 
 namespace Amuse.Modules.Identity.Tests;

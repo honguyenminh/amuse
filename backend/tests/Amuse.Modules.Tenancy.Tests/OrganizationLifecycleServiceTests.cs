@@ -3,8 +3,8 @@ using Amuse.Domain.Platform;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Common.Time;
-using Amuse.Modules.Tenancy.Persistence;
 using Amuse.Modules.Tenancy.Contracts;
+using Amuse.Modules.Tenancy.Persistence;
 using Amuse.Modules.Tenancy.Services;
 using Microsoft.EntityFrameworkCore;
 

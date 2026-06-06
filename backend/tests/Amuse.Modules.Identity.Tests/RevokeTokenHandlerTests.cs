@@ -7,8 +7,8 @@ using Amuse.Modules.Identity.Options;
 using Amuse.Modules.Identity.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using JwtOptions = Amuse.Modules.Identity.Options.JwtOptions;
 using NSubstitute;
+using JwtOptions = Amuse.Modules.Identity.Options.JwtOptions;
 
 namespace Amuse.Modules.Identity.Tests;
 

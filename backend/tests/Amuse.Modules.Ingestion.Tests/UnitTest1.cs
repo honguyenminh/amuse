@@ -1,4 +1,4 @@
-﻿namespace Amuse.Modules.Ingestion.Tests;
+namespace Amuse.Modules.Ingestion.Tests;
 
 public class UnitTest1
 {

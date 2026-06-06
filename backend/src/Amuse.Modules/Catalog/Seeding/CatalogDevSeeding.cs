@@ -76,11 +76,11 @@ public static class CatalogDevSeeding
                 createdAt: now,
                 coverArtKey: CoverKey.ForReleaseCover("dawn-anatomy")).Value!;
 
-        AddTrack(dawn, "019e6020-0000-7000-8000-000000000001", "Threshold",      1, 214_000);
-        AddTrack(dawn, "019e6020-0000-7000-8000-000000000002", "First Wave",     2, 187_500);
-        AddTrack(dawn, "019e6020-0000-7000-8000-000000000003", "Halfway House",  3, 243_000);
-        AddTrack(dawn, "019e6020-0000-7000-8000-000000000004", "Slow Dawn",      4, 305_000);
-        dawn.MarkPublishedForDevelopment(now);
+            AddTrack(dawn, "019e6020-0000-7000-8000-000000000001", "Threshold", 1, 214_000);
+            AddTrack(dawn, "019e6020-0000-7000-8000-000000000002", "First Wave", 2, 187_500);
+            AddTrack(dawn, "019e6020-0000-7000-8000-000000000003", "Halfway House", 3, 243_000);
+            AddTrack(dawn, "019e6020-0000-7000-8000-000000000004", "Slow Dawn", 4, 305_000);
+            dawn.MarkPublishedForDevelopment(now);
 
             var ribbons = Release.Create(
                 id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000002")),
@@ -93,10 +93,10 @@ public static class CatalogDevSeeding
                 createdAt: now,
                 coverArtKey: CoverKey.ForReleaseCover("ribbons-and-frost")).Value!;
 
-        AddTrack(ribbons, "019e6020-0000-7000-8000-000000000010", "Ribbons", 1, 168_000);
-        AddTrack(ribbons, "019e6020-0000-7000-8000-000000000011", "Frost",   2, 202_400);
-        AddTrack(ribbons, "019e6020-0000-7000-8000-000000000012", "Margins", 3, 220_000);
-        ribbons.MarkPublishedForDevelopment(now);
+            AddTrack(ribbons, "019e6020-0000-7000-8000-000000000010", "Ribbons", 1, 168_000);
+            AddTrack(ribbons, "019e6020-0000-7000-8000-000000000011", "Frost", 2, 202_400);
+            AddTrack(ribbons, "019e6020-0000-7000-8000-000000000012", "Margins", 3, 220_000);
+            ribbons.MarkPublishedForDevelopment(now);
 
             var concreteWaves = Release.Create(
                 id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000003")),
@@ -109,11 +109,11 @@ public static class CatalogDevSeeding
                 createdAt: now,
                 coverArtKey: CoverKey.ForReleaseCover("concrete-waves")).Value!;
 
-        AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000020", "Rebar",      1, 254_000);
-        AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000021", "Spillway",   2, 312_500);
-        AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000022", "Half-Tide",  3, 289_000);
-        AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000023", "Pour",       4, 401_750);
-        concreteWaves.MarkPublishedForDevelopment(now);
+            AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000020", "Rebar", 1, 254_000);
+            AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000021", "Spillway", 2, 312_500);
+            AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000022", "Half-Tide", 3, 289_000);
+            AddTrack(concreteWaves, "019e6020-0000-7000-8000-000000000023", "Pour", 4, 401_750);
+            concreteWaves.MarkPublishedForDevelopment(now);
 
             var pylons = Release.Create(
                 id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000004")),
@@ -126,8 +126,8 @@ public static class CatalogDevSeeding
                 createdAt: now,
                 coverArtKey: CoverKey.ForReleaseCover("pylons")).Value!;
 
-        AddTrack(pylons, "019e6020-0000-7000-8000-000000000030", "Pylons", 1, 276_000);
-        pylons.MarkPublishedForDevelopment(now);
+            AddTrack(pylons, "019e6020-0000-7000-8000-000000000030", "Pylons", 1, 276_000);
+            pylons.MarkPublishedForDevelopment(now);
 
             var weather = Release.Create(
                 id: ReleaseId.From(Guid.Parse("019e6010-0000-7000-8000-000000000005")),
@@ -140,12 +140,12 @@ public static class CatalogDevSeeding
                 createdAt: now,
                 coverArtKey: CoverKey.ForReleaseCover("weather-reports")).Value!;
 
-        AddTrack(weather, "019e6020-0000-7000-8000-000000000040", "Static Bloom",           1, 232_000);
-        AddTrack(weather, "019e6020-0000-7000-8000-000000000041", "Monsoon Hours",          2, 258_500);
-        AddTrack(weather, "019e6020-0000-7000-8000-000000000042", "Soft Power Cuts",        3, 204_000);
-        AddTrack(weather, "019e6020-0000-7000-8000-000000000043", "Hanoi Through Curtains", 4, 297_000);
-        AddTrack(weather, "019e6020-0000-7000-8000-000000000044", "Lisbon, Drying",         5, 341_500);
-        weather.MarkPublishedForDevelopment(now);
+            AddTrack(weather, "019e6020-0000-7000-8000-000000000040", "Static Bloom", 1, 232_000);
+            AddTrack(weather, "019e6020-0000-7000-8000-000000000041", "Monsoon Hours", 2, 258_500);
+            AddTrack(weather, "019e6020-0000-7000-8000-000000000042", "Soft Power Cuts", 3, 204_000);
+            AddTrack(weather, "019e6020-0000-7000-8000-000000000043", "Hanoi Through Curtains", 4, 297_000);
+            AddTrack(weather, "019e6020-0000-7000-8000-000000000044", "Lisbon, Drying", 5, 341_500);
+            weather.MarkPublishedForDevelopment(now);
 
             db.Releases.AddRange(dawn, ribbons, concreteWaves, pylons, weather);
 

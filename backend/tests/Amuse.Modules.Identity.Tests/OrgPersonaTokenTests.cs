@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using Amuse.Domain.Identity;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Identity.Auth;
@@ -8,7 +9,6 @@ using Amuse.Modules.Tenancy.Persistence;
 using Amuse.Modules.Tenancy.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace Amuse.Modules.Identity.Tests;
 

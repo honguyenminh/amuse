@@ -1,5 +1,5 @@
-using Amuse.Domain.Tenancy;
 using Amuse.Domain.SharedKernel;
+using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Media;
 using Amuse.Modules.Tenancy.Contracts;

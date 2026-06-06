@@ -12,6 +12,7 @@ This folder documents **current backend behavior and conventions** as implemente
 | [local-development.md](./local-development.md) | Postgres, migrations policy, run API, worker, MinIO/CORS, manual verification |
 | [architecture-conventions.md](./architecture-conventions.md) | VSA, DDD, cross-BC boundaries, validation, migrations |
 | [testing.md](./testing.md) | Unit and integration tests, Docker requirement |
+| [ci-cd.md](./ci-cd.md) | GitHub Actions, branch model, GHCR publish, deploy stub, migrations in deploy |
 | [catalog.md](./catalog.md) | Catalog BC: stream-info (DASH), dev seed + transcode job enqueue |
 | [media.md](./media.md) | Ingest, presign, worker, DASH output, client read path |
 

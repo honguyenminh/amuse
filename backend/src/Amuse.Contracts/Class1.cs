@@ -1,4 +1,4 @@
-﻿namespace Amuse.Contracts;
+namespace Amuse.Contracts;
 
 public class Class1
 {

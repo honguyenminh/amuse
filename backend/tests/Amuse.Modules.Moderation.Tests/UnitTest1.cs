@@ -1,4 +1,4 @@
-﻿namespace Amuse.Modules.Moderation.Tests;
+namespace Amuse.Modules.Moderation.Tests;
 
 public class UnitTest1
 {

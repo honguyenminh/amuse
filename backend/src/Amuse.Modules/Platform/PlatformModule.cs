@@ -1,9 +1,9 @@
 using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Platform.Contracts;
 using Amuse.Modules.Platform.Features.ApproveOrganization;
+using Amuse.Modules.Platform.Features.ForceTransferOwnership;
 using Amuse.Modules.Platform.Features.ListClosedOrganizations;
 using Amuse.Modules.Platform.Features.ListOrganizationApplications;
-using Amuse.Modules.Platform.Features.ForceTransferOwnership;
 using Amuse.Modules.Platform.Features.RecoverOrganization;
 using Amuse.Modules.Platform.Features.RejectOrganization;
 using Amuse.Modules.Platform.Options;

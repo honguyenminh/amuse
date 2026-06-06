@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.AspNetCore.WebUtilities;
 using Amuse.Modules.Identity.Features.Shared;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Amuse.Api.IntegrationTests;
 

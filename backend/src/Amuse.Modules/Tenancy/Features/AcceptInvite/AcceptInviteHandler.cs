@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using Amuse.Domain.Tenancy;
 using Amuse.Domain.SharedKernel;
+using Amuse.Domain.Tenancy;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Tenancy.Contracts;
 using Amuse.Modules.Tenancy.Features.Shared;

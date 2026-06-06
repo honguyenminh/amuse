@@ -1,4 +1,4 @@
-﻿namespace Amuse.Modules.Telemetry.Tests;
+namespace Amuse.Modules.Telemetry.Tests;
 
 public class UnitTest1
 {

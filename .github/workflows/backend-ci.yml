@@ -1,0 +1,124 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - backend/**
+  push:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - backend/**
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d275c44dcc1b5870ca # v4.2.2
+
+      - uses: actions/setup-dotnet@3b948029a9c3d3a1acb55db0332f3848b20e2ffc # v4.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Verify formatting
+        run: dotnet format backend.slnx --verify-no-changes --verbosity diagnostic
+
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d275c44dcc1b5870ca # v4.2.2
+
+      - uses: actions/setup-dotnet@3b948029a9c3d3a1acb55db0332f3848b20e2ffc # v4.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@6849a6489940f516152fecd3a9f3b480e3e77ef8 # v4.1.2
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'backend/dotnet-tools.json', 'backend/Directory.Build.props') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore backend.slnx
+
+      - name: Build
+        run: dotnet build backend.slnx -c Release --no-restore /nr:false
+
+      - name: Test
+        run: dotnet test backend.slnx -c Release --no-build --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results
+          path: backend/**/TestResults/*.trx
+
+  docker-verify:
+    name: Docker verify
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d275c44dcc1b5870ca # v4.2.2
+
+      - name: Build API image
+        run: docker build -f backend/src/Amuse.Api/Dockerfile backend/src
+
+      - name: Build transcoder worker image
+        run: docker build -f backend/src/Amuse.Worker.Transcoder/Dockerfile backend/src
+
+      - name: Build scheduler worker image
+        run: docker build -f backend/src/Amuse.Worker.Scheduler/Dockerfile backend/src
+
+      - name: Build migrate image
+        run: docker build -f backend/Dockerfile.migrate backend
+
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d275c44dcc1b5870ca # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d275c44dcc1b5870ca # v4.2.2
+
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.5.0
+        with:
+          fail-on-severity: high

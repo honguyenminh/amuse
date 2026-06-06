@@ -1,4 +1,4 @@
-﻿namespace Amuse.Modules.Discovery.Tests;
+namespace Amuse.Modules.Discovery.Tests;
 
 public class UnitTest1
 {

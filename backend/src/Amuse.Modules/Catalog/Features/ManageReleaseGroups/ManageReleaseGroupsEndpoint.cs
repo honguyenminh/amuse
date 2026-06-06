@@ -1,6 +1,6 @@
+using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Common.Endpoints;
-using Amuse.Modules.Catalog.Features.Shared;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;

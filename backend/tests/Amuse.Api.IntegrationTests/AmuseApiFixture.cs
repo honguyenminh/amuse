@@ -1,8 +1,8 @@
-using Amuse.Modules.Identity.Email;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Catalog.Seeding;
 using Amuse.Modules.Common.Persistence;
+using Amuse.Modules.Identity.Email;
 using Amuse.Modules.Media;
 using Amuse.Modules.Platform.Persistence;
 using Amuse.Modules.Platform.Seeding;

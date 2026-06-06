@@ -1,4 +1,4 @@
-﻿using Amuse.Domain.Catalog;
+using Amuse.Domain.Catalog;
 using Amuse.Modules.Catalog;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Services;

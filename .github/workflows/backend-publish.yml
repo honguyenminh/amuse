@@ -1,0 +1,122 @@
+name: Backend Publish
+
+on:
+  workflow_run:
+    workflows:
+      - Backend CI
+    types:
+      - completed
+    branches:
+      - master
+      - staging
+      - production
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish images
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      (
+        (
+          github.event.workflow_run.event == 'push' &&
+          contains(fromJSON('["master","staging","production"]'), github.event.workflow_run.head_branch)
+        ) ||
+        (
+          github.event.workflow_run.event == 'pull_request' &&
+          github.event.workflow_run.pull_requests[0].base.ref == 'master'
+        )
+      )
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: amuse-api
+            context: backend/src
+            dockerfile: backend/src/Amuse.Api/Dockerfile
+          - image: amuse-worker-transcoder
+            context: backend/src
+            dockerfile: backend/src/Amuse.Worker.Transcoder/Dockerfile
+          - image: amuse-worker-scheduler
+            context: backend/src
+            dockerfile: backend/src/Amuse.Worker.Scheduler/Dockerfile
+          - image: amuse-migrate
+            context: backend
+            dockerfile: backend/Dockerfile.migrate
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d275c44dcc1b5870ca # v4.2.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.9.0
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image tags
+        id: tags
+        run: |
+          SHORT_SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          EVENT="${{ github.event.workflow_run.event }}"
+          if [ "${EVENT}" = "pull_request" ]; then
+            FLOATING_TAG="pr-${{ github.event.workflow_run.pull_requests[0].number }}"
+          else
+            FLOATING_TAG="${{ github.event.workflow_run.head_branch }}"
+          fi
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "floating_tag=${FLOATING_TAG}" >> "$GITHUB_OUTPUT"
+          echo "scan_tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:scan-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "push_tags=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${FLOATING_TAG},ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.15.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          load: true
+          push: false
+          tags: ${{ steps.tags.outputs.scan_tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.tags.outputs.scan_tag }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.28.0
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-${{ matrix.image }}
+
+      - name: Push image
+        if: success()
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.15.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.tags.outputs.push_tags }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.image }}
