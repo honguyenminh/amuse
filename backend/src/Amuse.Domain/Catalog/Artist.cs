@@ -6,7 +6,7 @@ namespace Amuse.Domain.Catalog;
 public sealed class Artist
 {
     public const int MaxNameLength = 200;
-    public const int MaxBioLength = 4000;
+    public const int MaxBioLength = CatalogFormattedText.MaxLength;
     public const int MaxKeyLength = 512;
     public const int MaxCountryCodeLength = 2;
     public const int MaxUrlLength = 500;
@@ -75,8 +75,9 @@ public sealed class Artist
         if (trimmedName.Length is 0 or > MaxNameLength)
             return Result<Artist>.Failure(CatalogErrors.InvalidArtist);
 
-        if (bio is { Length: > MaxBioLength })
-            return Result<Artist>.Failure(CatalogErrors.InvalidArtist);
+        var bioResult = CatalogFormattedText.TryCreate(bio);
+        if (!bioResult.IsSuccess)
+            return Result<Artist>.Failure(bioResult.Error!);
 
         var normalizedCountryCode = NormalizeCountryCode(countryCode);
         if (countryCode is not null && normalizedCountryCode is null)
@@ -103,7 +104,7 @@ public sealed class Artist
                 id,
                 trimmedName,
                 slug,
-                bio,
+                bio: CatalogFormattedText.ToStoredValue(bioResult.Value),
                 normalizedCountryCode,
                 normalizedWebsiteUrl,
                 normalizedAliases,
@@ -128,8 +129,9 @@ public sealed class Artist
         if (trimmedName.Length is 0 or > MaxNameLength)
             return Result.Failure(CatalogErrors.InvalidArtist);
 
-        if (bio is { Length: > MaxBioLength })
-            return Result.Failure(CatalogErrors.InvalidArtist);
+        var bioResult = CatalogFormattedText.TryCreate(bio);
+        if (!bioResult.IsSuccess)
+            return Result.Failure(bioResult.Error!);
 
         var normalizedCountryCode = NormalizeCountryCode(countryCode);
         if (countryCode is not null && normalizedCountryCode is null)
@@ -144,7 +146,7 @@ public sealed class Artist
             return Result.Failure(CatalogErrors.InvalidArtist);
 
         Name = trimmedName;
-        Bio = bio;
+        Bio = CatalogFormattedText.ToStoredValue(bioResult.Value);
         CountryCode = normalizedCountryCode;
         WebsiteUrl = normalizedWebsiteUrl;
         Aliases = normalizedAliases;

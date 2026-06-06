@@ -1,6 +1,7 @@
 "use client";
 
 import { PersonaPicker } from "@/components/portal/PersonaPicker";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -26,6 +27,8 @@ function SelectPersonaContent() {
 
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const hasPersonas = auth.businessPersonas.length > 0;
 
   useEffect(() => {
     if (!auth.isReady) {
@@ -66,6 +69,16 @@ function SelectPersonaContent() {
     }
   }
 
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await auth.logout();
+      router.replace("/login");
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   if (!auth.isReady) {
     return (
       <div className="flex min-h-dvh items-center justify-center p-6">
@@ -79,12 +92,18 @@ function SelectPersonaContent() {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            {switchMode ? "Switch workspace" : "Choose a workspace"}
+            {switchMode
+              ? "Switch workspace"
+              : hasPersonas
+                ? "Choose a workspace"
+                : "No workspaces yet"}
           </CardTitle>
           <CardDescription>
             {switchMode
               ? "Pick an organization or platform context. Use search when you belong to many organizations."
-              : "Select which organization or platform context to use for this session."}
+              : hasPersonas
+                ? "Select which organization or platform context to use for this session."
+                : "Create an organization or accept an invite to get started."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,18 +115,35 @@ function SelectPersonaContent() {
             error={error}
             showRecent={switchMode}
           />
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            <Link
-              href={`/create-organization?returnTo=${encodeURIComponent(
-                returnTo.startsWith("/") && !returnTo.startsWith("//")
-                  ? returnTo
-                  : "/select-persona",
-              )}`}
-              className="underline-offset-4 hover:underline"
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <p className="text-center text-sm text-muted-foreground">
+              Logged in as{" "}
+              <span className="font-medium text-foreground">
+                {auth.account?.email ?? "your account"}
+              </span>
+            </p>
+            <p className="text-center text-sm text-muted-foreground">
+              <Link
+                href={`/create-organization?returnTo=${encodeURIComponent(
+                  returnTo.startsWith("/") && !returnTo.startsWith("//")
+                    ? returnTo
+                    : "/select-persona",
+                )}`}
+                className="underline-offset-4 hover:underline"
+              >
+                Create new organization
+              </Link>
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={signingOut}
+              onClick={() => void handleSignOut()}
             >
-              Create new organization
-            </Link>
-          </p>
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

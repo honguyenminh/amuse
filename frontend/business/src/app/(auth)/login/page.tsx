@@ -78,11 +78,11 @@ function LoginInner() {
         router.replace(next);
         return;
       }
-      if (result.needsOrganizationSetup) {
-        router.replace(`/create-organization?returnTo=${encodeURIComponent(next)}`);
+      if (result.needsSelection || result.needsOrganizationSetup) {
+        router.replace(`/select-persona?next=${encodeURIComponent(next)}`);
         return;
       }
-      router.replace(result.needsSelection ? `/select-persona?next=${encodeURIComponent(next)}` : next);
+      router.replace(next);
     } catch (err) {
       if (err instanceof ApiError && err.code === "identity.email_not_confirmed") {
         setPendingEmail(email);

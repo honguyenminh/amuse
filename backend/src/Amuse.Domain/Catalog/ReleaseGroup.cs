@@ -6,7 +6,7 @@ namespace Amuse.Domain.Catalog;
 public sealed class ReleaseGroup
 {
     public const int MaxTitleLength = 300;
-    public const int MaxDescriptionLength = 4000;
+    public const int MaxDescriptionLength = CatalogFormattedText.MaxLength;
 
     public ReleaseGroupId Id { get; private set; }
     public OrganizationId OrganizationId { get; private set; }
@@ -53,8 +53,13 @@ public sealed class ReleaseGroup
         if (trimmedTitle.Length is 0 or > MaxTitleLength)
             return Result<ReleaseGroup>.Failure(CatalogErrors.InvalidReleaseGroup);
 
-        if (description is { Length: > MaxDescriptionLength })
-            return Result<ReleaseGroup>.Failure(CatalogErrors.InvalidReleaseGroup);
+        if (description is not null)
+        {
+            var descriptionResult = CatalogFormattedText.TryCreate(description);
+            if (!descriptionResult.IsSuccess)
+                return Result<ReleaseGroup>.Failure(descriptionResult.Error!);
+            description = CatalogFormattedText.ToStoredValue(descriptionResult.Value);
+        }
 
         return Result<ReleaseGroup>.Success(
             new ReleaseGroup(id, organizationId, artistId, trimmedTitle, slug, description, createdAt));
@@ -66,11 +71,12 @@ public sealed class ReleaseGroup
         if (trimmedTitle.Length is 0 or > MaxTitleLength)
             return Result.Failure(CatalogErrors.InvalidReleaseGroup);
 
-        if (description is { Length: > MaxDescriptionLength })
-            return Result.Failure(CatalogErrors.InvalidReleaseGroup);
+        var descriptionResult = CatalogFormattedText.TryCreate(description);
+        if (!descriptionResult.IsSuccess)
+            return Result.Failure(descriptionResult.Error!);
 
         Title = trimmedTitle;
-        Description = description;
+        Description = CatalogFormattedText.ToStoredValue(descriptionResult.Value);
         UpdatedAt = now;
         return Result.Success();
     }

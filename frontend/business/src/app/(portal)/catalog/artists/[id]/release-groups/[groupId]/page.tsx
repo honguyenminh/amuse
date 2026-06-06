@@ -1,5 +1,6 @@
 "use client";
 
+import { FormattedCatalogText } from "@amuse/catalog-text";
 import { EditReleaseGroupDialog } from "@/components/catalog/EditReleaseGroupDialog";
 import { ResourceAuditPanel } from "@/components/catalog/ResourceAuditPanel";
 import { Button } from "@/components/ui/button";
@@ -149,7 +150,16 @@ export default function ArtistReleaseGroupDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              {group.description ? <p>{group.description}</p> : <p>No description.</p>}
+              {group.description ? (
+                <FormattedCatalogText
+                  text={group.description}
+                  codeClassName="rounded bg-muted px-1 font-mono text-sm"
+                  linkClassName="underline text-primary"
+                  hashtagClassName="underline text-primary"
+                />
+              ) : (
+                <p>No description.</p>
+              )}
             </CardContent>
           </Card>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { CollapsibleFormattedText } from "@/components/catalog/CollapsibleFormattedText";
 import { AppShell } from "@/components/ui/AppShell";
 import { PageContent } from "@/components/ui/PageContent";
 import { Button } from "@/components/ui/Button";
@@ -134,6 +135,16 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
                 </div>
               </div>
             </Card>
+
+            {release.description ? (
+              <Card>
+                <Text variant="title-large">About</Text>
+                <CollapsibleFormattedText
+                  text={release.description}
+                  className="text-on-surface-variant"
+                />
+              </Card>
+            ) : null}
 
             {release.otherEditions.length > 0 ? (
               <Card>

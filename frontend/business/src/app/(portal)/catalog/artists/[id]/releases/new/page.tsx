@@ -1,5 +1,6 @@
 "use client";
 
+import { CatalogTextEditor } from "@/components/catalog/CatalogTextEditor";
 import {
   FeaturingArtistsDialog,
   FeaturingArtistsSummary,
@@ -631,11 +632,10 @@ export default function NewReleasePage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="description">Description (optional)</Label>
-                <textarea
+                <CatalogTextEditor
                   id="description"
                   value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  className="min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onChange={setDescription}
                   disabled={submitting}
                 />
               </div>

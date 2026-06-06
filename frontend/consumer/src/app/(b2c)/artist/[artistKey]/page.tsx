@@ -1,5 +1,6 @@
 "use client";
 
+import { FormattedCatalogText } from "@amuse/catalog-text";
 import { AppShell } from "@/components/ui/AppShell";
 import { PageContent } from "@/components/ui/PageContent";
 import { Card } from "@/components/ui/Card";
@@ -72,7 +73,10 @@ export default function ArtistPage({
                 <div className="flex flex-col gap-1">
                   <Text variant="headline-medium">{artist.name}</Text>
                   {artist.bio && (
-                    <Text variant="body-medium">{artist.bio}</Text>
+                    <FormattedCatalogText
+                      text={artist.bio}
+                      className="text-on-surface-variant"
+                    />
                   )}
                 </div>
               </div>

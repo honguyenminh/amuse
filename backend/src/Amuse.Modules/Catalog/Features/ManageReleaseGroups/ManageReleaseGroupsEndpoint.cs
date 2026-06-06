@@ -26,7 +26,8 @@ public static class ManageReleaseGroupsEndpoint
             .RequireAuthorization(OrgPolicies.WriteDraftCatalog)
             .WithRequestValidation()
             .WithName("CreateCatalogArtistReleaseGroup")
-            .WithSummary("Create a release group for an artist.")
+            .WithSummary(
+                "Create a release group for an artist. Description supports a limited markdown subset; returns catalog.invalid_formatted_text when unsupported formatting or invalid links are present.")
             .Produces<ManageReleaseGroupResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);
@@ -85,7 +86,8 @@ public static class ManageReleaseGroupsEndpoint
             .RequireAuthorization(OrgPolicies.WriteDraftCatalog)
             .WithRequestValidation()
             .WithName("UpdateCatalogArtistReleaseGroup")
-            .WithSummary("Update release group metadata.")
+            .WithSummary(
+                "Update release group metadata. Description supports a limited markdown subset; returns catalog.invalid_formatted_text when unsupported formatting or invalid links are present.")
             .Produces<ManageReleaseGroupResponse>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);

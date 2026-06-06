@@ -26,7 +26,7 @@ public static class ManageArtistsEndpoint
             .WithRequestValidation()
             .WithName("CreateCatalogArtist")
             .WithSummary(
-                "Add an artist to the organization roster. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when the slug is invalid or already taken.")
+                "Add an artist to the organization roster. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when the slug is invalid or already taken. Bio supports a limited markdown subset; returns catalog.invalid_formatted_text when unsupported formatting or invalid links are present.")
             .Produces<ManageArtistSummaryResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);
@@ -87,7 +87,8 @@ public static class ManageArtistsEndpoint
             .RequireAuthorization(OrgPolicies.WriteDraftCatalog)
             .WithRequestValidation()
             .WithName("UpdateCatalogArtist")
-            .WithSummary("Update artist profile metadata.")
+            .WithSummary(
+                "Update artist profile metadata. Bio supports a limited markdown subset; returns catalog.invalid_formatted_text when unsupported formatting or invalid links are present.")
             .Produces<ManageArtistSummaryResponse>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);

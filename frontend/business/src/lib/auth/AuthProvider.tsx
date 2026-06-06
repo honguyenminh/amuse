@@ -34,7 +34,7 @@ import {
   setAccessToken,
   setActivePersona,
 } from "@/lib/auth/sessionStore";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -86,7 +86,6 @@ async function activatePersona(
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [account, setAccount] = useState<CurrentAccountResponse | null>(null);
@@ -117,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {
         token: initialToken,
         activePersona: null,
-        needsSelection: false,
+        needsSelection: true,
         needsOrganizationSetup: true,
         error: null,
       };
@@ -217,22 +216,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     businessPersonas.length === 0 &&
     activePersonaState === null &&
     bootstrapError === null;
-
-  useEffect(() => {
-    if (!isReady || !needsOrganizationSetup) {
-      return;
-    }
-    if (
-      pathname.startsWith("/create-organization") ||
-      pathname.startsWith("/login") ||
-      pathname.startsWith("/signup") ||
-      pathname.startsWith("/confirm-email") ||
-      pathname.startsWith("/accept-invite")
-    ) {
-      return;
-    }
-    router.replace("/create-organization?returnTo=/dashboard");
-  }, [isReady, needsOrganizationSetup, pathname, router]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -379,7 +362,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const needsPersonaSelection =
     isAuthenticated &&
-    businessPersonas.length > 1 &&
     activePersonaState === null &&
     bootstrapError === null;
 

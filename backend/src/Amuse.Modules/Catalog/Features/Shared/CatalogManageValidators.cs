@@ -10,6 +10,12 @@ internal static class CatalogManageValidators
         ruleBuilder
             .Must(d => d.Offset == TimeSpan.Zero)
             .WithMessage("Timestamp must be UTC (offset Z).");
+
+    internal static IRuleBuilderOptions<T, string?> MustBeValidFormattedCatalogText<T>(
+        this IRuleBuilder<T, string?> ruleBuilder) =>
+        ruleBuilder
+            .Must(text => CatalogFormattedText.TryCreate(text).IsSuccess)
+            .WithMessage(CatalogErrors.InvalidFormattedText.Message);
 }
 
 internal sealed class CreateReleaseGroupRequestValidator : AbstractValidator<CreateReleaseGroupRequest>
@@ -17,7 +23,7 @@ internal sealed class CreateReleaseGroupRequestValidator : AbstractValidator<Cre
     public CreateReleaseGroupRequestValidator()
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(ReleaseGroup.MaxTitleLength);
-        RuleFor(x => x.Description).MaximumLength(ReleaseGroup.MaxDescriptionLength);
+        RuleFor(x => x.Description).MustBeValidFormattedCatalogText();
     }
 }
 
@@ -26,7 +32,7 @@ internal sealed class UpdateReleaseGroupRequestValidator : AbstractValidator<Upd
     public UpdateReleaseGroupRequestValidator()
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(ReleaseGroup.MaxTitleLength);
-        RuleFor(x => x.Description).MaximumLength(ReleaseGroup.MaxDescriptionLength);
+        RuleFor(x => x.Description).MustBeValidFormattedCatalogText();
     }
 }
 
@@ -35,7 +41,7 @@ internal sealed class CreateArtistRequestValidator : AbstractValidator<CreateArt
     public CreateArtistRequestValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(Artist.MaxNameLength);
-        RuleFor(x => x.Bio).MaximumLength(Artist.MaxBioLength);
+        RuleFor(x => x.Bio).MustBeValidFormattedCatalogText();
         RuleFor(x => x.CountryCode).MaximumLength(Artist.MaxCountryCodeLength);
         RuleFor(x => x.WebsiteUrl).MaximumLength(Artist.MaxUrlLength);
         RuleFor(x => x.Aliases).MaximumLength(Artist.MaxAliasesLength);
@@ -52,7 +58,7 @@ internal sealed class UpdateArtistRequestValidator : AbstractValidator<UpdateArt
     public UpdateArtistRequestValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(Artist.MaxNameLength);
-        RuleFor(x => x.Bio).MaximumLength(Artist.MaxBioLength);
+        RuleFor(x => x.Bio).MustBeValidFormattedCatalogText();
         RuleFor(x => x.CountryCode).MaximumLength(Artist.MaxCountryCodeLength);
         RuleFor(x => x.WebsiteUrl).MaximumLength(Artist.MaxUrlLength);
         RuleFor(x => x.Aliases).MaximumLength(Artist.MaxAliasesLength);
@@ -66,7 +72,7 @@ internal sealed class CreateReleaseRequestValidator : AbstractValidator<CreateRe
         RuleFor(x => x.Title).NotEmpty().MaximumLength(Release.MaxTitleLength);
         RuleFor(x => x.ReleaseType).IsInEnum();
         RuleFor(x => x.ReleaseDate).MustBeUtc();
-        RuleFor(x => x.Description).MaximumLength(Release.MaxDescriptionLength);
+        RuleFor(x => x.Description).MustBeValidFormattedCatalogText();
         RuleFor(x => x.Upc).MaximumLength(Release.MaxUpcLength);
         RuleFor(x => x.PrimaryGenre).MaximumLength(Release.MaxGenreLength);
         RuleFor(x => x.Tags).MaximumLength(Release.MaxTagsLength);
@@ -92,7 +98,7 @@ internal sealed class UpdateReleaseRequestValidator : AbstractValidator<UpdateRe
         RuleFor(x => x.Title).NotEmpty().MaximumLength(Release.MaxTitleLength);
         RuleFor(x => x.ReleaseType).IsInEnum();
         RuleFor(x => x.ReleaseDate).MustBeUtc();
-        RuleFor(x => x.Description).MaximumLength(Release.MaxDescriptionLength);
+        RuleFor(x => x.Description).MustBeValidFormattedCatalogText();
         RuleFor(x => x.Upc).MaximumLength(Release.MaxUpcLength);
         RuleFor(x => x.PrimaryGenre).MaximumLength(Release.MaxGenreLength);
         RuleFor(x => x.Tags).MaximumLength(Release.MaxTagsLength);

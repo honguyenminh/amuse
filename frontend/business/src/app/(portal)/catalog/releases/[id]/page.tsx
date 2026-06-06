@@ -1,5 +1,6 @@
 "use client";
 
+import { FormattedCatalogText } from "@amuse/catalog-text";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditReleaseMetadataDialog } from "@/components/catalog/EditReleaseMetadataDialog";
 import { EditTrackDialog } from "@/components/catalog/EditTrackDialog";
@@ -562,7 +563,14 @@ export default function ReleaseDetailPage() {
               : "—"}
           </p>
           <p>Metadata complete: {release?.metadataComplete ? "Yes" : "No"}</p>
-          {release?.description ? <p>{release.description}</p> : null}
+          {release?.description ? (
+            <FormattedCatalogText
+              text={release.description}
+              codeClassName="rounded bg-muted px-1 font-mono text-sm"
+              linkClassName="underline text-primary"
+              hashtagClassName="underline text-primary"
+            />
+          ) : null}
         </CardContent>
       </Card>
 

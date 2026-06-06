@@ -102,4 +102,7 @@ public static class CatalogErrors
 
     public static readonly DomainError TrackNotDeletable =
         new("catalog.track_not_deletable", "Tracks can only be deleted from unpublished releases.");
+
+    public static readonly DomainError InvalidFormattedText =
+        new("catalog.invalid_formatted_text", "Text contains unsupported formatting or invalid links.");
 }

@@ -85,13 +85,15 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
         using var client = fixture.CreateClient();
         await AuthorizeAsync(client);
 
-        var home = await client.GetFromJsonAsync<JsonElement>("/api/v1/catalog/home", JsonOptions);
-        var releaseId = home.GetProperty("recentReleases")[0].GetProperty("id").GetString();
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        var trackId = await db.Tracks
+            .AsNoTracking()
+            .Where(t => t.AudioMasterKey != null && t.AudioStreamKey == null)
+            .Select(t => t.Id.Value)
+            .FirstOrDefaultAsync();
 
-        var release = await client.GetFromJsonAsync<JsonElement>(
-            $"/api/v1/catalog/releases/{releaseId}",
-            JsonOptions);
-        var trackId = release.GetProperty("tracks")[0].GetProperty("id").GetString();
+        Assert.NotEqual(Guid.Empty, trackId);
 
         var response = await client.GetAsync($"/api/v1/catalog/tracks/{trackId}/stream-info");
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

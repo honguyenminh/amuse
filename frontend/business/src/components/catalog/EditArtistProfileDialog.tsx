@@ -1,8 +1,10 @@
 "use client";
 
+import { CatalogTextEditor } from "@/components/catalog/CatalogTextEditor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -92,7 +94,8 @@ export function EditArtistProfileDialog({
             Slug /{artist.slug} cannot be changed here.
           </DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+        <form className="flex flex-col" onSubmit={onSubmit}>
+          <DialogBody>
           <div className="grid gap-2">
             <Label htmlFor="artist-name">Name</Label>
             <Input
@@ -105,11 +108,10 @@ export function EditArtistProfileDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="artist-bio">Bio</Label>
-            <textarea
+            <CatalogTextEditor
               id="artist-bio"
-              className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               value={bio}
-              onChange={(event) => setBio(event.target.value)}
+              onChange={setBio}
               disabled={submitting}
             />
           </div>
@@ -146,6 +148,7 @@ export function EditArtistProfileDialog({
             />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

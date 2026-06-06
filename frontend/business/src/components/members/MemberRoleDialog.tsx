@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -62,7 +63,7 @@ export function MemberRoleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2">
+        <DialogBody className="min-h-0 flex-1 overflow-y-auto py-2">
           <div className="flex flex-col gap-3">
             {presets.map((preset) => {
               const Icon = getPresetIcon(preset.icon);
@@ -130,7 +131,7 @@ export function MemberRoleDialog({
               </div>
             </div>
           </div>
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button type="button" variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>

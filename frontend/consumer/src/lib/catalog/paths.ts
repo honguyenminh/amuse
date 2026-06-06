@@ -1,3 +1,4 @@
+import { catalogHashtagPath as sharedCatalogHashtagPath } from "@amuse/catalog-text";
 import type { ReleaseEditionSummary, ReleaseSummary } from "@/lib/api/types";
 
 export function catalogArtistPath(artistSlug: string): string {
@@ -17,4 +18,8 @@ export function catalogReleasePathFromEdition(
   edition: ReleaseEditionSummary,
 ): string {
   return catalogReleasePath(artistSlug, edition.slug);
+}
+
+export function catalogHashtagPath(tag: string): string {
+  return sharedCatalogHashtagPath(tag);
 }

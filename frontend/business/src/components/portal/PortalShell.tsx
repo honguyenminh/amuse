@@ -88,7 +88,6 @@ export function PortalShell({ children }: PortalShellProps) {
           <SidebarTrigger className="-ml-1" />
           <h1 className="flex-1 text-sm font-medium">{title}</h1>
           <div className="flex items-center gap-2">
-            <PortalUserChip compact className="hidden md:flex" />
             <PersonaSwitcher compact />
             <Button variant="ghost" size="sm" onClick={() => void onSignOut()}>
               <LogOut />

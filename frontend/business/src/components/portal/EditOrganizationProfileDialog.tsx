@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -76,7 +77,8 @@ export function EditOrganizationProfileDialog({
             {organization.displayName} · display name and type cannot be changed here.
           </DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+        <form className="flex flex-col" onSubmit={onSubmit}>
+          <DialogBody>
           <div className="grid gap-2">
             <Label htmlFor="org-description">Description</Label>
             <textarea
@@ -119,6 +121,7 @@ export function EditOrganizationProfileDialog({
             />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

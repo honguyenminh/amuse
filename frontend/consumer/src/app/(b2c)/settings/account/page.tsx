@@ -30,12 +30,20 @@ export default function AccountSettingsPage() {
     setAllowUnverifiedArtists(auth.listenerProfile.allowUnverifiedArtists ?? false);
   }, [auth.listenerProfile]);
 
+  useEffect(() => {
+    if (!auth.isReady) {
+      return;
+    }
+    if (!auth.isAuthenticated) {
+      router.replace("/login?next=/settings/account");
+    }
+  }, [auth.isReady, auth.isAuthenticated, router]);
+
   if (!auth.isReady) {
     return null;
   }
 
   if (!auth.isAuthenticated) {
-    router.replace("/login?next=/settings/account");
     return null;
   }
 

@@ -1,8 +1,10 @@
 "use client";
 
+import { CatalogTextEditor } from "@/components/catalog/CatalogTextEditor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -76,7 +78,8 @@ export function EditReleaseGroupDialog({
           <DialogTitle>Edit release group</DialogTitle>
           <DialogDescription>Slug /{group.slug}</DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+        <form className="flex flex-col" onSubmit={onSubmit}>
+          <DialogBody>
           <div className="grid gap-2">
             <Label htmlFor="group-title">Title</Label>
             <Input
@@ -89,15 +92,15 @@ export function EditReleaseGroupDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="group-description">Description</Label>
-            <textarea
+            <CatalogTextEditor
               id="group-description"
-              className="min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={setDescription}
               disabled={submitting}
             />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

@@ -37,6 +37,25 @@ export default function OnboardingPage() {
     }
   }, [auth.listenerProfile]);
 
+  useEffect(() => {
+    if (!auth.isReady) {
+      return;
+    }
+    if (!auth.isAuthenticated) {
+      router.replace(`/login?next=${encodeURIComponent("/onboarding")}`);
+      return;
+    }
+    if (!auth.needsListenerOnboarding) {
+      router.replace(next);
+    }
+  }, [
+    auth.isReady,
+    auth.isAuthenticated,
+    auth.needsListenerOnboarding,
+    next,
+    router,
+  ]);
+
   const canContinueStep1 = useMemo(
     () => displayName.trim().length > 0,
     [displayName],
@@ -50,14 +69,12 @@ export default function OnboardingPage() {
     );
   }
 
-  if (!auth.isAuthenticated) {
-    router.replace(`/login?next=${encodeURIComponent("/onboarding")}`);
-    return null;
-  }
-
-  if (!auth.needsListenerOnboarding) {
-    router.replace(next);
-    return null;
+  if (!auth.isAuthenticated || !auth.needsListenerOnboarding) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center p-8">
+        <Text variant="body-large">Redirecting…</Text>
+      </div>
+    );
   }
 
   const submit = async () => {

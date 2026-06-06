@@ -1,5 +1,6 @@
 "use client";
 
+import { FormattedCatalogText } from "@amuse/catalog-text";
 import { EditArtistProfileDialog } from "@/components/catalog/EditArtistProfileDialog";
 import { ResourceAuditPanel } from "@/components/catalog/ResourceAuditPanel";
 import { Button } from "@/components/ui/button";
@@ -139,7 +140,16 @@ export default function ArtistDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            {artist.bio ? <p>{artist.bio}</p> : <p>No bio yet.</p>}
+            {artist.bio ? (
+              <FormattedCatalogText
+                text={artist.bio}
+                codeClassName="rounded bg-muted px-1 font-mono text-sm"
+                linkClassName="underline text-primary"
+                hashtagClassName="underline text-primary"
+              />
+            ) : (
+              <p>No bio yet.</p>
+            )}
             <p>Country: {artist.countryCode ?? "—"}</p>
             <p>Website: {artist.websiteUrl ?? "—"}</p>
             <p>Aliases: {artist.aliases ?? "—"}</p>

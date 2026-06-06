@@ -7,7 +7,7 @@ public sealed class Release
 {
     public const int MaxTitleLength = 300;
     public const int MaxKeyLength = 512;
-    public const int MaxDescriptionLength = 4000;
+    public const int MaxDescriptionLength = CatalogFormattedText.MaxLength;
     public const int MaxUpcLength = 32;
     public const int MaxGenreLength = 100;
     public const int MaxTagsLength = 500;
@@ -138,6 +138,10 @@ public sealed class Release
         if (!metadataResult.IsSuccess)
             return Result<Release>.Failure(metadataResult.Error!);
 
+        var descriptionResult = CatalogFormattedText.TryCreate(description);
+        if (!descriptionResult.IsSuccess)
+            return Result<Release>.Failure(descriptionResult.Error!);
+
         return Result<Release>.Success(
             new Release(
                 id,
@@ -149,7 +153,7 @@ public sealed class Release
                 releaseType,
                 ReleaseLifecycleStatus.Draft,
                 releaseDate,
-                NormalizeOptional(description),
+                CatalogFormattedText.ToStoredValue(descriptionResult.Value),
                 NormalizeOptional(upc),
                 NormalizeOptional(primaryGenre),
                 NormalizeOptional(tags),
@@ -203,11 +207,15 @@ public sealed class Release
         if (!metadataResult.IsSuccess)
             return Result.Failure(metadataResult.Error!);
 
+        var descriptionResult = CatalogFormattedText.TryCreate(description);
+        if (!descriptionResult.IsSuccess)
+            return Result.Failure(descriptionResult.Error!);
+
         Title = trimmedTitle;
         ReleaseType = releaseType;
         ReleaseDate = releaseDate;
         ReleaseGroupId = releaseGroupId;
-        Description = NormalizeOptional(description);
+        Description = CatalogFormattedText.ToStoredValue(descriptionResult.Value);
         Upc = NormalizeOptional(upc);
         PrimaryGenre = NormalizeOptional(primaryGenre);
         Tags = NormalizeOptional(tags);
@@ -386,8 +394,7 @@ public sealed class Release
         string? cLine,
         DateTimeOffset? originalReleaseDate)
     {
-        if (NormalizeOptional(description)?.Length > MaxDescriptionLength
-            || NormalizeOptional(upc)?.Length > MaxUpcLength
+        if (NormalizeOptional(upc)?.Length > MaxUpcLength
             || NormalizeOptional(primaryGenre)?.Length > MaxGenreLength
             || NormalizeOptional(tags)?.Length > MaxTagsLength
             || NormalizeOptional(languageCode)?.Length > MaxLanguageCodeLength

@@ -49,7 +49,7 @@ public static class ManageReleasesEndpoint
             .WithRequestValidation()
             .WithName("CreateCatalogRelease")
             .WithSummary(
-                "Create a draft release for a roster artist. Optional slug; when omitted, a unique slug is generated from the title. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when the slug is invalid or already taken for this artist.")
+                "Create a draft release for a roster artist. Optional slug; when omitted, a unique slug is generated from the title. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when the slug is invalid or already taken for this artist. Description supports a limited markdown subset; returns catalog.invalid_formatted_text when unsupported formatting or invalid links are present.")
             .Produces<ManageReleaseDetailResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);
@@ -113,7 +113,7 @@ public static class ManageReleasesEndpoint
             .WithRequestValidation()
             .WithName("UpdateCatalogRelease")
             .WithSummary(
-                "Update draft release metadata. Optional slug change while the release is still a draft. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when invalid or taken for this artist.")
+                "Update draft release metadata. Optional slug change while the release is still a draft. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when invalid or taken for this artist. Description supports a limited markdown subset; returns catalog.invalid_formatted_text when unsupported formatting or invalid links are present.")
             .Produces<ManageReleaseDetailResponse>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);

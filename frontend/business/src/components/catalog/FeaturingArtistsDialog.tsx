@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -95,7 +96,7 @@ export function FeaturingArtistsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3 px-6 pb-2">
+        <DialogBody className="gap-3">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -164,7 +165,7 @@ export function FeaturingArtistsDialog({
           <p className="text-xs text-muted-foreground">
             {draftIds.length} artist{draftIds.length === 1 ? "" : "s"} selected
           </p>
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

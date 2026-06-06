@@ -171,9 +171,14 @@ export function PersonaPicker({
         </section>
       ) : null}
 
-      {filteredOrgs.length === 0 &&
-      !showPlatformInMain &&
-      recentPersonas.length === 0 ? (
+      {personas.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          You are not a member of any organization yet. Create one below, or wait
+          for an invite.
+        </p>
+      ) : filteredOrgs.length === 0 &&
+        !showPlatformInMain &&
+        recentPersonas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No workspaces match your search.
         </p>

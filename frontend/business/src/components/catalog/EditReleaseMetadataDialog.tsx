@@ -1,5 +1,6 @@
 "use client";
 
+import { CatalogTextEditor } from "@/components/catalog/CatalogTextEditor";
 import {
   FeaturingArtistsDialog,
   FeaturingArtistsSummary,
@@ -299,11 +300,10 @@ export function EditReleaseMetadataDialog({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="release-description">Description</Label>
-              <textarea
+              <CatalogTextEditor
                 id="release-description"
-                className="min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 value={description}
-                onChange={(event) => setDescription(event.target.value)}
+                onChange={setDescription}
                 disabled={submitting}
               />
             </div>
