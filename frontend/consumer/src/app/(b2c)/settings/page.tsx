@@ -15,7 +15,7 @@ import { usePlayback } from "@/lib/playback/PlaybackContext";
 import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
-  const { setVolume } = usePlayback();
+  const { setVolume, refreshPlaybackSettings } = usePlayback();
   const [settings, setSettings] = useState<PlaybackSettings>(defaultPlaybackSettings);
 
   useEffect(() => {
@@ -27,6 +27,9 @@ export default function SettingsPage() {
     setSettings(next);
     if (partial.volume !== undefined) {
       setVolume(next.volume);
+    }
+    if (partial.volumeNormalization !== undefined) {
+      refreshPlaybackSettings();
     }
   };
 
@@ -40,8 +43,8 @@ export default function SettingsPage() {
               <span>
                 <Text variant="body-medium">Volume normalization</Text>
                 <Text variant="label-small" className="text-on-surface-variant">
-                  Tracks are processed to approximately -14 LUFS. Leave on for consistent
-                  loudness.
+                  When on, playback gain is adjusted per track to about -14 LUFS using loudness
+                  measured at upload. When off, hear the original levels.
                 </Text>
               </span>
               <input

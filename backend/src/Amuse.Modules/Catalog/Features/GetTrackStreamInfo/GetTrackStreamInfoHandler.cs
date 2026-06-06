@@ -23,7 +23,14 @@ internal sealed class GetTrackStreamInfoHandler(
         var track = await db.Tracks
             .AsNoTracking()
             .Where(t => t.Id == typedId)
-            .Select(t => new { t.Title, t.Duration, t.AudioMasterKey, t.AudioStreamKey })
+            .Select(t => new
+            {
+                t.Title,
+                t.Duration,
+                t.AudioMasterKey,
+                t.AudioStreamKey,
+                t.LoudnessProfile,
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (track is null)
@@ -58,13 +65,22 @@ internal sealed class GetTrackStreamInfoHandler(
             ? renditionRows.Select(ToDto).ToList()
             : [LegacyRendition()];
 
+        TrackStreamLoudnessDto? loudness = track.LoudnessProfile is null
+            ? null
+            : new TrackStreamLoudnessDto(
+                track.LoudnessProfile.IntegratedLufs,
+                track.LoudnessProfile.TruePeakDbtp,
+                track.LoudnessProfile.TargetIntegratedLufs,
+                track.LoudnessProfile.TargetTruePeakDbtp,
+                track.LoudnessProfile.LinearGainLu);
+
         return Result<TrackStreamInfoResponse>.Success(new TrackStreamInfoResponse(
             trackId,
             url,
             contentType,
             track.Duration.Milliseconds,
             expiresAt,
-            LoudnessNormalized: true,
+            loudness,
             renditions));
     }
 
@@ -117,6 +133,13 @@ internal sealed class GetTrackStreamInfoHandler(
     }
 }
 
+public sealed record TrackStreamLoudnessDto(
+    double IntegratedLufs,
+    double TruePeakDbtp,
+    double TargetIntegratedLufs,
+    double TargetTruePeakDbtp,
+    double LinearGainLu);
+
 public sealed record TrackStreamRenditionDto(
     string Id,
     string Codec,
@@ -132,5 +155,5 @@ public sealed record TrackStreamInfoResponse(
     string ContentType,
     int DurationMs,
     DateTimeOffset ExpiresAt,
-    bool LoudnessNormalized,
+    TrackStreamLoudnessDto? Loudness,
     IReadOnlyList<TrackStreamRenditionDto> Renditions);

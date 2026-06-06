@@ -21,8 +21,11 @@ public static class GetTrackStreamInfoEndpoint
             .WithName("GetCatalogTrackStreamInfo")
             .WithSummary(
                 "Return a short-lived signed URL for streaming a track. " +
-                "Returns problem `catalog.track_not_found` when the id is unknown or " +
-                "`catalog.track_has_no_audio` when the master is not yet uploaded.")
+                "Includes optional `Loudness` metadata (integrated LUFS, true peak, and precomputed " +
+                "`LinearGainLu`) for client-side volume normalization. " +
+                "Returns problem `catalog.track_not_found` when the id is unknown, " +
+                "`catalog.track_has_no_audio` when the master is not yet uploaded, or " +
+                "`catalog.track_stream_not_ready` when packaging has not finished.")
             .Produces<TrackStreamInfoResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 

@@ -102,13 +102,21 @@ export type TrackStreamRenditionDto = {
   representationId: string;
 };
 
+export type TrackStreamLoudness = {
+  integratedLufs: number;
+  truePeakDbtp: number;
+  targetIntegratedLufs: number;
+  targetTruePeakDbtp: number;
+  linearGainLu: number;
+};
+
 export type TrackStreamInfoResponse = {
   trackId: string;
   url: string;
   contentType: string;
   durationMs: number;
   expiresAt: string;
-  loudnessNormalized: boolean;
+  loudness: TrackStreamLoudness | null;
   renditions: TrackStreamRenditionDto[];
 };
 

@@ -15,6 +15,7 @@ export type PlaybackOutput = {
   audio: HTMLAudioElement;
   prime: () => void;
   setVolume: (volume: number) => void;
+  setNormalizationGain: (gain: number) => void;
   playSmooth: () => Promise<void>;
   pauseSmooth: () => Promise<void>;
   pauseImmediate: () => void;
@@ -37,10 +38,19 @@ export function createPlaybackOutput(): PlaybackOutput {
   let gainNode: GainNode | null = null;
   let webAudio = false;
   let targetVolume = 0.85;
+  let normalizationGain = 1;
   let pauseInFlight: Promise<void> | null = null;
   let fadeGeneration = 0;
 
-  audio.volume = targetVolume;
+  function webAudioOutputGain(): number {
+    return Math.max(0, targetVolume * normalizationGain);
+  }
+
+  function fallbackElementVolume(): number {
+    return clampVolume(targetVolume * normalizationGain);
+  }
+
+  audio.volume = fallbackElementVolume();
 
   function tryWire(): boolean {
     if (webAudio) return true;
@@ -48,7 +58,7 @@ export function createPlaybackOutput(): PlaybackOutput {
       context = new AudioContext();
       const source = context.createMediaElementSource(audio);
       gainNode = context.createGain();
-      gainNode.gain.value = targetVolume;
+      gainNode.gain.value = webAudioOutputGain();
       source.connect(gainNode);
       gainNode.connect(context.destination);
       audio.volume = 1;
@@ -87,6 +97,19 @@ export function createPlaybackOutput(): PlaybackOutput {
     }
   }
 
+  function applyWebAudioGain(immediate = false) {
+    if (!webAudio || !gainNode || !context) return;
+    const outputGain = webAudioOutputGain();
+    const t = context.currentTime;
+    gainNode.gain.cancelScheduledValues(t);
+    if (immediate || audio.paused) {
+      gainNode.gain.setValueAtTime(outputGain, t);
+      return;
+    }
+    gainNode.gain.setValueAtTime(gainNode.gain.value, t);
+    gainNode.gain.linearRampToValueAtTime(outputGain, t + 0.05);
+  }
+
   return {
     audio,
 
@@ -97,15 +120,18 @@ export function createPlaybackOutput(): PlaybackOutput {
     setVolume(volume: number) {
       targetVolume = clampVolume(volume);
       if (webAudio && gainNode && context) {
-        const t = context.currentTime;
-        gainNode.gain.cancelScheduledValues(t);
-        gainNode.gain.value = audio.paused ? targetVolume : gainNode.gain.value;
-        if (!audio.paused) {
-          gainNode.gain.setValueAtTime(gainNode.gain.value, t);
-          gainNode.gain.linearRampToValueAtTime(targetVolume, t + 0.02);
-        }
+        applyWebAudioGain();
       } else if (audio.paused) {
-        audio.volume = targetVolume;
+        audio.volume = fallbackElementVolume();
+      }
+    },
+
+    setNormalizationGain(gain: number) {
+      normalizationGain = Number.isFinite(gain) && gain > 0 ? gain : 1;
+      if (webAudio && gainNode && context) {
+        applyWebAudioGain();
+      } else if (audio.paused) {
+        audio.volume = fallbackElementVolume();
       }
     },
 
@@ -113,12 +139,13 @@ export function createPlaybackOutput(): PlaybackOutput {
       if (pauseInFlight) await pauseInFlight;
       cancelFades();
 
+      const outputGain = webAudioOutputGain();
       const ctx = await resumeContext();
       if (ctx && gainNode) {
         const t = ctx.currentTime;
         gainNode.gain.cancelScheduledValues(t);
         gainNode.gain.setValueAtTime(MIN_GAIN, t);
-        gainNode.gain.exponentialRampToValueAtTime(targetVolume, t + PLAY_FADE_SEC);
+        gainNode.gain.exponentialRampToValueAtTime(Math.max(outputGain, MIN_GAIN), t + PLAY_FADE_SEC);
         try {
           await audio.play();
         } catch (error) {
@@ -127,27 +154,28 @@ export function createPlaybackOutput(): PlaybackOutput {
         return;
       }
 
+      const elementTarget = fallbackElementVolume();
       try {
         audio.volume = 0;
         await audio.play();
       } catch (error) {
-        audio.volume = targetVolume;
+        audio.volume = elementTarget;
         throw error;
       }
-      await fadeElementVolume(targetVolume, FALLBACK_FADE_MS);
+      await fadeElementVolume(elementTarget, FALLBACK_FADE_MS);
     },
 
     async pauseSmooth() {
       if (audio.paused) return;
 
       const run = async () => {
-        // Decoder keeps advancing during the fade; restore this after pause().
         const freezeAtSec =
           Number.isFinite(audio.currentTime) && audio.currentTime >= 0
             ? audio.currentTime
             : 0;
 
         cancelFades();
+        const outputGain = webAudioOutputGain();
         const ctx = await resumeContext();
 
         if (ctx && gainNode) {
@@ -161,14 +189,14 @@ export function createPlaybackOutput(): PlaybackOutput {
           audio.currentTime = freezeAtSec;
           const t2 = ctx.currentTime;
           gainNode.gain.cancelScheduledValues(t2);
-          gainNode.gain.setValueAtTime(targetVolume, t2);
+          gainNode.gain.setValueAtTime(outputGain, t2);
           return;
         }
 
         await fadeElementVolume(0, FALLBACK_FADE_MS);
         if (!audio.paused) audio.pause();
         audio.currentTime = freezeAtSec;
-        audio.volume = targetVolume;
+        audio.volume = fallbackElementVolume();
       };
 
       pauseInFlight = run().finally(() => {
@@ -181,10 +209,10 @@ export function createPlaybackOutput(): PlaybackOutput {
       cancelFades();
       if (webAudio && gainNode && context) {
         const t = context.currentTime;
-        gainNode.gain.setValueAtTime(targetVolume, t);
+        gainNode.gain.setValueAtTime(webAudioOutputGain(), t);
       }
       audio.pause();
-      audio.volume = targetVolume;
+      audio.volume = fallbackElementVolume();
     },
   };
 }

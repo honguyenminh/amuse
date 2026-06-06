@@ -74,6 +74,26 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
             .HasColumnName("audio_stream_key")
             .HasMaxLength(Track.MaxKeyLength);
 
+        builder.OwnsOne(t => t.LoudnessProfile, loudness =>
+        {
+            loudness.Property(p => p.IntegratedLufs)
+                .HasColumnName("loudness_integrated_lufs");
+            loudness.Property(p => p.TruePeakDbtp)
+                .HasColumnName("loudness_true_peak_dbtp");
+            loudness.Property(p => p.LoudnessRangeLu)
+                .HasColumnName("loudness_range_lu");
+            loudness.Property(p => p.ThresholdLufs)
+                .HasColumnName("loudness_threshold_lufs");
+            loudness.Property(p => p.TargetIntegratedLufs)
+                .HasColumnName("loudness_target_integrated_lufs");
+            loudness.Property(p => p.TargetTruePeakDbtp)
+                .HasColumnName("loudness_target_true_peak_dbtp");
+            loudness.Property(p => p.LinearGainLu)
+                .HasColumnName("loudness_linear_gain_lu");
+            loudness.Property(p => p.AnalyzedAt)
+                .HasColumnName("loudness_analyzed_at");
+        });
+
         builder.HasIndex(t => new { t.ReleaseId, t.TrackNumber }).IsUnique();
         builder.HasIndex(t => new { t.OrganizationId, t.LifecycleStatus });
     }

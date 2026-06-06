@@ -2,7 +2,11 @@
 
 import { resolveApiUrl } from "@/lib/api/config";
 import { getTrackStreamInfo } from "@/lib/api/catalogClient";
-import { ApiError, type TrackStreamRenditionDto } from "@/lib/api/types";
+import {
+  ApiError,
+  type TrackStreamLoudness,
+  type TrackStreamRenditionDto,
+} from "@/lib/api/types";
 import { getAccessToken } from "@/lib/auth/sessionStore";
 import { useTheme } from "@/theme/ThemeProvider";
 import {
@@ -34,6 +38,7 @@ import {
   limitDowngradeToOneStep,
   renditionLadderIndex,
 } from "./renditionLadder";
+import { computeNormalizationGain } from "./normalizationGain";
 import { selectRendition } from "./selectRendition";
 import { createPlaybackOutput, type PlaybackOutput } from "./playbackOutput";
 import { playbackReducer } from "./reducer";
@@ -70,6 +75,7 @@ type PlaybackContextValue = {
   streamRenditions: TrackStreamRenditionDto[];
   activeRendition: ActiveRenditionInfo | null;
   switchRendition: (renditionId: string) => void;
+  refreshPlaybackSettings: () => void;
 };
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -100,6 +106,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const autoStallDowngradesRef = useRef(0);
   const autoUpgradeBlockedUntilRef = useRef(0);
   const seekGraceUntilRef = useRef(0);
+  const lastStreamLoudnessRef = useRef<TrackStreamLoudness | null>(null);
   const isPlayingRef = useRef(false);
   const isScrubbingRef = useRef(false);
   const { setPlayingSeed, setPaused } = useTheme();
@@ -114,6 +121,17 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setStreamRenditions([]);
     setActiveRendition(null);
   }, []);
+
+  const applyNormalizationGain = useCallback((loudness: TrackStreamLoudness | null) => {
+    lastStreamLoudnessRef.current = loudness;
+    const settings = loadPlaybackSettings();
+    const gain = computeNormalizationGain(loudness, settings.volumeNormalization);
+    outputRef.current?.setNormalizationGain(gain);
+  }, []);
+
+  const refreshPlaybackSettings = useCallback(() => {
+    applyNormalizationGain(lastStreamLoudnessRef.current);
+  }, [applyNormalizationGain]);
 
 
   isPlayingRef.current = state.isPlaying;
@@ -286,6 +304,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     }
     if (lastLoadedTrackIdRef.current === currentTrack.id) return;
     lastLoadedTrackIdRef.current = currentTrack.id;
+    lastStreamLoudnessRef.current = null;
     lastAutoSwitchAtRef.current = 0;
     lastStallHandledAtRef.current = 0;
     autoStallDowngradesRef.current = 0;
@@ -307,6 +326,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
         streamRenditionsRef.current = info.renditions ?? [];
         setStreamRenditions(info.renditions ?? []);
+        applyNormalizationGain(info.loudness);
 
         if (isDash) {
           const settings = loadPlaybackSettings();
@@ -354,7 +374,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [currentTrack?.id, router, resetDashSession, handlePlaybackStall]);
+  }, [currentTrack?.id, router, resetDashSession, handlePlaybackStall, applyNormalizationGain]);
 
   useEffect(
     () => () => {
@@ -587,6 +607,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       streamRenditions,
       activeRendition,
       switchRendition,
+      refreshPlaybackSettings,
     }),
     [
       state,
@@ -608,6 +629,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       streamRenditions,
       activeRendition,
       switchRendition,
+      refreshPlaybackSettings,
     ],
   );
 

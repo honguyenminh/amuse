@@ -7,7 +7,7 @@ Frontend playback is owned by a single `PlaybackProvider` sibling to `ThemeProvi
 - A pure reducer over a `PlaybackState` (queue, position, volume, repeat, shuffle).
 - The fetch for playback discovery (`/api/v1/catalog/tracks/{id}/stream-info`) — returns a **relative** DASH manifest path when ready, or `catalog.track_stream_not_ready` until the worker sets `audio_stream_key`.
 - **DASH playback** via `dashjs` (`src/lib/playback/dashPlayer.ts`): manifest + catalog-backed segment URLs are resolved against `NEXT_PUBLIC_API_BASE_URL` (`resolveApiUrl`); dash.js **v5** uses `addRequestInterceptor` to attach `Authorization` + `X-Amuse-Client` (the old `RequestModifier` extension is a no-op in v5).
-- **Output path** (`src/lib/playback/playbackOutput.ts`): optional Web Audio `GainNode` for short fade-in on play and fade-out before pause (reduces clicks); pause restores `currentTime` after fade so the seekbar does not drift.
+- **Output path** (`src/lib/playback/playbackOutput.ts`): optional Web Audio `GainNode` for short fade-in on play and fade-out before pause (reduces clicks); pause restores `currentTime` after fade so the seekbar does not drift. **Volume normalization** multiplies user volume by per-track gain from `stream-info.loudness.linearGainLu` when enabled in settings (`normalizationGain.ts`, `refreshPlaybackSettings()` on toggle).
 - The bridge into `ThemeProvider`'s `playingSeed` / `isPaused` precedence.
 - A login redirect guard: anonymous visitors can browse, but attempting to play
   bounces them through `/login?next=<current path>`.
@@ -183,10 +183,25 @@ UI primitives introduced earlier and still in use:
 - `PlaybackIcons` — small set of inline SVGs (Play, Pause, Prev, Next, Repeat, Shuffle,
   ChevronDown).
 
+## Volume normalization
+
+Settings (`/settings`, `playbackSettings.volumeNormalization`, default **on**):
+
+| Toggle | Playback |
+|--------|----------|
+| **On** | `computeNormalizationGain(info.loudness, true)` → `playbackOutput.setNormalizationGain` (Web Audio can exceed 1.0; fallback `audio.volume` is clamped to 1.0) |
+| **Off** | Gain multiplier `1` — original DASH levels (worker no longer bakes loudnorm into renditions) |
+
+`stream-info` must include `loudness.linearGainLu` (populated after worker analyze pass).
+Toggling normalization calls `refreshPlaybackSettings()` without reloading the track.
+
+Verify after a fresh dev seed + worker run: compare the same track with normalization on vs off.
+
 ## Testing
 
 - `src/lib/playback/__tests__/reducer.test.ts` — queue ops, transport, repeat, etc.
 - `src/lib/playback/__tests__/formatDuration.test.ts` — duration formatting.
+- `src/lib/playback/__tests__/normalizationGain.test.ts` — per-track gain helper.
 - Run with `pnpm test` from `frontend/consumer`.
 
 Backend integration: `CatalogEndpointsTests` includes `stream-info` expectations for **DASH-only** behavior (`Stream_info_returns_track_stream_not_ready_until_ingested`, auth, unknown track).

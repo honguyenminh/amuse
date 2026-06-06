@@ -28,6 +28,7 @@ public sealed class Track
     public TrackLifecycleStatus LifecycleStatus { get; private set; }
     public string? AudioMasterKey { get; private set; }
     public string? AudioStreamKey { get; private set; }
+    public TrackLoudnessProfile? LoudnessProfile { get; private set; }
 
     private Track()
     {
@@ -202,6 +203,28 @@ public sealed class Track
             throw new ArgumentException($"Audio stream key exceeds {MaxKeyLength} characters.", nameof(audioStreamKey));
         AudioStreamKey = audioStreamKey;
     }
+
+    public Result SetLoudnessProfile(TrackLoudnessProfile profile)
+    {
+        if (profile is null)
+            return Result.Failure(CatalogErrors.InvalidTrack);
+
+        if (string.IsNullOrWhiteSpace(AudioMasterKey))
+            return Result.Failure(CatalogErrors.TrackHasNoAudio);
+
+        if (LifecycleStatus is not (
+            TrackLifecycleStatus.Draft
+            or TrackLifecycleStatus.Processing
+            or TrackLifecycleStatus.Ready))
+        {
+            return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
+        }
+
+        LoudnessProfile = profile;
+        return Result.Success();
+    }
+
+    internal void ClearLoudnessProfile() => LoudnessProfile = null;
 
     private static bool ValidateOptional(string? value, int maxLength)
     {

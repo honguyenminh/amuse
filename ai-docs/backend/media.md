@@ -142,6 +142,37 @@ catalog migration emitted these as `*_key` columns (e.g. `cover_art_key`).
    creates `catalog.audio_transcode_job` + publishes to RabbitMQ (same as `complete` upload),
    so dev fixtures use the encoded pipeline.
 
+## Loudness analysis (client-side normalization)
+
+The transcoder worker runs **two logical steps** per job (one or two ffmpeg invocations):
+
+1. **Analyze** — `loudnorm=I=-14:TP=-1.0:LRA=11:print_format=json -f null` on the master.
+   Parses JSON from stderr (`input_i`, `input_tp`, `input_lra`, `input_thresh`).
+   **Analyze failure fails the job**; the track stays without `audio_stream_key`.
+2. **Package DASH** — same codec ladder as before but **without** `-af loudnorm` (streams
+   preserve original mastering dynamics).
+
+Results are stored on `catalog.track` (owned `TrackLoudnessProfile`):
+
+- Measured integrated LUFS / true peak / LRA / threshold
+- Target integrated LUFS (`-14`) and true peak (`-1` dBTP)
+- **`loudness_linear_gain_lu`** — `min(targetI - integrated, targetTp - truePeak)` (TP-capped linear gain)
+
+`GET .../stream-info` returns this as optional `Loudness` (`linearGainLu` included). The
+consumer applies gain client-side when **Volume normalization** is enabled in settings.
+
+### Fresh dev environment (nuke checklist)
+
+After changing normalization behavior, old DASH objects may still exist without loudness
+columns or with baked loudnorm audio. For a clean slate:
+
+1. Drop/recreate Postgres (or run migrations on empty DB).
+2. **Delete `dash/` prefixes** in MinIO/R2 (`amuse-audio` bucket) so the worker does not
+   skip ffmpeg via `ObjectExistsAsync` on stale manifests.
+3. `docker compose up -d --build` (migrate + API + worker).
+4. Wait until seeded tracks have both `audio_stream_key` and loudness columns populated
+   before testing the consumer normalization toggle.
+
 Both BMP and WAV encoders live in `SeedMediaGenerators` and are hand-rolled (no extra
 image/audio dependencies). Total data uploaded: ~28 objects, ~5.7 MB.
 

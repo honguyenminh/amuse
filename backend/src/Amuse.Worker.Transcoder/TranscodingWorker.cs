@@ -20,10 +20,17 @@ namespace Amuse.Worker.Transcoder;
 internal sealed partial class TranscodingWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<TranscodingWorker> logger,
+    ILoggerFactory loggerFactory,
     IOptions<RabbitMqOptions> rabbitOptions,
     IOptions<MediaOptions> mediaOptions) : BackgroundService
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.General);
+    private LoudnormAnalyzer? _loudnormAnalyzer;
+
+    private LoudnormAnalyzer LoudnormAnalyzer =>
+        _loudnormAnalyzer ??= new LoudnormAnalyzer(
+            (arguments, trackId, jobId, ct) => RunFfmpegAsync(arguments, trackId, jobId, ct),
+            loggerFactory.CreateLogger<LoudnormAnalyzer>());
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -107,6 +114,28 @@ internal sealed partial class TranscodingWorker(
                     job.MasterKey,
                     job.StreamKey);
 
+                var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
+                var masterInputUrl = storage.GetInternalSignedUrl(MediaBucket.Audio, job.MasterKey, ttl);
+
+                var track = await db.Tracks
+                    .FirstOrDefaultAsync(t => t.Id == job.TrackId, stoppingToken)
+                    ?? throw new InvalidOperationException($"Track {job.TrackId.Value} not found for transcode job {job.Id}.");
+
+                TrackLoudnessProfile loudnessProfile;
+                if (track.LoudnessProfile is not null)
+                {
+                    loudnessProfile = track.LoudnessProfile;
+                }
+                else
+                {
+                    loudnessProfile = await LoudnormAnalyzer.AnalyzeAsync(
+                        masterInputUrl,
+                        job.TrackId.Value,
+                        job.Id,
+                        now,
+                        stoppingToken);
+                }
+
                 var alreadyReady = await storage.ObjectExistsAsync(MediaBucket.Audio, job.StreamKey, stoppingToken);
                 if (!alreadyReady)
                 {
@@ -114,6 +143,7 @@ internal sealed partial class TranscodingWorker(
                         storage,
                         db,
                         job.MasterKey,
+                        masterInputUrl,
                         job.StreamKey,
                         job.TrackId,
                         job.Id,
@@ -130,13 +160,14 @@ internal sealed partial class TranscodingWorker(
                         stoppingToken);
                 }
 
-                var track = await db.Tracks
-                    .FirstOrDefaultAsync(t => t.Id == job.TrackId, stoppingToken);
-                if (track is not null)
-                {
-                    track.SetAudioStream(job.StreamKey);
-                    track.MarkReady();
-                }
+                var setLoudnessResult = track.SetLoudnessProfile(loudnessProfile);
+                if (!setLoudnessResult.IsSuccess)
+                    throw new InvalidOperationException(setLoudnessResult.Error!.Message);
+
+                track.SetAudioStream(job.StreamKey);
+                var readyResult = track.MarkReady();
+                if (!readyResult.IsSuccess)
+                    throw new InvalidOperationException(readyResult.Error!.Message);
 
                 job.MarkSucceeded(DateTimeOffset.UtcNow);
                 await db.SaveChangesAsync(stoppingToken);
@@ -201,6 +232,7 @@ internal sealed partial class TranscodingWorker(
         IObjectStorage storage,
         CatalogDbContext db,
         string audioMasterKey,
+        string inputUrl,
         string dashManifestKey,
         TrackId trackId,
         Guid jobId,
@@ -210,9 +242,6 @@ internal sealed partial class TranscodingWorker(
         var manifestId = Guid.Parse(ExtractManifestId(dashManifestKey));
 
         LogDashPackagingStarting(jobId, trackId.Value, audioMasterKey, dashManifestKey);
-
-        var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var inputUrl = storage.GetInternalSignedUrl(MediaBucket.Audio, audioMasterKey, ttl);
 
         var outDir = Path.Combine(
             Path.GetTempPath(),
@@ -231,7 +260,6 @@ internal sealed partial class TranscodingWorker(
 
         var args =
             $"-hide_banner -loglevel error -y -nostdin -i \"{inputUrl}\" -vn " +
-            "-af loudnorm=I=-14:TP=-1.0:LRA=11:linear=true:print_format=none " +
             "-map 0:a:0 -c:a:0 flac " +
             "-map 0:a:0 -c:a:1 libopus -b:a:1 64k -ar 48000 " +
             "-map 0:a:0 -c:a:2 libopus -b:a:2 128k -ar 48000 " +
@@ -361,7 +389,7 @@ internal sealed partial class TranscodingWorker(
         return Guid.CreateVersion7().ToString();
     }
 
-    private async Task RunFfmpegAsync(string arguments, Guid trackId, Guid jobId, CancellationToken ct)
+    private async Task<FfmpegRunResult> RunFfmpegAsync(string arguments, Guid trackId, Guid jobId, CancellationToken ct)
     {
         var ffmpegStopwatch = Stopwatch.StartNew();
 
@@ -408,6 +436,8 @@ internal sealed partial class TranscodingWorker(
         {
             LogFfmpegStderr(jobId, trackId, stderr);
         }
+
+        return new FfmpegRunResult(stdout, stderr);
     }
 
     private async Task<IConnection> ConnectWithRetryAsync(
