@@ -17,7 +17,7 @@ using RabbitMQ.Client.Exceptions;
 
 namespace Amuse.Worker.Transcoder;
 
-internal sealed class TranscodingWorker(
+internal sealed partial class TranscodingWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<TranscodingWorker> logger,
     IOptions<RabbitMqOptions> rabbitOptions,
@@ -29,12 +29,7 @@ internal sealed class TranscodingWorker(
     {
         var rabbit = rabbitOptions.Value;
 
-        logger.LogInformation(
-            "Transcoder worker starting; RabbitMQ {RabbitHost}:{RabbitPort}, queue {QueueName}, prefetch {PrefetchCount}",
-            rabbit.HostName,
-            rabbit.Port,
-            rabbit.QueueName,
-            rabbit.PrefetchCount);
+        LogWorkerStarting(rabbit.HostName, rabbit.Port, rabbit.QueueName, rabbit.PrefetchCount);
 
         var factory = new ConnectionFactory
         {
@@ -57,9 +52,7 @@ internal sealed class TranscodingWorker(
 
         await channel.BasicQosAsync(0, rabbit.PrefetchCount, global: false, cancellationToken: stoppingToken);
 
-        logger.LogInformation(
-            "Transcoder worker consuming queue {QueueName}",
-            rabbit.QueueName);
+        LogWorkerConsuming(rabbit.QueueName);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.ReceivedAsync += async (_, ea) =>
@@ -75,18 +68,12 @@ internal sealed class TranscodingWorker(
                 var msg = JsonSerializer.Deserialize<AudioTranscodeJobMessage>(json, SerializerOptions);
                 if (msg is null)
                 {
-                    logger.LogWarning(
-                        "Ignoring RabbitMQ message with invalid payload on delivery {DeliveryTag}",
-                        ea.DeliveryTag);
+                    LogInvalidPayload(ea.DeliveryTag);
                     await channel.BasicAckAsync(ea.DeliveryTag, multiple: false, stoppingToken);
                     return;
                 }
 
-                logger.LogInformation(
-                    "Received transcode message job {JobId} track {TrackId} delivery {DeliveryTag}",
-                    msg.JobId,
-                    msg.TrackId,
-                    ea.DeliveryTag);
+                LogMessageReceived(msg.JobId, msg.TrackId, ea.DeliveryTag);
 
                 scope = scopeFactory.CreateScope();
                 db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
@@ -97,21 +84,14 @@ internal sealed class TranscodingWorker(
 
                 if (job is null)
                 {
-                    logger.LogWarning(
-                        "Transcode job {JobId} not found in database; acking delivery {DeliveryTag}",
-                        msg.JobId,
-                        ea.DeliveryTag);
+                    LogJobNotFound(msg.JobId, ea.DeliveryTag);
                     await channel.BasicAckAsync(ea.DeliveryTag, multiple: false, stoppingToken);
                     return;
                 }
 
                 if (job.Status == AudioTranscodeJobStatus.Succeeded)
                 {
-                    logger.LogInformation(
-                        "Transcode job {JobId} for track {TrackId} already succeeded; acking delivery {DeliveryTag}",
-                        job.Id,
-                        job.TrackId.Value,
-                        ea.DeliveryTag);
+                    LogJobAlreadySucceeded(job.Id, job.TrackId.Value, ea.DeliveryTag);
                     await channel.BasicAckAsync(ea.DeliveryTag, multiple: false, stoppingToken);
                     return;
                 }
@@ -120,8 +100,7 @@ internal sealed class TranscodingWorker(
                 job.MarkProcessing(now);
                 await db.SaveChangesAsync(stoppingToken);
 
-                logger.LogInformation(
-                    "Transcode job {JobId} for track {TrackId} marked processing (attempt {AttemptCount}); master {MasterKey} -> stream {StreamKey}",
+                LogJobProcessing(
                     job.Id,
                     job.TrackId.Value,
                     job.AttemptCount,
@@ -142,10 +121,7 @@ internal sealed class TranscodingWorker(
                 }
                 else
                 {
-                    logger.LogInformation(
-                        "DASH manifest already present at {StreamKey} for job {JobId}; skipping ffmpeg",
-                        job.StreamKey,
-                        job.Id);
+                    LogDashManifestPresent(job.StreamKey, job.Id);
                     await EnsureRenditionsFromManifestAsync(
                         storage,
                         db,
@@ -165,8 +141,7 @@ internal sealed class TranscodingWorker(
                 job.MarkSucceeded(DateTimeOffset.UtcNow);
                 await db.SaveChangesAsync(stoppingToken);
 
-                logger.LogInformation(
-                    "Transcode job {JobId} for track {TrackId} succeeded in {ElapsedMs}ms; stream {StreamKey}",
+                LogJobSucceeded(
                     job.Id,
                     job.TrackId.Value,
                     jobStopwatch.ElapsedMilliseconds,
@@ -176,9 +151,8 @@ internal sealed class TranscodingWorker(
             }
             catch (Exception ex)
             {
-                logger.LogError(
+                LogJobFailed(
                     ex,
-                    "Transcode job {JobId} for track {TrackId} failed after {ElapsedMs}ms (attempt {AttemptCount})",
                     job?.Id,
                     job?.TrackId.Value,
                     jobStopwatch.ElapsedMilliseconds,
@@ -189,18 +163,11 @@ internal sealed class TranscodingWorker(
                     {
                         job.MarkFailed(ex.Message, DateTimeOffset.UtcNow);
                         await db.SaveChangesAsync(stoppingToken);
-                        logger.LogWarning(
-                            "Transcode job {JobId} for track {TrackId} persisted failure: {LastError}",
-                            job.Id,
-                            job.TrackId.Value,
-                            job.LastError);
+                        LogJobFailurePersisted(job.Id, job.TrackId.Value, job.LastError);
                     }
                     catch (Exception persistEx)
                     {
-                        logger.LogError(
-                            persistEx,
-                            "Failed to persist transcode job {JobId} failure state",
-                            job.Id);
+                        LogJobFailurePersistError(persistEx, job.Id);
                     }
                 }
 
@@ -221,7 +188,7 @@ internal sealed class TranscodingWorker(
         var tcs = new TaskCompletionSource();
         stoppingToken.Register(() =>
         {
-            logger.LogInformation("Transcoder worker shutdown requested");
+            LogWorkerShutdownRequested();
             try { channel.CloseAsync().GetAwaiter().GetResult(); } catch { }
             try { connection.CloseAsync().GetAwaiter().GetResult(); } catch { }
             tcs.TrySetResult();
@@ -242,12 +209,7 @@ internal sealed class TranscodingWorker(
         var transcodeStopwatch = Stopwatch.StartNew();
         var manifestId = Guid.Parse(ExtractManifestId(dashManifestKey));
 
-        logger.LogInformation(
-            "Starting DASH packaging for job {JobId} track {TrackId}; master {MasterKey} -> {StreamKey}",
-            jobId,
-            trackId.Value,
-            audioMasterKey,
-            dashManifestKey);
+        LogDashPackagingStarting(jobId, trackId.Value, audioMasterKey, dashManifestKey);
 
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
         var inputUrl = storage.GetInternalSignedUrl(MediaBucket.Audio, audioMasterKey, ttl);
@@ -265,11 +227,7 @@ internal sealed class TranscodingWorker(
         foreach (var file in Directory.EnumerateFiles(outDir))
             File.Delete(file);
 
-        logger.LogDebug(
-            "DASH work directory for job {JobId} track {TrackId}: {WorkDirectory}",
-            jobId,
-            trackId.Value,
-            outDir);
+        LogDashWorkDirectory(jobId, trackId.Value, outDir);
 
         var args =
             $"-hide_banner -loglevel error -y -nostdin -i \"{inputUrl}\" -vn " +
@@ -295,12 +253,7 @@ internal sealed class TranscodingWorker(
         var prefix = dashManifestKey[..(dashManifestKey.LastIndexOf('/') + 1)];
         var artifactPaths = Directory.EnumerateFiles(outDir).ToList();
 
-        logger.LogInformation(
-            "Uploading {ArtifactCount} DASH artifacts for job {JobId} track {TrackId} under prefix {StoragePrefix}",
-            artifactPaths.Count,
-            jobId,
-                trackId.Value,
-                prefix);
+        LogDashUploading(artifactPaths.Count, jobId, trackId.Value, prefix);
 
         await PersistRenditionsAsync(
             db,
@@ -318,19 +271,10 @@ internal sealed class TranscodingWorker(
             var bytes = await File.ReadAllBytesAsync(filePath, ct);
             await storage.PutAsync(MediaBucket.Audio, key, bytes, contentType, ct);
 
-            logger.LogDebug(
-                "Uploaded DASH artifact {ObjectKey} ({ByteCount} bytes) for job {JobId} track {TrackId}",
-                key,
-                bytes.Length,
-                jobId,
-                trackId.Value);
+            LogDashArtifactUploaded(key, bytes.Length, jobId, trackId.Value);
         }
 
-        logger.LogInformation(
-            "DASH packaging completed for job {JobId} track {TrackId} in {ElapsedMs}ms",
-            jobId,
-            trackId.Value,
-            transcodeStopwatch.ElapsedMilliseconds);
+        LogDashPackagingCompleted(jobId, trackId.Value, transcodeStopwatch.ElapsedMilliseconds);
     }
 
     private static async Task EnsureRenditionsFromManifestAsync(
@@ -421,10 +365,7 @@ internal sealed class TranscodingWorker(
     {
         var ffmpegStopwatch = Stopwatch.StartNew();
 
-        logger.LogInformation(
-            "Starting ffmpeg for job {JobId} track {TrackId}",
-            jobId,
-            trackId);
+        LogFfmpegStarting(jobId, trackId);
 
         using var process = new Process
         {
@@ -450,40 +391,22 @@ internal sealed class TranscodingWorker(
 
         if (process.ExitCode != 0)
         {
-            logger.LogError(
-                "ffmpeg failed for job {JobId} track {TrackId} with exit code {ExitCode} after {ElapsedMs}ms; stderr: {FfmpegStderr}",
-                jobId,
-                trackId,
-                process.ExitCode,
-                ffmpegStopwatch.ElapsedMilliseconds,
-                stderr);
+            LogFfmpegFailed(jobId, trackId, process.ExitCode, ffmpegStopwatch.ElapsedMilliseconds, stderr);
 
             if (!string.IsNullOrWhiteSpace(stdout))
             {
-                logger.LogDebug(
-                    "ffmpeg stdout for job {JobId} track {TrackId}: {FfmpegStdout}",
-                    jobId,
-                    trackId,
-                    stdout);
+                LogFfmpegStdout(jobId, trackId, stdout);
             }
 
             throw new InvalidOperationException(
                 $"ffmpeg failed (exit {process.ExitCode}). stdout='{stdout}' stderr='{stderr}'");
         }
 
-        logger.LogInformation(
-            "ffmpeg completed for job {JobId} track {TrackId} in {ElapsedMs}ms",
-            jobId,
-            trackId,
-            ffmpegStopwatch.ElapsedMilliseconds);
+        LogFfmpegCompleted(jobId, trackId, ffmpegStopwatch.ElapsedMilliseconds);
 
         if (!string.IsNullOrWhiteSpace(stderr))
         {
-            logger.LogDebug(
-                "ffmpeg stderr for job {JobId} track {TrackId}: {FfmpegStderr}",
-                jobId,
-                trackId,
-                stderr);
+            LogFfmpegStderr(jobId, trackId, stderr);
         }
     }
 
@@ -503,12 +426,7 @@ internal sealed class TranscodingWorker(
             }
             catch (BrokerUnreachableException ex)
             {
-                logger.LogWarning(
-                    ex,
-                    "RabbitMQ unreachable at {RabbitHost}:{RabbitPort}; retrying in {RetrySeconds}s",
-                    rabbit.HostName,
-                    rabbit.Port,
-                    delay.TotalSeconds);
+                LogRabbitMqUnreachable(ex, rabbit.HostName, rabbit.Port, delay.TotalSeconds);
                 await Task.Delay(delay, cancellationToken);
                 delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2, maxDelaySeconds));
             }

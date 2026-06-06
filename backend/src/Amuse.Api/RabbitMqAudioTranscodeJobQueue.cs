@@ -6,7 +6,7 @@ using RabbitMQ.Client;
 
 namespace Amuse.Api;
 
-internal sealed class RabbitMqAudioTranscodeJobQueue(
+internal sealed partial class RabbitMqAudioTranscodeJobQueue(
     IOptions<RabbitMqOptions> options,
     ILogger<RabbitMqAudioTranscodeJobQueue> logger)
     : IAudioTranscodeJobQueue, IAsyncDisposable
@@ -78,7 +78,7 @@ internal sealed class RabbitMqAudioTranscodeJobQueue(
                 }
                 catch (Exception ex) when (attempts < 5)
                 {
-                    logger.LogWarning(ex, "RabbitMQ unreachable; retry {Attempt}/5", attempts);
+                    LogRabbitMqUnreachableRetry(ex, attempts);
                     await Task.Delay(TimeSpan.FromSeconds(1), ct);
                 }
             }
@@ -96,4 +96,7 @@ internal sealed class RabbitMqAudioTranscodeJobQueue(
         if (_connection is not null)
             await _connection.CloseAsync();
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "RabbitMQ unreachable; retry {Attempt}/5")]
+    private partial void LogRabbitMqUnreachableRetry(Exception ex, int attempt);
 }

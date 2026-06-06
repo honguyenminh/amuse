@@ -7,7 +7,7 @@ using MimeKit;
 
 namespace Amuse.Modules.Identity.Email;
 
-internal sealed class SmtpEmailSender(
+internal sealed partial class SmtpEmailSender(
     IOptions<IdentityEmailOptions> options,
     ILogger<SmtpEmailSender> logger) : IEmailSender
 {
@@ -44,12 +44,7 @@ internal sealed class SmtpEmailSender(
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
 
-        logger.LogInformation(
-            "Sent confirmation email to {Email} via SMTP {Host}:{Port}. Link: {ConfirmUrl}",
-            email,
-            smtp.Host,
-            smtp.Port,
-            confirmUrl);
+        LogConfirmationSent(email, smtp.Host, smtp.Port, confirmUrl);
     }
 
     public async Task SendOrganizationInviteAsync(
@@ -86,12 +81,6 @@ internal sealed class SmtpEmailSender(
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
 
-        logger.LogInformation(
-            "Sent organization invite to {Email} for {Organization} via SMTP {Host}:{Port}. Link: {InviteUrl}",
-            email,
-            organizationDisplayName,
-            smtp.Host,
-            smtp.Port,
-            inviteUrl);
+        LogOrganizationInviteSent(email, organizationDisplayName, smtp.Host, smtp.Port, inviteUrl);
     }
 }

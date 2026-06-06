@@ -39,7 +39,7 @@ internal sealed class SystemClock : IClock
     public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
 }
 
-internal sealed class ScheduledReleasePublishWorker(
+internal sealed partial class ScheduledReleasePublishWorker(
     IServiceScopeFactory scopeFactory,
     IOptions<CatalogSchedulerOptions> options,
     ILogger<ScheduledReleasePublishWorker> logger) : BackgroundService
@@ -49,10 +49,7 @@ internal sealed class ScheduledReleasePublishWorker(
         var pollInterval = TimeSpan.FromSeconds(Math.Max(5, options.Value.PollIntervalSeconds));
         var batchSize = Math.Max(1, options.Value.BatchSize);
 
-        logger.LogInformation(
-            "Catalog scheduler starting; poll {PollIntervalSeconds}s, batch {BatchSize}, claim FOR UPDATE SKIP LOCKED",
-            pollInterval.TotalSeconds,
-            batchSize);
+        LogSchedulerStarting(pollInterval.TotalSeconds, batchSize);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -62,7 +59,7 @@ internal sealed class ScheduledReleasePublishWorker(
             }
             catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
             {
-                logger.LogError(ex, "Catalog scheduler iteration failed.");
+                LogSchedulerIterationFailed(ex);
             }
 
             try
@@ -106,10 +103,7 @@ internal sealed class ScheduledReleasePublishWorker(
                 }
 
                 skipped++;
-                logger.LogWarning(
-                    "Scheduled publish skipped for release {ReleaseId} due to {ErrorCode}",
-                    release.Id.Value,
-                    result.Error?.Code ?? "unknown");
+                LogScheduledPublishSkipped(release.Id.Value, result.Error?.Code ?? "unknown");
             }
 
             await tx.CommitAsync(stoppingToken);
@@ -117,10 +111,7 @@ internal sealed class ScheduledReleasePublishWorker(
 
         if (published > 0 || skipped > 0)
         {
-            logger.LogInformation(
-                "Catalog scheduler processed due releases; published {PublishedCount}, skipped {SkippedCount}",
-                published,
-                skipped);
+            LogSchedulerProcessedDueReleases(published, skipped);
         }
     }
 }
