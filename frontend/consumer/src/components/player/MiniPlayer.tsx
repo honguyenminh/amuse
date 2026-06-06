@@ -15,7 +15,11 @@ import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import { shellContentPaddingClass } from "@/lib/ui/pageLayout";
-import { usePlayback, usePlaybackPosition } from "@/lib/playback/PlaybackContext";
+import {
+  usePlayback,
+  usePlaybackBufferedEnd,
+  usePlaybackPosition,
+} from "@/lib/playback/PlaybackContext";
 import { useScrubPosition } from "@/lib/playback/useScrubPosition";
 import Link from "next/link";
 
@@ -47,6 +51,7 @@ export function MiniPlayer() {
     toggleShuffle,
   } = usePlayback();
   const smoothMs = usePlaybackPosition();
+  const bufferedMs = usePlaybackBufferedEnd();
   const max = Math.max(state.durationMs, 1);
   const { displayMs: value, sliderProps } = useScrubPosition(smoothMs, max, {
     beginScrub,
@@ -69,6 +74,7 @@ export function MiniPlayer() {
     >
       <Slider
         value={value}
+        bufferedValue={bufferedMs}
         min={0}
         max={max}
         step={1}
@@ -76,6 +82,8 @@ export function MiniPlayer() {
         label="Seek within current track"
         size="sm"
         className="px-0"
+        showHoverTooltip
+        formatHoverValue={formatDuration}
       />
       <div className={cn("flex items-center gap-3 py-2", shellContentPaddingClass)}>
         <Link

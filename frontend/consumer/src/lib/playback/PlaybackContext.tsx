@@ -22,14 +22,21 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from "react";
-import { readAudioDurationMs, readAudioPositionMs } from "./audioPosition";
+import {
+  readAudioBufferedEndMs,
+  readAudioDurationMs,
+  readAudioPositionMs,
+} from "./audioPosition";
 import { attachDashToAudio, type ActiveRenditionInfo } from "./dashPlayer";
 import { loadPlaybackSettings, savePlaybackSettings } from "./playbackSettings";
-import { getNetworkHints } from "./networkHints";
+import { getNetworkHints, readNavigatorConnection } from "./networkHints";
+import {
+  limitDowngradeToOneStep,
+  renditionLadderIndex,
+} from "./renditionLadder";
 import { selectRendition } from "./selectRendition";
 import { createPlaybackOutput, type PlaybackOutput } from "./playbackOutput";
 import { playbackReducer } from "./reducer";
-import { syncAudioTime } from "./syncAudioTime";
 import {
   initialPlaybackState,
   type PlaybackState,
@@ -67,6 +74,17 @@ type PlaybackContextValue = {
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
+/** Ignore stall/downgrade signals while a seek is settling. */
+const SEEK_QUALITY_GRACE_MS = 5000;
+/** Minimum gap between auto downgrades from real rebuffering. */
+const STALL_DOWNGRADE_COOLDOWN_MS = 8000;
+/** After a stall downgrade, block auto upgrades so the lower rung can buffer and play. */
+const AUTO_UPGRADE_COOLDOWN_AFTER_STALL_MS = 45_000;
+/** Require this much buffer ahead before attempting an auto upgrade. */
+const AUTO_UPGRADE_MIN_BUFFER_SEC = 12;
+/** Reset stall downgrade memory after stable playback for this long. */
+const AUTO_STALL_MEMORY_DECAY_MS = 60_000;
+
 export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(playbackReducer, undefined, initialStateFromSettings);
   const outputRef = useRef<PlaybackOutput | null>(null);
@@ -77,6 +95,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [streamRenditions, setStreamRenditions] = useState<TrackStreamRenditionDto[]>([]);
   const [activeRendition, setActiveRendition] = useState<ActiveRenditionInfo | null>(null);
   const activeRenditionRef = useRef<ActiveRenditionInfo | null>(null);
+  const lastAutoSwitchAtRef = useRef(0);
+  const lastStallHandledAtRef = useRef(0);
+  const autoStallDowngradesRef = useRef(0);
+  const autoUpgradeBlockedUntilRef = useRef(0);
+  const seekGraceUntilRef = useRef(0);
   const isPlayingRef = useRef(false);
   const isScrubbingRef = useRef(false);
   const { setPlayingSeed, setPaused } = useTheme();
@@ -95,12 +118,42 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   isPlayingRef.current = state.isPlaying;
 
+  const markSeekGrace = useCallback(() => {
+    seekGraceUntilRef.current = Date.now() + SEEK_QUALITY_GRACE_MS;
+  }, []);
+
+  const isSeekQualityGraceActive = useCallback(() => {
+    if (isScrubbingRef.current) return true;
+    const audio = audioRef.current;
+    if (audio?.seeking) return true;
+    return Date.now() < seekGraceUntilRef.current;
+  }, []);
+
   const applyPositionToAudio = useCallback((positionMs: number, resume: boolean) => {
     const audio = audioRef.current;
     const output = outputRef.current;
+    const dashSession = dashSessionRef.current;
     if (!audio || !Number.isFinite(audio.duration)) return;
-    syncAudioTime(audio, positionMs / 1000, resume, () => output?.pauseImmediate());
-  }, []);
+
+    const positionSec = positionMs / 1000;
+    const target = Math.max(0, Math.min(positionSec, audio.duration));
+    if (Math.abs(audio.currentTime - target) < 0.001) {
+      if (resume && audio.paused) void audio.play().catch(() => undefined);
+      return;
+    }
+
+    markSeekGrace();
+    output?.pauseImmediate();
+    if (dashSession) {
+      dashSession.seek(target);
+    } else {
+      audio.currentTime = target;
+    }
+
+    if (resume) {
+      void audio.play().catch(() => undefined);
+    }
+  }, [markSeekGrace]);
 
   useEffect(() => {
     if (outputRef.current) return;
@@ -137,6 +190,90 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     activeRenditionRef.current = activeRendition;
   }, [activeRendition]);
 
+  const buildAutoHints = useCallback(() => {
+    const dashSession = dashSessionRef.current;
+    return getNetworkHints({
+      throughputKbps: dashSession?.getThroughputKbps(),
+      stallDowngradeSteps: autoStallDowngradesRef.current,
+    });
+  }, []);
+
+  const maybeDecayStallMemory = useCallback(() => {
+    const dashSession = dashSessionRef.current;
+    if (!dashSession) return;
+
+    const bufferSec = dashSession.getBufferLengthSeconds() ?? 0;
+    const now = Date.now();
+    const sinceStall = now - lastStallHandledAtRef.current;
+    if (
+      autoStallDowngradesRef.current > 0 &&
+      sinceStall >= AUTO_STALL_MEMORY_DECAY_MS &&
+      bufferSec >= AUTO_UPGRADE_MIN_BUFFER_SEC
+    ) {
+      autoStallDowngradesRef.current = 0;
+      autoUpgradeBlockedUntilRef.current = 0;
+    }
+  }, []);
+
+  const handlePlaybackStall = useCallback(() => {
+    if (isSeekQualityGraceActive()) return;
+
+    const dashSession = dashSessionRef.current;
+    const renditions = streamRenditionsRef.current;
+    const settings = loadPlaybackSettings();
+    if (!dashSession || renditions.length === 0 || settings.qualityMode !== "auto") return;
+
+    const now = Date.now();
+    if (now - lastStallHandledAtRef.current < STALL_DOWNGRADE_COOLDOWN_MS) return;
+
+    const current = activeRenditionRef.current?.rendition;
+    if (!current) return;
+
+    autoStallDowngradesRef.current += 1;
+    const chosen = selectRendition(renditions, settings, {
+      ...buildAutoHints(),
+      stallDowngradeSteps: autoStallDowngradesRef.current,
+    });
+    if (!chosen) return;
+
+    const next = limitDowngradeToOneStep(current, chosen, renditions);
+    if (next.id === current.id) return;
+
+    lastStallHandledAtRef.current = now;
+    lastAutoSwitchAtRef.current = now;
+    autoUpgradeBlockedUntilRef.current = now + AUTO_UPGRADE_COOLDOWN_AFTER_STALL_MS;
+    dashSession.setRendition(next);
+  }, [buildAutoHints, isSeekQualityGraceActive]);
+
+  const applyAutoRenditionIfNeeded = useCallback((force = false) => {
+    if (isSeekQualityGraceActive()) return;
+
+    const dashSession = dashSessionRef.current;
+    const renditions = streamRenditionsRef.current;
+    if (!dashSession || renditions.length === 0) return;
+
+    const settings = loadPlaybackSettings();
+    if (settings.qualityMode !== "auto") return;
+
+    maybeDecayStallMemory();
+
+    const now = Date.now();
+    if (now < autoUpgradeBlockedUntilRef.current) return;
+    if (!force && now - lastAutoSwitchAtRef.current < 3000) return;
+
+    const bufferSec = dashSession.getBufferLengthSeconds() ?? 0;
+    if (bufferSec < AUTO_UPGRADE_MIN_BUFFER_SEC) return;
+
+    const chosen = selectRendition(renditions, settings, buildAutoHints());
+    if (!chosen) return;
+
+    const current = activeRenditionRef.current?.rendition;
+    if (current && renditionLadderIndex(chosen) <= renditionLadderIndex(current)) return;
+
+    lastAutoSwitchAtRef.current = now;
+    dashSession.setRendition(chosen);
+  }, [buildAutoHints, isSeekQualityGraceActive, maybeDecayStallMemory]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -149,6 +286,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     }
     if (lastLoadedTrackIdRef.current === currentTrack.id) return;
     lastLoadedTrackIdRef.current = currentTrack.id;
+    lastAutoSwitchAtRef.current = 0;
+    lastStallHandledAtRef.current = 0;
+    autoStallDowngradesRef.current = 0;
+    autoUpgradeBlockedUntilRef.current = 0;
+    seekGraceUntilRef.current = 0;
 
     let cancelled = false;
     void (async () => {
@@ -181,6 +323,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           }
           dashSessionRef.current = dashSession;
           dashSession.onActiveRenditionChange(setActiveRendition);
+          dashSession.onBufferStall(() => {
+            handlePlaybackStall();
+          });
         } else {
           audio.crossOrigin = "anonymous";
           audio.src = playbackUrl;
@@ -209,7 +354,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [currentTrack?.id, router, resetDashSession]);
+  }, [currentTrack?.id, router, resetDashSession, handlePlaybackStall]);
 
   useEffect(
     () => () => {
@@ -254,52 +399,44 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setPaused(!state.isPlaying && state.currentIndex >= 0);
   }, [state.isPlaying, state.currentIndex, setPaused]);
 
-  const applyAutoRenditionIfNeeded = useCallback(() => {
-    const dashSession = dashSessionRef.current;
-    const renditions = streamRenditionsRef.current;
-    if (!dashSession || renditions.length === 0) return;
-
-    const settings = loadPlaybackSettings();
-    if (settings.qualityMode !== "auto") return;
-
-    const chosen = selectRendition(renditions, settings, getNetworkHints());
-    if (!chosen) return;
-
-    if (activeRenditionRef.current?.rendition.id === chosen.id) return;
-    dashSession.setRendition(chosen);
-  }, []);
-
   useEffect(() => {
     if (!currentTrack) return;
 
-    const connection = (
-      navigator as Navigator & {
-        connection?: EventTarget;
-      }
-    ).connection;
+    // navigator.connection exists in Chromium only; Firefox relies on measured throughput.
+    const connection = readNavigatorConnection();
     const handleNetworkChange = () => applyAutoRenditionIfNeeded();
 
-    if (connection) {
+    if (connection?.addEventListener) {
       connection.addEventListener("change", handleNetworkChange);
     }
     window.addEventListener("online", handleNetworkChange);
     window.addEventListener("offline", handleNetworkChange);
 
+    const audio = audioRef.current;
+    const onSeeked = () => {
+      seekGraceUntilRef.current = Math.max(
+        seekGraceUntilRef.current,
+        Date.now() + SEEK_QUALITY_GRACE_MS,
+      );
+    };
+    audio?.addEventListener("seeked", onSeeked);
+
     const intervalId = window.setInterval(() => {
       if (isPlayingRef.current) {
         applyAutoRenditionIfNeeded();
       }
-    }, 5000);
+    }, 2000);
 
     return () => {
-      if (connection) {
+      if (connection?.removeEventListener) {
         connection.removeEventListener("change", handleNetworkChange);
       }
       window.removeEventListener("online", handleNetworkChange);
       window.removeEventListener("offline", handleNetworkChange);
+      audio?.removeEventListener("seeked", onSeeked);
       window.clearInterval(intervalId);
     };
-  }, [currentTrack?.id, applyAutoRenditionIfNeeded]);
+  }, [currentTrack?.id, applyAutoRenditionIfNeeded, handlePlaybackStall]);
 
   const syncPositionFromAudio = useCallback(() => {
     const audio = audioRef.current;
@@ -547,4 +684,45 @@ export function usePlaybackPosition(): number {
   }, [audioRef, state.isPlaying, state.currentIndex]);
 
   return state.isPlaying ? playheadMs : state.positionMs;
+}
+
+/** Buffered playhead extent for seek bars (same ms scale as duration). */
+export function usePlaybackBufferedEnd(): number {
+  const { state, audioRef } = usePlayback();
+  const [bufferedMs, setBufferedMs] = useState(0);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || state.currentIndex < 0) {
+      setBufferedMs(0);
+      return;
+    }
+
+    const update = () => {
+      setBufferedMs(readAudioBufferedEndMs(audio));
+    };
+
+    update();
+    audio.addEventListener("progress", update);
+    audio.addEventListener("loadedmetadata", update);
+    audio.addEventListener("durationchange", update);
+    audio.addEventListener("seeked", update);
+
+    let raf = 0;
+    const loop = () => {
+      update();
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+
+    return () => {
+      audio.removeEventListener("progress", update);
+      audio.removeEventListener("loadedmetadata", update);
+      audio.removeEventListener("durationchange", update);
+      audio.removeEventListener("seeked", update);
+      cancelAnimationFrame(raf);
+    };
+  }, [audioRef, state.currentIndex, state.isPlaying]);
+
+  return bufferedMs;
 }

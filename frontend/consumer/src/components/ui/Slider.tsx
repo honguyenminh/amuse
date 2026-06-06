@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { useRef, type InputHTMLAttributes } from "react";
+import { useRef, useState, type InputHTMLAttributes, type PointerEvent } from "react";
 
 type SliderProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -20,6 +20,12 @@ type SliderProps = Omit<
   size?: "sm" | "md";
   /** Optional non-visual label for assistive tech. */
   label?: string;
+  /** Buffered extent on the same scale as `value` (shown behind the played fill). */
+  bufferedValue?: number;
+  /** Show a popup label at the pointer position while hovering (e.g. seek time). */
+  showHoverTooltip?: boolean;
+  /** Format the hover tooltip label; defaults to rounding the raw value. */
+  formatHoverValue?: (value: number) => string;
 };
 
 const sizeClass: Record<NonNullable<SliderProps["size"]>, string> = {
@@ -49,19 +55,49 @@ export function Slider({
   className,
   size = "md",
   label,
+  bufferedValue,
+  showHoverTooltip = false,
+  formatHoverValue = (next) => String(Math.round(next)),
   ...props
 }: SliderProps) {
   const span = max - min || 1;
   const clamped = Math.max(min, Math.min(max, value));
   const percent = ((clamped - min) / span) * 100;
+  const bufferedPercent =
+    bufferedValue === undefined
+      ? undefined
+      : ((Math.max(min, Math.min(max, bufferedValue)) - min) / span) * 100;
   const scrubbingRef = useRef(false);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const [hoverTooltip, setHoverTooltip] = useState<{
+    value: number;
+    xPercent: number;
+  } | null>(null);
+
+  const updateHoverTooltip = (event: PointerEvent<HTMLElement>) => {
+    if (!showHoverTooltip || scrubbingRef.current) {
+      setHoverTooltip(null);
+      return;
+    }
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+
+    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const hoverValue = min + ratio * span;
+    setHoverTooltip({ value: hoverValue, xPercent: ratio * 100 });
+  };
+
+  const clearHoverTooltip = () => setHoverTooltip(null);
 
   return (
     <span
+      ref={containerRef}
       className={cn(
         "group relative block h-4 w-full min-w-0 select-none",
         className,
       )}
+      onPointerMove={updateHoverTooltip}
+      onPointerLeave={clearHoverTooltip}
     >
       <span
         className={cn(
@@ -70,8 +106,14 @@ export function Slider({
         )}
         aria-hidden
       >
+        {bufferedPercent !== undefined && bufferedPercent > 0 ? (
+          <span
+            className="absolute inset-y-0 left-0 bg-primary/35"
+            style={{ width: `${bufferedPercent}%` }}
+          />
+        ) : null}
         <span
-          className="block h-full bg-primary"
+          className="absolute inset-y-0 left-0 bg-primary"
           style={{ width: `${percent}%` }}
         />
       </span>
@@ -88,6 +130,7 @@ export function Slider({
           // Keep receiving pointer events even if the pointer leaves the input,
           // so we always end scrubbing and re-enable progress updates.
           scrubbingRef.current = true;
+          clearHoverTooltip();
           try {
             event.currentTarget.setPointerCapture(event.pointerId);
           } catch {
@@ -100,6 +143,7 @@ export function Slider({
             scrubbingRef.current = false;
             onScrubEnd?.(Number(event.currentTarget.value));
           }
+          updateHoverTooltip(event);
           try {
             event.currentTarget.releasePointerCapture(event.pointerId);
           } catch {
@@ -121,6 +165,15 @@ export function Slider({
         className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-on-primary [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-on-primary"
         {...props}
       />
+      {showHoverTooltip && hoverTooltip ? (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-outline bg-surface px-2 py-0.5 text-label-small text-on-surface shadow-sm tabular-nums"
+          style={{ left: `${hoverTooltip.xPercent}%` }}
+        >
+          {formatHoverValue(hoverTooltip.value)}
+        </span>
+      ) : null}
     </span>
   );
 }

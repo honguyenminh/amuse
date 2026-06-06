@@ -18,7 +18,11 @@ import { catalogArtistPath, catalogReleasePath } from "@/lib/catalog/paths";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import { mainScrollPaddingClass, shellContentPaddingClass } from "@/lib/ui/pageLayout";
-import { usePlayback, usePlaybackPosition } from "@/lib/playback/PlaybackContext";
+import {
+  usePlayback,
+  usePlaybackBufferedEnd,
+  usePlaybackPosition,
+} from "@/lib/playback/PlaybackContext";
 import { useScrubPosition } from "@/lib/playback/useScrubPosition";
 import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
 import { usePageSeed } from "@/theme/ThemeProvider";
@@ -42,6 +46,7 @@ export default function PlayingPage() {
     toggleShuffle,
   } = usePlayback();
   const smoothMs = usePlaybackPosition();
+  const bufferedMs = usePlaybackBufferedEnd();
 
   // Theme: this view IS the playing seed, so route the cover into pageSeed for
   // identical resolution to the rest of the app (page > playing > default).
@@ -138,11 +143,14 @@ export default function PlayingPage() {
           <div className="flex flex-col gap-2">
             <Slider
               value={displayMs}
+              bufferedValue={bufferedMs}
               min={0}
               max={max}
               step={1}
               {...sliderProps}
               label="Seek within current track"
+              showHoverTooltip
+              formatHoverValue={formatDuration}
             />
             <div className="flex justify-between text-on-surface-variant tabular-nums">
               <Text variant="label-small">{formatDuration(displayMs)}</Text>

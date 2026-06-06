@@ -34,7 +34,7 @@ public sealed class PlatformOperator
         DateTimeOffset createdAt) =>
         new(id, accountId, Normalize(claims), createdAt);
 
-    private static IReadOnlyList<string> Normalize(IReadOnlyList<string> claims) =>
+    private static string[] Normalize(IReadOnlyList<string> claims) =>
         claims
             .Where(c => !string.IsNullOrWhiteSpace(c))
             .Select(c => c.Trim())

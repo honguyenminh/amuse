@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Amuse.Domain.SharedKernel;
 
 public sealed class Result
@@ -16,6 +18,7 @@ public sealed class Result
     public static Result Failure(DomainError error) => new(false, error);
 }
 
+[SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Result<T>.Success/Failure factory pattern.")]
 public sealed class Result<T>
 {
     public bool IsSuccess { get; }
