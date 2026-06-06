@@ -1,3 +1,4 @@
+import { isCatalogGuid } from "@/lib/catalog/guid";
 import { authFetch } from "@/lib/auth/authFetch";
 import { publicFetch } from "./publicFetch";
 import type {
@@ -13,16 +14,41 @@ export function browseCatalogHome(): Promise<BrowseHomeResponse> {
   return publicFetch<BrowseHomeResponse>("/api/v1/catalog/home", { method: "GET" });
 }
 
-export function getCatalogArtist(artistId: string): Promise<GetArtistDetailResponse> {
+export function getCatalogArtistById(artistId: string): Promise<GetArtistDetailResponse> {
   return publicFetch<GetArtistDetailResponse>(
     `/api/v1/catalog/artists/${encodeURIComponent(artistId)}`,
     { method: "GET" },
   );
 }
 
+export function getCatalogArtistBySlug(artistSlug: string): Promise<GetArtistDetailResponse> {
+  return publicFetch<GetArtistDetailResponse>(
+    `/api/v1/catalog/artists/by-slug/${encodeURIComponent(artistSlug)}`,
+    { method: "GET" },
+  );
+}
+
+/** Resolves a roster artist by GUID or public slug. */
+export function getCatalogArtist(artistKey: string): Promise<GetArtistDetailResponse> {
+  if (isCatalogGuid(artistKey)) {
+    return getCatalogArtistById(artistKey);
+  }
+  return getCatalogArtistBySlug(artistKey);
+}
+
 export function getCatalogRelease(releaseId: string): Promise<GetReleaseDetailResponse> {
   return publicFetch<GetReleaseDetailResponse>(
     `/api/v1/catalog/releases/${encodeURIComponent(releaseId)}`,
+    { method: "GET" },
+  );
+}
+
+export function getCatalogReleaseBySlugs(
+  artistSlug: string,
+  releaseSlug: string,
+): Promise<GetReleaseDetailResponse> {
+  return publicFetch<GetReleaseDetailResponse>(
+    `/api/v1/catalog/artists/${encodeURIComponent(artistSlug)}/releases/${encodeURIComponent(releaseSlug)}`,
     { method: "GET" },
   );
 }

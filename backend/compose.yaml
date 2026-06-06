@@ -5,13 +5,15 @@
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: amuse_development
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d amuse_development"]
       interval: 5s
       timeout: 5s
       retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql
 
   minio:
     image: minio/minio:latest
@@ -180,3 +182,4 @@
 
 volumes:
   minio-data:
+  postgres-data:

@@ -12,6 +12,7 @@ public sealed class ListenerDbContext : ModuleDbContextBase
     }
 
     public DbSet<ListenerProfile> ListenerProfiles => Set<ListenerProfile>();
+    public DbSet<ListenerPreference> ListenerPreferences => Set<ListenerPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

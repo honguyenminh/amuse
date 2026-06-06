@@ -280,12 +280,32 @@ export type ArtistSlugAvailabilityResponse = {
   isAvailable: boolean;
 };
 
+export type ReleaseSlugAvailabilityResponse = {
+  normalizedSlug: string;
+  isValid: boolean;
+  isAvailable: boolean;
+};
+
 export function checkArtistSlugAvailability(
   slug: string,
 ): Promise<ArtistSlugAvailabilityResponse> {
   const query = new URLSearchParams({ slug });
   return authFetch<ArtistSlugAvailabilityResponse>(
     `/api/v1/catalog/manage/artists/slug-availability?${query.toString()}`,
+  );
+}
+
+export function checkReleaseSlugAvailability(
+  artistId: string,
+  slug: string,
+  excludingReleaseId?: string,
+): Promise<ReleaseSlugAvailabilityResponse> {
+  const query = new URLSearchParams({ slug });
+  if (excludingReleaseId) {
+    query.set("excludingReleaseId", excludingReleaseId);
+  }
+  return authFetch<ReleaseSlugAvailabilityResponse>(
+    `/api/v1/catalog/artists/${artistId}/releases/slug-availability?${query.toString()}`,
   );
 }
 
@@ -384,6 +404,7 @@ export function createRelease(
   artistId: string,
   body: {
     title: string;
+    slug?: string;
     releaseType: ReleaseType;
     releaseDate: string;
     releaseGroupId?: string | null;
@@ -419,6 +440,7 @@ export function updateRelease(
   releaseId: string,
   body: {
     title: string;
+    slug?: string;
     releaseType: ReleaseType;
     releaseDate: string;
     releaseGroupId?: string | null;

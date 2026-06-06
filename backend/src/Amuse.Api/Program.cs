@@ -84,6 +84,8 @@ else
 }
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<ListenerOnboardingMiddleware>();
+app.UseMiddleware<BusinessPortalProfileMiddleware>();
 app.UseMiddleware<TenantGuardMiddleware>();
 app.UseMiddleware<ActiveOrganizationMiddleware>();
 

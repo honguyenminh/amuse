@@ -18,6 +18,14 @@ public static class PersonaAuthorizationExtensions
             options.AddPolicy(PersonaPolicies.RequirePlatformPersona, policy =>
                 policy.RequireClaim("ctx", "platform"));
 
+            options.AddPolicy(PersonaPolicies.RequireBusinessPortalPersona, policy =>
+                policy.RequireAssertion(context =>
+                {
+                    var ctx = context.User.FindFirst("ctx")?.Value;
+                    return string.Equals(ctx, "org", StringComparison.OrdinalIgnoreCase)
+                           || string.Equals(ctx, "platform", StringComparison.OrdinalIgnoreCase);
+                }));
+
             options.AddPolicy(PlatformPolicies.RequireOrganizationReview, policy =>
             {
                 policy.RequireClaim("ctx", "platform");

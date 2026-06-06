@@ -23,6 +23,20 @@ public static class GetArtistDetailEndpoint
             .Produces<GetArtistDetailResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        endpoints.MapGet("/api/v1/catalog/artists/by-slug/{artistSlug}", async (
+                string artistSlug,
+                GetArtistDetailHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleBySlugAsync(artistSlug, cancellationToken);
+                return result.ToResult(Results.Ok);
+            })
+            .AllowAnonymous()
+            .WithName("GetCatalogArtistDetailBySlug")
+            .WithSummary("Return an artist with their releases by URL slug. Public; no authentication required.")
+            .Produces<GetArtistDetailResponse>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         return endpoints;
     }
 }

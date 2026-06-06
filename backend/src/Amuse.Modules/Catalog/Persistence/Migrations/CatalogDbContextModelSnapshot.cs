@@ -23,6 +23,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "artist_visibility_tier", new[] { "unverified", "platform_verified" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "audio_codec", new[] { "flac", "opus", "aac" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "audio_transcode_job_status", new[] { "queued", "processing", "succeeded", "failed" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "release_collaborator_role", new[] { "featured" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "catalog", "release_lifecycle_status", new[] { "draft", "processing", "ready", "published", "hidden", "archived", "scheduled" });
@@ -233,7 +234,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("artist_id");
 
-                    b.Property<int>("Role")
+                    b.Property<ReleaseCollaboratorRole>("Role")
                         .HasColumnType("catalog.release_collaborator_role")
                         .HasColumnName("role");
 
@@ -380,6 +381,61 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     b.ToTable("track", "catalog");
                 });
 
+            modelBuilder.Entity("Amuse.Domain.Catalog.TrackAudioRendition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdaptationSetId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("adaptation_set_id");
+
+                    b.Property<int>("Bandwidth")
+                        .HasColumnType("integer")
+                        .HasColumnName("bandwidth");
+
+                    b.Property<int?>("BitrateKbps")
+                        .HasColumnType("integer")
+                        .HasColumnName("bitrate_kbps");
+
+                    b.Property<AudioCodec>("Codec")
+                        .HasColumnType("catalog.audio_codec")
+                        .HasColumnName("codec");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ManifestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("manifest_id");
+
+                    b.Property<string>("RepresentationId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("representation_id");
+
+                    b.Property<int>("SampleRateHz")
+                        .HasColumnType("integer")
+                        .HasColumnName("sample_rate_hz");
+
+                    b.Property<Guid>("TrackId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("track_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrackId", "Codec", "BitrateKbps")
+                        .IsUnique();
+
+                    b.ToTable("track_audio_rendition", "catalog");
+                });
+
             modelBuilder.Entity("Amuse.Modules.Catalog.Processing.AudioTranscodeJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -471,6 +527,15 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                     b.HasOne("Amuse.Domain.Catalog.Release", null)
                         .WithMany("Tracks")
                         .HasForeignKey("ReleaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Amuse.Domain.Catalog.TrackAudioRendition", b =>
+                {
+                    b.HasOne("Amuse.Domain.Catalog.Track", null)
+                        .WithMany()
+                        .HasForeignKey("TrackId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -3,6 +3,7 @@
 import { OrganizationStatusBanner } from "@/components/portal/OrganizationStatusBanner";
 import { PersonaSwitcher } from "@/components/portal/PersonaSwitcher";
 import { PortalNav } from "@/components/portal/PortalNav";
+import { PortalUserChip } from "@/components/account/PortalUserChip";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -17,10 +18,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import {
-  contextLabel,
-  isPlatformPersonaActive,
-} from "@/lib/auth/resolveBusinessPersonas";
+import { isPlatformPersonaActive } from "@/lib/auth/resolveBusinessPersonas";
 import { LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -29,6 +27,7 @@ const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/members": "Members",
   "/settings": "Settings",
+  "/settings/account": "Account",
   "/platform/applications": "Applications",
   "/members/invites": "Pending invites",
 };
@@ -45,17 +44,13 @@ export function PortalShell({ children }: PortalShellProps) {
   const title =
     pageTitles[pathname]
     ?? (pathname.startsWith("/members") ? "Members" : null)
+    ?? (pathname.startsWith("/settings") ? "Settings" : null)
     ?? (isPlatform ? "Platform console" : "Console");
 
   async function onSignOut() {
     await auth.logout();
     router.replace("/login");
   }
-
-  const personaLabel =
-    auth.activePersona && auth.businessPersonas.length > 0
-      ? contextLabel(auth.activePersona, auth.businessPersonas)
-      : null;
 
   return (
     <SidebarProvider>
@@ -83,19 +78,7 @@ export function PortalShell({ children }: PortalShellProps) {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                className="pointer-events-none data-[slot=sidebar-menu-button]:*:last:truncate"
-              >
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {auth.account?.idpSubject ?? "Account"}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {personaLabel ?? "Signed in"}
-                  </span>
-                </div>
-              </SidebarMenuButton>
+              <SidebarMenuButton size="lg" render={<PortalUserChip className="w-full" />} />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
@@ -105,6 +88,7 @@ export function PortalShell({ children }: PortalShellProps) {
           <SidebarTrigger className="-ml-1" />
           <h1 className="flex-1 text-sm font-medium">{title}</h1>
           <div className="flex items-center gap-2">
+            <PortalUserChip compact className="hidden md:flex" />
             <PersonaSwitcher compact />
             <Button variant="ghost" size="sm" onClick={() => void onSignOut()}>
               <LogOut />

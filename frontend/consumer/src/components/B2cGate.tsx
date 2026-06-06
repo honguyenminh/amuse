@@ -3,23 +3,44 @@
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import type { ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
 
-/**
- * Wraps every (b2c) route. It deliberately does **not** redirect to /login
- * when the visitor is anonymous — public browse pages (home, artist, release)
- * are accessible without an account, Spotify/YouTube-Music style. Login is
- * only required for actions that touch user identity (playback, library, etc.)
- * and those guards live next to the action that needs them.
- *
- * Responsibilities here:
- * - Show a brief "Loading session…" while the AuthProvider tries the refresh
- *   cookie. Anonymous visitors fall through quickly.
- * - Surface a `bootstrapError` UI if a logged-in session failed to load its
- *   listener profile, so the user can retry rather than be silently stuck.
- */
+const ONBOARDING_ALLOWLIST = [
+  "/onboarding",
+  "/login",
+  "/signup",
+  "/confirm-email",
+];
+
+function isAllowlisted(pathname: string): boolean {
+  return ONBOARDING_ALLOWLIST.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
 export function B2cGate({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (!auth.isReady || !auth.isAuthenticated || !auth.needsListenerOnboarding) {
+      return;
+    }
+    if (isAllowlisted(pathname)) {
+      return;
+    }
+    const next = encodeURIComponent(pathname);
+    router.replace(`/onboarding?next=${next}`);
+  }, [
+    auth.isReady,
+    auth.isAuthenticated,
+    auth.needsListenerOnboarding,
+    pathname,
+    router,
+  ]);
 
   if (!auth.isReady) {
     return (
@@ -37,6 +58,18 @@ export function B2cGate({ children }: { children: ReactNode }) {
         <Button type="button" onClick={() => void auth.retryBootstrap()}>
           Retry
         </Button>
+      </div>
+    );
+  }
+
+  if (
+    auth.isAuthenticated &&
+    auth.needsListenerOnboarding &&
+    !isAllowlisted(pathname)
+  ) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-background p-8">
+        <Text variant="body-large">Redirecting to onboarding…</Text>
       </div>
     );
   }

@@ -22,7 +22,11 @@ internal static partial class CatalogSlugHelper
         return Result<Slug>.Success(Slug.From(slugValue));
     }
 
-    public static Result<Slug> TryParseArtistSlug(string rawSlug)
+    public static Result<Slug> TryParseArtistSlug(string rawSlug) => TryParseCatalogSlug(rawSlug);
+
+    public static Result<Slug> TryParseReleaseSlug(string rawSlug) => TryParseCatalogSlug(rawSlug);
+
+    private static Result<Slug> TryParseCatalogSlug(string rawSlug)
     {
         var normalized = NormalizeSlugInput(rawSlug);
         if (string.IsNullOrEmpty(normalized) || !Slug.IsValid(normalized))
@@ -82,6 +86,67 @@ internal static partial class CatalogSlugHelper
         return await AllocateArtistSlugCoreAsync(db, baseResult.Value!.Value, cancellationToken);
     }
 
+    public static async Task<bool> IsReleaseSlugAvailableAsync(
+        CatalogDbContext db,
+        ArtistId artistId,
+        string rawSlug,
+        ReleaseId? excludingReleaseId,
+        CancellationToken cancellationToken)
+    {
+        var parseResult = TryParseReleaseSlug(rawSlug);
+        if (!parseResult.IsSuccess)
+            return false;
+
+        var typedSlug = parseResult.Value!;
+        var query = db.Releases.AsNoTracking()
+            .Where(r => r.ArtistId == artistId && r.Slug == typedSlug);
+        if (excludingReleaseId is { } releaseId)
+            query = query.Where(r => r.Id != releaseId);
+
+        return !await query.AnyAsync(cancellationToken);
+    }
+
+    public static async Task<Result<Slug>> EnsureAvailableReleaseSlugAsync(
+        CatalogDbContext db,
+        ArtistId artistId,
+        string rawSlug,
+        ReleaseId? excludingReleaseId,
+        CancellationToken cancellationToken)
+    {
+        var parseResult = TryParseReleaseSlug(rawSlug);
+        if (!parseResult.IsSuccess)
+            return parseResult;
+
+        var typedSlug = parseResult.Value!;
+        var query = db.Releases.AsNoTracking()
+            .Where(r => r.ArtistId == artistId && r.Slug == typedSlug);
+        if (excludingReleaseId is { } releaseId)
+            query = query.Where(r => r.Id != releaseId);
+
+        var taken = await query.AnyAsync(cancellationToken);
+        return taken
+            ? Result<Slug>.Failure(CatalogErrors.DuplicateSlug)
+            : Result<Slug>.Success(typedSlug);
+    }
+
+    public static async Task<Result<Slug>> ResolveReleaseSlugForCreateAsync(
+        CatalogDbContext db,
+        ArtistId artistId,
+        string title,
+        string? requestedSlug,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedSlug))
+            return await EnsureAvailableReleaseSlugAsync(
+                db,
+                artistId,
+                requestedSlug,
+                excludingReleaseId: null,
+                cancellationToken);
+
+        return await AllocateUniqueReleaseSlugAsync(db, artistId, title, cancellationToken);
+    }
+
     public static async Task<Result<Slug>> AllocateUniqueReleaseSlugAsync(
         CatalogDbContext db,
         ArtistId artistId,
@@ -99,9 +164,10 @@ internal static partial class CatalogSlugHelper
         CatalogDbContext db,
         ArtistId artistId,
         string title,
+        string? requestedReleaseSlug,
         CancellationToken cancellationToken)
     {
-        var baseResult = TryFromTitle(title);
+        var baseResult = ResolveReleaseGroupSlugBase(title, requestedReleaseSlug);
         if (!baseResult.IsSuccess)
             return baseResult;
 
@@ -110,6 +176,20 @@ internal static partial class CatalogSlugHelper
             artistId,
             baseResult.Value!.Value,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// When the client supplies a release slug, use it for the auto-provisioned release group.
+    /// Otherwise derive the group slug from the release title.
+    /// </summary>
+    internal static Result<Slug> ResolveReleaseGroupSlugBase(
+        string title,
+        string? requestedReleaseSlug)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedReleaseSlug))
+            return TryParseReleaseSlug(requestedReleaseSlug);
+
+        return TryFromTitle(title);
     }
 
     internal static string NormalizeSlugInput(string rawSlug)

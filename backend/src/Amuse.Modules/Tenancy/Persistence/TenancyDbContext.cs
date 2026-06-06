@@ -14,6 +14,7 @@ public sealed class TenancyDbContext : ModuleDbContextBase
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
     public DbSet<OrganizationInvite> OrganizationInvites => Set<OrganizationInvite>();
+    public DbSet<BusinessPortalProfile> BusinessPortalProfiles => Set<BusinessPortalProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

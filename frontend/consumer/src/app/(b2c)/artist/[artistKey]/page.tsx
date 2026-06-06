@@ -1,18 +1,15 @@
 "use client";
 
 import { AppShell } from "@/components/ui/AppShell";
+import { PageContent } from "@/components/ui/PageContent";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
+import { ReleaseTile } from "@/components/playback/ReleaseTile";
 import { getCatalogArtist } from "@/lib/api/catalogClient";
-import type {
-  GetArtistDetailResponse,
-  ReleaseSummary,
-  ReleaseType,
-} from "@/lib/api/types";
+import type { GetArtistDetailResponse, ReleaseType } from "@/lib/api/types";
 import { usePageSeed } from "@/theme/ThemeProvider";
 import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
-import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
 const releaseTypeLabel: Record<ReleaseType, string> = {
@@ -25,9 +22,9 @@ const releaseTypeLabel: Record<ReleaseType, string> = {
 export default function ArtistPage({
   params,
 }: {
-  params: Promise<{ artistId: string }>;
+  params: Promise<{ artistKey: string }>;
 }) {
-  const { artistId } = use(params);
+  const { artistKey } = use(params);
   const [artist, setArtist] = useState<GetArtistDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +32,7 @@ export default function ArtistPage({
     let cancelled = false;
     setError(null);
     setArtist(null);
-    getCatalogArtist(artistId)
+    getCatalogArtist(artistKey)
       .then((response) => {
         if (!cancelled) setArtist(response);
       })
@@ -45,14 +42,14 @@ export default function ArtistPage({
     return () => {
       cancelled = true;
     };
-  }, [artistId]);
+  }, [artistKey]);
 
   const seed = useCoverArtSeed(artist?.coverUrl ?? artist?.avatarUrl);
   usePageSeed(seed);
 
   return (
     <AppShell title={artist?.name ?? "Artist"} activePath="/artist">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6">
+      <PageContent gap="4">
         {error && (
           <Card>
             <Text variant="title-large">Could not load artist</Text>
@@ -85,40 +82,18 @@ export default function ArtistPage({
               <Text variant="title-large">Discography</Text>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                 {artist.releases.map((release) => (
-                  <ReleaseTile key={release.id} release={release} />
+                  <ReleaseTile
+                    key={release.id}
+                    release={release}
+                    subtitle={`${releaseTypeLabel[release.releaseType]} · ${new Date(release.releaseDate).getFullYear()}`}
+                  />
                 ))}
               </div>
             </section>
           </>
         )}
-      </div>
+      </PageContent>
     </AppShell>
-  );
-}
-
-function ReleaseTile({ release }: { release: ReleaseSummary }) {
-  return (
-    <Link href={`/release/${release.id}`} className="group block">
-      <Card>
-        <div className="flex flex-col gap-2">
-          {release.coverArtUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={release.coverArtUrl}
-              alt={release.title}
-              className="aspect-square w-full rounded-md object-cover"
-            />
-          )}
-          <Text variant="title-medium" className="truncate">
-            {release.title}
-          </Text>
-          <Text variant="label-medium" className="truncate text-on-surface-variant">
-            {releaseTypeLabel[release.releaseType]} ·{" "}
-            {new Date(release.releaseDate).getFullYear()}
-          </Text>
-        </div>
-      </Card>
-    </Link>
   );
 }
 

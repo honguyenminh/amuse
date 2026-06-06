@@ -1,5 +1,12 @@
+import { authFetch } from "@/lib/auth/authFetch";
 import { getApiBaseUrl, WEB_CLIENT_HEADER } from "./config";
-import type { EnsureListenerProfileResponse } from "./types";
+import type {
+  CompleteListenerAvatarUploadResponse,
+  EnsureListenerProfileResponse,
+  ListenerProfileResponse,
+  PresignListenerAvatarUploadResponse,
+  UpdateListenerProfileRequest,
+} from "./types";
 import { ApiError } from "./types";
 
 export async function ensureListenerProfile(
@@ -29,4 +36,42 @@ export async function ensureListenerProfile(
   }
 
   return (await response.json()) as EnsureListenerProfileResponse;
+}
+
+export function getListenerProfile(): Promise<ListenerProfileResponse> {
+  return authFetch<ListenerProfileResponse>("/api/v1/listener/profile");
+}
+
+export function updateListenerProfile(
+  body: UpdateListenerProfileRequest,
+): Promise<ListenerProfileResponse> {
+  return authFetch<ListenerProfileResponse>("/api/v1/listener/profile", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function presignListenerAvatarUpload(body: {
+  fileName: string;
+  contentType: string;
+}): Promise<PresignListenerAvatarUploadResponse> {
+  return authFetch<PresignListenerAvatarUploadResponse>(
+    "/api/v1/listener/profile/avatar/presign-upload",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function completeListenerAvatarUpload(body: {
+  key: string;
+}): Promise<CompleteListenerAvatarUploadResponse> {
+  return authFetch<CompleteListenerAvatarUploadResponse>(
+    "/api/v1/listener/profile/avatar/complete",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 }

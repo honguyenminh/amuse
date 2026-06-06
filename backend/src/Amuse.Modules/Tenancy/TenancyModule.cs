@@ -19,6 +19,9 @@ using Amuse.Modules.Tenancy.Features.RevokeInvite;
 using Amuse.Modules.Tenancy.Features.TransferOwnership;
 using Amuse.Modules.Tenancy.Features.UpdateMember;
 using Amuse.Modules.Tenancy.Features.UpdateOrganization;
+using Amuse.Modules.Tenancy.Features.GetPortalProfile;
+using Amuse.Modules.Tenancy.Features.ManagePortalAvatar;
+using Amuse.Modules.Tenancy.Features.UpdatePortalProfile;
 using Amuse.Modules.Tenancy.Features.Shared;
 using Amuse.Modules.Tenancy.Options;
 using Amuse.Modules.Tenancy.Persistence;
@@ -51,6 +54,13 @@ public static class TenancyModule
 
         services.AddScoped<ITenancyPersonaReadModel, TenancyPersonaReadModel>();
         services.AddScoped<IOrganizationLifecycleCommands, OrganizationLifecycleService>();
+        services.AddScoped<IBusinessPortalProfileLookup, BusinessPortalProfileLookup>();
+        services.AddScoped<IBusinessPortalProfileOnboardingReadModel, BusinessPortalProfileOnboardingReadModel>();
+        services.AddScoped<BusinessPortalProfileService>();
+        services.AddScoped<GetPortalProfileHandler>();
+        services.AddScoped<UpdatePortalProfileHandler>();
+        services.AddScoped<PresignPortalAvatarUploadHandler>();
+        services.AddScoped<CompletePortalAvatarUploadHandler>();
 
         services.AddValidatorsFromAssemblyContaining<CreateOrganizationRequestValidator>();
         services.AddScoped<CreateOrganizationHandler>();
@@ -96,6 +106,9 @@ public static class TenancyModule
         group.MapGetInvitePreviewEndpoint();
         group.MapAcceptInviteEndpoint();
         group.MapDeclineInviteEndpoint();
+        group.MapGetPortalProfileEndpoint();
+        group.MapUpdatePortalProfileEndpoint();
+        group.MapPortalAvatarEndpoint();
         return endpoints;
     }
 }

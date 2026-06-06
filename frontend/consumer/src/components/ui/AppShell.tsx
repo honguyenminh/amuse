@@ -4,6 +4,8 @@ import { MiniPlayer } from "@/components/player/MiniPlayer";
 import { MobileDrawer } from "@/components/ui/MobileDrawer";
 import { Sidebar } from "@/components/ui/Sidebar";
 import { TopBar } from "@/components/ui/TopBar";
+import { cn } from "@/lib/cn";
+import { mainScrollPaddingClass } from "@/lib/ui/pageLayout";
 import { useState, type ReactNode } from "react";
 
 type AppShellProps = {
@@ -56,7 +58,7 @@ export function AppShell({
             trailing={trailing}
             onMenuClick={() => setDrawerOpen(true)}
           />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className={cn("flex-1 overflow-y-auto", mainScrollPaddingClass)}>{children}</main>
         </div>
       </div>
       {hidePlayer ? null : <MiniPlayer />}

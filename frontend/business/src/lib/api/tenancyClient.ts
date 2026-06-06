@@ -47,6 +47,9 @@ export type OrganizationMemberResponse = {
   id: string;
   accountId: string;
   email: string | null;
+  displayName: string | null;
+  avatarAccentSeed: number | null;
+  avatarUrl: string | null;
   status: string;
   presetRoleLabel: string | null;
   claims: string[];
@@ -54,6 +57,32 @@ export type OrganizationMemberResponse = {
   joinedAt: string | null;
   lastLoginAt: string | null;
   lastActiveAt: string | null;
+};
+
+export type BusinessPortalProfileResponse = {
+  displayName: string | null;
+  avatarAccentSeed: number | null;
+  avatarUrl: string | null;
+  onboardingComplete: boolean;
+  updatedAt: string;
+};
+
+export type UpdateBusinessPortalProfileRequest = {
+  displayName?: string;
+  avatarAccentSeed?: number | null;
+  clearAvatar?: boolean;
+};
+
+export type PresignPortalAvatarUploadResponse = {
+  key: string;
+  url: string;
+  expiresAt: string;
+  method: string;
+};
+
+export type CompletePortalAvatarUploadResponse = {
+  key: string;
+  avatarUrl: string;
 };
 
 export type OrganizationMemberListResponse = {
@@ -321,4 +350,42 @@ export function declineOrganizationInvite(token: string): Promise<void> {
   return authFetch(`/api/v1/tenancy/invites/${encodeURIComponent(token)}/decline`, {
     method: "POST",
   });
+}
+
+export function getPortalProfile(): Promise<BusinessPortalProfileResponse> {
+  return authFetch<BusinessPortalProfileResponse>("/api/v1/tenancy/portal-profile");
+}
+
+export function updatePortalProfile(
+  body: UpdateBusinessPortalProfileRequest,
+): Promise<BusinessPortalProfileResponse> {
+  return authFetch<BusinessPortalProfileResponse>("/api/v1/tenancy/portal-profile", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function presignPortalAvatarUpload(body: {
+  fileName: string;
+  contentType: string;
+}): Promise<PresignPortalAvatarUploadResponse> {
+  return authFetch<PresignPortalAvatarUploadResponse>(
+    "/api/v1/tenancy/portal-profile/avatar/presign-upload",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function completePortalAvatarUpload(body: {
+  key: string;
+}): Promise<CompletePortalAvatarUploadResponse> {
+  return authFetch<CompletePortalAvatarUploadResponse>(
+    "/api/v1/tenancy/portal-profile/avatar/complete",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 }

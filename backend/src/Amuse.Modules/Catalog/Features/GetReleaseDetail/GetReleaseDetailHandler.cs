@@ -29,6 +29,47 @@ internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IObjectStorag
         if (release is null)
             return Result<GetReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
 
+        return await BuildResponseAsync(release, cancellationToken);
+    }
+
+    public async Task<Result<GetReleaseDetailResponse>> HandleBySlugsAsync(
+        string artistSlug,
+        string releaseSlug,
+        CancellationToken cancellationToken)
+    {
+        var artistParse = CatalogSlugHelper.TryParseArtistSlug(artistSlug);
+        var releaseParse = CatalogSlugHelper.TryParseReleaseSlug(releaseSlug);
+        if (!artistParse.IsSuccess || !releaseParse.IsSuccess)
+            return Result<GetReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
+
+        var artistId = await db.Artists
+            .AsNoTracking()
+            .Where(a => a.Slug == artistParse.Value!)
+            .Select(a => a.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (artistId == default)
+            return Result<GetReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
+
+        var release = await db.Releases
+            .AsNoTracking()
+            .Include(r => r.Tracks)
+            .Where(r =>
+                r.ArtistId == artistId
+                && r.Slug == releaseParse.Value!
+                && r.LifecycleStatus == ReleaseLifecycleStatus.Published)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (release is null)
+            return Result<GetReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
+
+        return await BuildResponseAsync(release, cancellationToken);
+    }
+
+    private async Task<Result<GetReleaseDetailResponse>> BuildResponseAsync(
+        Release release,
+        CancellationToken cancellationToken)
+    {
         var artist = await db.Artists
             .AsNoTracking()
             .Where(a => a.Id == release.ArtistId)
@@ -69,7 +110,7 @@ internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IObjectStorag
                     .AsNoTracking()
                     .Where(r =>
                         r.ReleaseGroupId == groupId
-                        && r.Id != typedId
+                        && r.Id != release.Id
                         && r.LifecycleStatus == ReleaseLifecycleStatus.Published)
                     .OrderByDescending(r => r.ReleaseDate)
                     .Select(r => new ReleaseEditionSummary(

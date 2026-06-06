@@ -1,7 +1,6 @@
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Persistence;
-using Amuse.Modules.Media;
 using Amuse.Modules.Media.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -47,13 +46,45 @@ internal sealed class GetTrackStreamInfoHandler(
 
         var url = $"/api/v1/catalog/tracks/{trackId}/dash/{manifestId}/manifest.mpd";
 
+        var manifestGuid = Guid.Parse(manifestId);
+        var renditionRows = await db.TrackAudioRenditions
+            .AsNoTracking()
+            .Where(r => r.TrackId == typedId && r.ManifestId == manifestGuid)
+            .OrderBy(r => r.Codec)
+            .ThenBy(r => r.BitrateKbps)
+            .ToListAsync(cancellationToken);
+
+        var renditions = renditionRows.Count > 0
+            ? renditionRows.Select(ToDto).ToList()
+            : [LegacyRendition()];
+
         return Result<TrackStreamInfoResponse>.Success(new TrackStreamInfoResponse(
             trackId,
             url,
             contentType,
             track.Duration.Milliseconds,
-            expiresAt));
+            expiresAt,
+            LoudnessNormalized: true,
+            renditions));
     }
+
+    private static TrackStreamRenditionDto ToDto(TrackAudioRendition row) =>
+        new(
+            StableRenditionId(row.Codec, row.BitrateKbps),
+            row.Codec.ToString().ToLowerInvariant(),
+            row.BitrateKbps,
+            row.Bandwidth,
+            row.SampleRateHz,
+            row.AdaptationSetId,
+            row.RepresentationId);
+
+    private static TrackStreamRenditionDto LegacyRendition() =>
+        new("aac-128", "aac", 128, 128_000, 48_000, "aac", "0");
+
+    internal static string StableRenditionId(AudioCodec codec, int? bitrateKbps) =>
+        codec == AudioCodec.Flac
+            ? "flac-0"
+            : $"{codec.ToString().ToLowerInvariant()}-{bitrateKbps ?? 0}";
 
     private static string ContentTypeForKey(string key)
     {
@@ -86,9 +117,20 @@ internal sealed class GetTrackStreamInfoHandler(
     }
 }
 
+public sealed record TrackStreamRenditionDto(
+    string Id,
+    string Codec,
+    int? BitrateKbps,
+    int Bandwidth,
+    int SampleRateHz,
+    string AdaptationSetId,
+    string RepresentationId);
+
 public sealed record TrackStreamInfoResponse(
     Guid TrackId,
     string Url,
     string ContentType,
     int DurationMs,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt,
+    bool LoudnessNormalized,
+    IReadOnlyList<TrackStreamRenditionDto> Renditions);

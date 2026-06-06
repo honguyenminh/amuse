@@ -7,6 +7,12 @@ import {
   refreshTokens,
   revokeSession,
 } from "@/lib/api/identityClient";
+import {
+  getPortalProfile,
+  updatePortalProfile,
+  type BusinessPortalProfileResponse,
+  type UpdateBusinessPortalProfileRequest,
+} from "@/lib/api/tenancyClient";
 import type {
   AvailablePersona,
   CurrentAccountResponse,
@@ -43,10 +49,12 @@ type AuthState = {
   isReady: boolean;
   isAuthenticated: boolean;
   account: CurrentAccountResponse | null;
+  portalProfile: BusinessPortalProfileResponse | null;
   activePersona: PersonaContextRequest | null;
   businessPersonas: AvailablePersona[];
   needsPersonaSelection: boolean;
   needsOrganizationSetup: boolean;
+  needsPortalProfileOnboarding: boolean;
   bootstrapError: string | null;
   orgUnavailableNotice: string | null;
   clearOrgUnavailableNotice: () => void;
@@ -58,6 +66,10 @@ type AuthState = {
   selectPersona: (persona: AvailablePersona) => Promise<void>;
   reloadBusinessPersonas: () => Promise<AvailablePersona[]>;
   retryBootstrap: () => Promise<void>;
+  completePortalProfile: (
+    payload: UpdateBusinessPortalProfileRequest,
+  ) => Promise<void>;
+  refreshPortalProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -78,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [account, setAccount] = useState<CurrentAccountResponse | null>(null);
+  const [portalProfile, setPortalProfile] =
+    useState<BusinessPortalProfileResponse | null>(null);
   const [activePersonaState, setActivePersonaState] =
     useState<PersonaContextRequest | null>(null);
   const [businessPersonas, setBusinessPersonas] = useState<AvailablePersona[]>(
@@ -159,23 +173,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccount(me);
   }, []);
 
+  const loadPortalProfile = useCallback(async () => {
+    if (!getActivePersona()) {
+      setPortalProfile(null);
+      return;
+    }
+    const profile = await getPortalProfile();
+    setPortalProfile(profile);
+  }, []);
+
   const restoreSession = useCallback(async () => {
     try {
       const refreshed = await refreshTokens(listenerBootstrapContext);
       setAccessToken(refreshed.accessToken);
       const resolved = await resolveSession(refreshed.accessToken);
       await loadAccount(resolved.token);
+      if (resolved.activePersona) {
+        await loadPortalProfile();
+      } else {
+        setPortalProfile(null);
+      }
       setIsAuthenticated(true);
     } catch {
       clearSession();
       setIsAuthenticated(false);
       setAccount(null);
+      setPortalProfile(null);
       setActivePersonaState(null);
       setBusinessPersonas([]);
     } finally {
       setIsReady(true);
     }
-  }, [loadAccount, resolveSession]);
+  }, [loadAccount, loadPortalProfile, resolveSession]);
 
   useEffect(() => {
     // Session restore on mount is intentional one-shot bootstrap.
@@ -219,13 +248,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(resolved.error);
       }
       await loadAccount(resolved.token);
+      if (resolved.activePersona) {
+        await loadPortalProfile();
+      } else {
+        setPortalProfile(null);
+      }
       setIsAuthenticated(true);
       return {
         needsSelection: resolved.needsSelection,
         needsOrganizationSetup: resolved.needsOrganizationSetup ?? false,
       };
     },
-    [loadAccount, resolveSession],
+    [loadAccount, loadPortalProfile, resolveSession],
   );
 
   const logout = useCallback(async () => {
@@ -238,6 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSession();
       setIsAuthenticated(false);
       setAccount(null);
+      setPortalProfile(null);
       setActivePersonaState(null);
       setBusinessPersonas([]);
       setBootstrapError(null);
@@ -256,8 +291,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActivePersonaState(context);
       setBootstrapError(null);
       await loadAccount(refreshedToken);
+      await loadPortalProfile();
     },
-    [loadAccount],
+    [loadAccount, loadPortalProfile],
   );
 
   const reloadBusinessPersonas = useCallback(async () => {
@@ -329,21 +365,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadAccount, resolveSession]);
 
+  const refreshPortalProfile = useCallback(async () => {
+    await loadPortalProfile();
+  }, [loadPortalProfile]);
+
+  const completePortalProfile = useCallback(
+    async (payload: UpdateBusinessPortalProfileRequest) => {
+      const profile = await updatePortalProfile(payload);
+      setPortalProfile(profile);
+    },
+    [],
+  );
+
   const needsPersonaSelection =
     isAuthenticated &&
     businessPersonas.length > 1 &&
     activePersonaState === null &&
     bootstrapError === null;
 
+  const needsPortalProfileOnboarding =
+    isAuthenticated &&
+    activePersonaState !== null &&
+    portalProfile?.onboardingComplete === false;
+
   const value = useMemo<AuthState>(
     () => ({
       isReady,
       isAuthenticated,
       account,
+      portalProfile,
       activePersona: activePersonaState ?? getActivePersona(),
       businessPersonas,
       needsPersonaSelection,
       needsOrganizationSetup,
+      needsPortalProfileOnboarding,
       bootstrapError,
       orgUnavailableNotice,
       clearOrgUnavailableNotice,
@@ -352,15 +407,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectPersona,
       reloadBusinessPersonas,
       retryBootstrap,
+      completePortalProfile,
+      refreshPortalProfile,
     }),
     [
       isReady,
       isAuthenticated,
       account,
+      portalProfile,
       activePersonaState,
       businessPersonas,
       needsPersonaSelection,
       needsOrganizationSetup,
+      needsPortalProfileOnboarding,
       bootstrapError,
       orgUnavailableNotice,
       clearOrgUnavailableNotice,
@@ -369,6 +428,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectPersona,
       reloadBusinessPersonas,
       retryBootstrap,
+      completePortalProfile,
+      refreshPortalProfile,
     ],
   );
 

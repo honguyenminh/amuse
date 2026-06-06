@@ -23,6 +23,22 @@ public static class GetReleaseDetailEndpoint
             .Produces<GetReleaseDetailResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        endpoints.MapGet("/api/v1/catalog/artists/{artistSlug}/releases/{releaseSlug}", async (
+                string artistSlug,
+                string releaseSlug,
+                GetReleaseDetailHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleBySlugsAsync(artistSlug, releaseSlug, cancellationToken);
+                return result.ToResult(Results.Ok);
+            })
+            .AllowAnonymous()
+            .WithName("GetCatalogReleaseDetailBySlugs")
+            .WithSummary(
+                "Return a published release with its tracks by artist and release URL slugs. Public; no authentication required.")
+            .Produces<GetReleaseDetailResponse>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         return endpoints;
     }
 }

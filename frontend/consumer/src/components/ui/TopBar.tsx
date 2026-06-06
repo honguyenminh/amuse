@@ -1,10 +1,12 @@
 "use client";
 
 import { IconButton } from "@/components/ui/IconButton";
-import { MenuIcon, SearchIcon, UserIcon } from "@/components/ui/NavIcons";
+import { UserAccountChip } from "@/components/account/UserAccountChip";
+import { MenuIcon, SearchIcon } from "@/components/ui/NavIcons";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/cn";
+import { shellContentPaddingClass } from "@/lib/ui/pageLayout";
 import Link from "next/link";
 
 type TopBarProps = {
@@ -25,7 +27,8 @@ export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex items-center gap-3 border-b-2 border-outline bg-surface/90 px-3 py-2 backdrop-blur",
+        "sticky top-0 z-30 flex items-center gap-3 border-b-2 border-outline bg-surface/90 py-2 backdrop-blur",
+        shellContentPaddingClass,
       )}
     >
       <IconButton
@@ -70,14 +73,7 @@ export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
       {trailing}
 
       {auth.isAuthenticated ? (
-        <IconButton
-          label="Account"
-          variant="ghost"
-          size="md"
-          onClick={() => void auth.logout()}
-        >
-          <UserIcon />
-        </IconButton>
+        <UserAccountChip compact menuPlacement="bottom" className="hidden md:block" />
       ) : (
         <Link
           href="/login"

@@ -1,5 +1,6 @@
 "use client";
 
+import { UserAvatar } from "@/components/account/UserAvatar";
 import { MemberClaimsSheet } from "@/components/members/MemberClaimsSheet";
 import { MemberRoleDialog } from "@/components/members/MemberRoleDialog";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,11 @@ function TableDateCell({ value }: { value: string | null | undefined }) {
 }
 
 function memberLabel(member: OrganizationMemberResponse): string {
-  return member.email ?? member.accountId;
+  return member.displayName ?? member.email ?? member.accountId;
+}
+
+function memberPrimaryLine(member: OrganizationMemberResponse): string {
+  return member.displayName ?? member.email ?? member.accountId;
 }
 
 export function MembersTable({
@@ -219,12 +224,33 @@ export function MembersTable({
               return (
               <tr key={member.id} className="border-b last:border-b-0 hover:bg-muted/30">
                 <td className="min-w-0 px-4 py-3 align-top">
-                  <div className="break-all font-medium text-foreground">
-                    {member.email ?? member.accountId}
+                  <div className="flex items-start gap-3">
+                    <UserAvatar
+                      displayName={member.displayName}
+                      email={member.email}
+                      accentSeed={member.avatarAccentSeed}
+                      avatarUrl={member.avatarUrl}
+                      size="sm"
+                    />
+                    <div className="min-w-0">
+                      <div className="break-all font-medium text-foreground">
+                        {memberPrimaryLine(member)}
+                        {isSelf ? (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            You
+                          </span>
+                        ) : null}
+                      </div>
+                      {member.displayName && member.email ? (
+                        <div className="break-all text-xs text-muted-foreground">
+                          {member.email}
+                        </div>
+                      ) : null}
+                      {member.isOwner ? (
+                        <span className="text-xs text-muted-foreground">Owner</span>
+                      ) : null}
+                    </div>
                   </div>
-                  {member.isOwner ? (
-                    <span className="text-xs text-muted-foreground">Owner</span>
-                  ) : null}
                 </td>
                 <td className="px-4 py-3 align-top text-muted-foreground">
                   {canManagePermissions && !member.isOwner ? (

@@ -25,6 +25,36 @@ export type CurrentAccountResponse = {
   idpIssuer: string;
   idpSubject: string;
   status: string;
+  email: string | null;
+};
+
+export type ListenerProfileResponse = {
+  listenerId: string;
+  displayName: string | null;
+  avatarAccentSeed: number | null;
+  avatarUrl: string | null;
+  allowUnverifiedArtists: boolean | null;
+  onboardingComplete: boolean;
+  updatedAt: string;
+};
+
+export type UpdateListenerProfileRequest = {
+  displayName?: string;
+  avatarAccentSeed?: number | null;
+  allowUnverifiedArtists?: boolean;
+  clearAvatar?: boolean;
+};
+
+export type PresignListenerAvatarUploadResponse = {
+  key: string;
+  url: string;
+  expiresAt: string;
+  method: string;
+};
+
+export type CompleteListenerAvatarUploadResponse = {
+  key: string;
+  avatarUrl: string;
 };
 
 export type EnsureListenerProfileResponse = {
@@ -62,12 +92,24 @@ export type TrackResponse = {
   hasAudio: boolean;
 };
 
+export type TrackStreamRenditionDto = {
+  id: string;
+  codec: string;
+  bitrateKbps: number | null;
+  bandwidth: number;
+  sampleRateHz: number;
+  adaptationSetId: string;
+  representationId: string;
+};
+
 export type TrackStreamInfoResponse = {
   trackId: string;
   url: string;
   contentType: string;
   durationMs: number;
   expiresAt: string;
+  loudnessNormalized: boolean;
+  renditions: TrackStreamRenditionDto[];
 };
 
 export type BrowseHomeResponse = {

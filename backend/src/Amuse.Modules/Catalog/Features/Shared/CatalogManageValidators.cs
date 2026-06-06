@@ -77,6 +77,11 @@ internal sealed class CreateReleaseRequestValidator : AbstractValidator<CreateRe
         RuleFor(x => x.OriginalReleaseDate)
             .Must(d => d is null || d.Value.Offset == TimeSpan.Zero)
             .WithMessage("Timestamp must be UTC (offset Z).");
+        RuleFor(x => x.Slug)
+            .MaximumLength(Slug.MaxLength)
+            .Must(slug => slug is null || CatalogSlugHelper.TryParseReleaseSlug(slug).IsSuccess)
+            .WithMessage("Slug must be lowercase letters, numbers, and single hyphens (e.g. my-release-name).")
+            .When(x => !string.IsNullOrWhiteSpace(x.Slug));
     }
 }
 
@@ -98,6 +103,11 @@ internal sealed class UpdateReleaseRequestValidator : AbstractValidator<UpdateRe
         RuleFor(x => x.OriginalReleaseDate)
             .Must(d => d is null || d.Value.Offset == TimeSpan.Zero)
             .WithMessage("Timestamp must be UTC (offset Z).");
+        RuleFor(x => x.Slug)
+            .MaximumLength(Slug.MaxLength)
+            .Must(slug => slug is null || CatalogSlugHelper.TryParseReleaseSlug(slug).IsSuccess)
+            .WithMessage("Slug must be lowercase letters, numbers, and single hyphens (e.g. my-release-name).")
+            .When(x => !string.IsNullOrWhiteSpace(x.Slug));
     }
 }
 

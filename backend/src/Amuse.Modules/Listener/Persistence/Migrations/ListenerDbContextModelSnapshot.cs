@@ -23,6 +23,29 @@ namespace Amuse.Modules.Listener.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Amuse.Domain.Listener.ListenerPreference", b =>
+                {
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<bool?>("AllowUnverifiedArtists")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_unverified_artists");
+
+                    b.Property<bool>("SetDuringOnboarding")
+                        .HasColumnType("boolean")
+                        .HasColumnName("set_during_onboarding");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("AccountId");
+
+                    b.ToTable("listener_preference", "listener");
+                });
+
             modelBuilder.Entity("Amuse.Domain.Listener.ListenerProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -33,9 +56,27 @@ namespace Amuse.Modules.Listener.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("account_id");
 
+                    b.Property<int?>("AvatarAccentSeed")
+                        .HasColumnType("integer")
+                        .HasColumnName("avatar_accent_seed");
+
+                    b.Property<string>("AvatarObjectKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("avatar_object_key");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("display_name");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 

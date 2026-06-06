@@ -4,6 +4,11 @@ import {
   FeaturingArtistsDialog,
   FeaturingArtistsSummary,
 } from "@/components/catalog/FeaturingArtistsDialog";
+import {
+  ReleaseSlugField,
+  releaseSlugReadyForSubmit,
+  type ReleaseSlugStatus,
+} from "@/components/catalog/ReleaseSlugField";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  getArtist,
   listArtists,
   listArtistReleaseGroups,
   updateRelease,
@@ -31,6 +37,7 @@ import {
   toLocalDatetimeInput,
   toReleaseDateIso,
 } from "@/lib/catalog/releaseDateTime";
+import { normalizeSlugInput } from "@/lib/catalog/slug";
 import { Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -55,6 +62,11 @@ export function EditReleaseMetadataDialog({
   onUpdated,
 }: EditReleaseMetadataDialogProps) {
   const [title, setTitle] = useState(release.title);
+  const [slug, setSlug] = useState(release.slug);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(true);
+  const [slugStatus, setSlugStatus] = useState<ReleaseSlugStatus>("idle");
+  const [artistSlug, setArtistSlug] = useState("");
+  const slugEditable = release.lifecycleStatus === "draft";
   const [releaseType, setReleaseType] = useState<ReleaseType>(release.releaseType);
   const [releaseDate, setReleaseDate] = useState(toLocalDatetimeInput(release.releaseDate));
   const [releaseGroupId, setReleaseGroupId] = useState(release.releaseGroupId ?? "");
@@ -82,6 +94,9 @@ export function EditReleaseMetadataDialog({
   useEffect(() => {
     if (open) {
       setTitle(release.title);
+      setSlug(release.slug);
+      setSlugManuallyEdited(true);
+      setSlugStatus("idle");
       setReleaseType(release.releaseType);
       setReleaseDate(toLocalDatetimeInput(release.releaseDate));
       setReleaseGroupId(release.releaseGroupId ?? "");
@@ -100,6 +115,9 @@ export function EditReleaseMetadataDialog({
       setCollaboratorArtistIds(release.collaborators.map((c) => c.artistId));
       setError(null);
 
+      getArtist(release.artistId)
+        .then((artist) => setArtistSlug(artist.slug))
+        .catch(() => undefined);
       listArtistReleaseGroups(release.artistId)
         .then((response) => setReleaseGroups(response.items))
         .catch(() => undefined);
@@ -123,11 +141,21 @@ export function EditReleaseMetadataDialog({
       return;
     }
 
+    if (slugEditable && !releaseSlugReadyForSubmit(slug, slugStatus, false)) {
+      setError("Fix the release slug before saving.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
+      const normalizedSlug = normalizeSlugInput(slug);
       const updated = await updateRelease(release.id, {
         title: trimmedTitle,
+        slug:
+          slugEditable && normalizedSlug && normalizedSlug !== release.slug
+            ? normalizedSlug
+            : undefined,
         releaseType,
         releaseDate: toReleaseDateIso(releaseDate),
         releaseGroupId: releaseGroupId || null,
@@ -161,7 +189,8 @@ export function EditReleaseMetadataDialog({
           <DialogHeader>
             <DialogTitle>Edit release metadata</DialogTitle>
             <DialogDescription>
-              Slug /{release.slug} · {release.lifecycleStatus}
+              {slugEditable ? "Draft release" : `Slug /${release.slug}`} ·{" "}
+              {release.lifecycleStatus}
             </DialogDescription>
           </DialogHeader>
           <form className="flex flex-col" onSubmit={onSubmit}>
@@ -176,6 +205,24 @@ export function EditReleaseMetadataDialog({
                 required
               />
             </div>
+            {slugEditable && artistSlug ? (
+              <ReleaseSlugField
+                artistId={release.artistId}
+                artistSlug={artistSlug}
+                title={title}
+                slug={slug}
+                onSlugChange={setSlug}
+                slugManuallyEdited={slugManuallyEdited}
+                onSlugManuallyEditedChange={setSlugManuallyEdited}
+                excludingReleaseId={release.id}
+                onSlugStatusChange={setSlugStatus}
+                disabled={submitting}
+              />
+            ) : !slugEditable ? (
+              <p className="text-xs text-muted-foreground">
+                Public URL slug /{release.slug} (cannot change after publish)
+              </p>
+            ) : null}
             <div className="grid gap-2 sm:grid-cols-2 sm:items-start">
               <div className="grid gap-2">
                 <Label htmlFor="release-type">Type</Label>

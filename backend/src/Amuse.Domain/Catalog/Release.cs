@@ -115,7 +115,7 @@ public sealed class Release
         bool metadataComplete = false,
         string? coverArtKey = null)
     {
-        var trimmedTitle = (title ?? throw new ArgumentNullException(nameof(title))).Trim();
+        var trimmedTitle = title.Trim();
         if (trimmedTitle.Length is 0 or > MaxTitleLength)
             return Result<Release>.Failure(CatalogErrors.InvalidRelease);
 
@@ -217,6 +217,16 @@ public sealed class Release
         CLine = NormalizeOptional(cLine);
         OriginalReleaseDate = originalReleaseDate;
         MetadataComplete = metadataComplete;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    public Result UpdateSlug(Slug slug, DateTimeOffset now)
+    {
+        if (LifecycleStatus is ReleaseLifecycleStatus.Published or ReleaseLifecycleStatus.Archived)
+            return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
+
+        Slug = slug;
         UpdatedAt = now;
         return Result.Success();
     }

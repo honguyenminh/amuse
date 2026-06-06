@@ -25,6 +25,21 @@ internal sealed class ListenerProfileConfiguration : IEntityTypeConfiguration<Li
             .HasColumnName("created_at")
             .HasColumnType("timestamptz");
 
+        builder.Property(p => p.DisplayName)
+            .HasColumnName("display_name")
+            .HasMaxLength(ListenerProfile.MaxDisplayNameLength);
+
+        builder.Property(p => p.AvatarAccentSeed)
+            .HasColumnName("avatar_accent_seed");
+
+        builder.Property(p => p.AvatarObjectKey)
+            .HasColumnName("avatar_object_key")
+            .HasMaxLength(ListenerProfile.MaxAvatarObjectKeyLength);
+
+        builder.Property(p => p.UpdatedAt)
+            .HasColumnName("updated_at")
+            .HasColumnType("timestamptz");
+
         builder.HasIndex(p => p.AccountId).IsUnique();
     }
 }

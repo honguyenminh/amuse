@@ -2,7 +2,7 @@
 
 import { resolveApiUrl } from "@/lib/api/config";
 import { getTrackStreamInfo } from "@/lib/api/catalogClient";
-import { ApiError } from "@/lib/api/types";
+import { ApiError, type TrackStreamRenditionDto } from "@/lib/api/types";
 import { getAccessToken } from "@/lib/auth/sessionStore";
 import { useTheme } from "@/theme/ThemeProvider";
 import {
@@ -23,7 +23,10 @@ import {
   type ReactNode,
 } from "react";
 import { readAudioDurationMs, readAudioPositionMs } from "./audioPosition";
-import { attachDashToAudio } from "./dashPlayer";
+import { attachDashToAudio, type ActiveRenditionInfo } from "./dashPlayer";
+import { loadPlaybackSettings, savePlaybackSettings } from "./playbackSettings";
+import { getNetworkHints } from "./networkHints";
+import { selectRendition } from "./selectRendition";
 import { createPlaybackOutput, type PlaybackOutput } from "./playbackOutput";
 import { playbackReducer } from "./reducer";
 import { syncAudioTime } from "./syncAudioTime";
@@ -33,6 +36,11 @@ import {
   type PlaybackTrack,
   type RepeatMode,
 } from "./types";
+
+function initialStateFromSettings(): PlaybackState {
+  const settings = loadPlaybackSettings();
+  return { ...initialPlaybackState, volume: settings.volume };
+}
 
 type PlaybackContextValue = {
   state: PlaybackState;
@@ -50,25 +58,38 @@ type PlaybackContextValue = {
   setVolume: (volume: number) => void;
   setRepeat: (mode: RepeatMode) => void;
   toggleShuffle: () => void;
+  addToQueue: (tracks: PlaybackTrack[]) => void;
+  playNext: (tracks: PlaybackTrack[]) => void;
+  streamRenditions: TrackStreamRenditionDto[];
+  activeRendition: ActiveRenditionInfo | null;
+  switchRendition: (renditionId: string) => void;
 };
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
 export function PlaybackProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(playbackReducer, initialPlaybackState);
+  const [state, dispatch] = useReducer(playbackReducer, undefined, initialStateFromSettings);
   const outputRef = useRef<PlaybackOutput | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const dashSessionRef = useRef<{ destroy: () => void } | null>(null);
+  const dashSessionRef = useRef<Awaited<ReturnType<typeof attachDashToAudio>> | null>(null);
   const lastLoadedTrackIdRef = useRef<string | null>(null);
+  const streamRenditionsRef = useRef<TrackStreamRenditionDto[]>([]);
+  const [streamRenditions, setStreamRenditions] = useState<TrackStreamRenditionDto[]>([]);
+  const [activeRendition, setActiveRendition] = useState<ActiveRenditionInfo | null>(null);
+  const activeRenditionRef = useRef<ActiveRenditionInfo | null>(null);
   const isPlayingRef = useRef(false);
   const isScrubbingRef = useRef(false);
   const { setPlayingSeed, setPaused } = useTheme();
   const router = useRouter();
 
-  const currentTrack = state.currentIndex >= 0 ? state.queue[state.currentIndex] ?? null : null;
+  const currentTrack =
+    state.currentIndex >= 0 ? (state.queue[state.currentIndex] ?? null) : null;
   const resetDashSession = useCallback(() => {
     dashSessionRef.current?.destroy();
     dashSessionRef.current = null;
+    streamRenditionsRef.current = [];
+    setStreamRenditions([]);
+    setActiveRendition(null);
   }, []);
 
 
@@ -113,6 +134,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   }, [state.volume]);
 
   useEffect(() => {
+    activeRenditionRef.current = activeRendition;
+  }, [activeRendition]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (!currentTrack) {
@@ -138,13 +163,24 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           info.contentType === "application/dash+xml" ||
           playbackUrl.toLowerCase().endsWith(".mpd");
 
+        streamRenditionsRef.current = info.renditions ?? [];
+        setStreamRenditions(info.renditions ?? []);
+
         if (isDash) {
-          const dashSession = await attachDashToAudio(audio, playbackUrl, getAccessToken);
+          const settings = loadPlaybackSettings();
+          const chosen = selectRendition(info.renditions ?? [], settings, getNetworkHints());
+          const dashSession = await attachDashToAudio(
+            audio,
+            playbackUrl,
+            getAccessToken,
+            chosen,
+          );
           if (cancelled || lastLoadedTrackIdRef.current !== currentTrack.id) {
             dashSession.destroy();
             return;
           }
           dashSessionRef.current = dashSession;
+          dashSession.onActiveRenditionChange(setActiveRendition);
         } else {
           audio.crossOrigin = "anonymous";
           audio.src = playbackUrl;
@@ -217,6 +253,53 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setPaused(!state.isPlaying && state.currentIndex >= 0);
   }, [state.isPlaying, state.currentIndex, setPaused]);
+
+  const applyAutoRenditionIfNeeded = useCallback(() => {
+    const dashSession = dashSessionRef.current;
+    const renditions = streamRenditionsRef.current;
+    if (!dashSession || renditions.length === 0) return;
+
+    const settings = loadPlaybackSettings();
+    if (settings.qualityMode !== "auto") return;
+
+    const chosen = selectRendition(renditions, settings, getNetworkHints());
+    if (!chosen) return;
+
+    if (activeRenditionRef.current?.rendition.id === chosen.id) return;
+    dashSession.setRendition(chosen);
+  }, []);
+
+  useEffect(() => {
+    if (!currentTrack) return;
+
+    const connection = (
+      navigator as Navigator & {
+        connection?: EventTarget;
+      }
+    ).connection;
+    const handleNetworkChange = () => applyAutoRenditionIfNeeded();
+
+    if (connection) {
+      connection.addEventListener("change", handleNetworkChange);
+    }
+    window.addEventListener("online", handleNetworkChange);
+    window.addEventListener("offline", handleNetworkChange);
+
+    const intervalId = window.setInterval(() => {
+      if (isPlayingRef.current) {
+        applyAutoRenditionIfNeeded();
+      }
+    }, 5000);
+
+    return () => {
+      if (connection) {
+        connection.removeEventListener("change", handleNetworkChange);
+      }
+      window.removeEventListener("online", handleNetworkChange);
+      window.removeEventListener("offline", handleNetworkChange);
+      window.clearInterval(intervalId);
+    };
+  }, [currentTrack?.id, applyAutoRenditionIfNeeded]);
 
   const syncPositionFromAudio = useCallback(() => {
     const audio = audioRef.current;
@@ -307,6 +390,44 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   );
   const toggleShuffle = useCallback(() => dispatch({ type: "toggleShuffle" }), []);
 
+  const requireAuthForQueue = useCallback(() => {
+    if (getAccessToken()) {
+      outputRef.current?.prime();
+      return true;
+    }
+    const next = encodeURIComponent(
+      typeof window !== "undefined" ? window.location.pathname : "/home",
+    );
+    router.push(`/login?next=${next}`);
+    return false;
+  }, [router]);
+
+  const addToQueue = useCallback(
+    (tracks: PlaybackTrack[]) => {
+      if (tracks.length === 0 || !requireAuthForQueue()) return;
+      dispatch({ type: "appendToQueue", tracks });
+    },
+    [requireAuthForQueue],
+  );
+
+  const playNext = useCallback(
+    (tracks: PlaybackTrack[]) => {
+      if (tracks.length === 0 || !requireAuthForQueue()) return;
+      dispatch({ type: "insertPlayNext", tracks });
+    },
+    [requireAuthForQueue],
+  );
+
+  const switchRendition = useCallback((renditionId: string) => {
+    const rendition = streamRenditionsRef.current.find((r) => r.id === renditionId);
+    if (!rendition) return;
+    savePlaybackSettings({
+      qualityMode: "manual",
+      manualRenditionId: renditionId,
+    });
+    dashSessionRef.current?.setRendition(rendition);
+  }, []);
+
   const value = useMemo<PlaybackContextValue>(
     () => ({
       state,
@@ -324,6 +445,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       setVolume,
       setRepeat,
       toggleShuffle,
+      addToQueue,
+      playNext,
+      streamRenditions,
+      activeRendition,
+      switchRendition,
     }),
     [
       state,
@@ -340,6 +466,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       setVolume,
       setRepeat,
       toggleShuffle,
+      addToQueue,
+      playNext,
+      streamRenditions,
+      activeRendition,
+      switchRendition,
     ],
   );
 

@@ -49,6 +49,10 @@ function LoginInner() {
       router.replace(`/select-persona?next=${encodeURIComponent(next)}`);
       return;
     }
+    if (auth.needsPortalProfileOnboarding && !next.startsWith("/accept-invite")) {
+      router.replace(`/onboarding?returnTo=${encodeURIComponent(next)}`);
+      return;
+    }
     if (auth.activePersona || next.startsWith("/accept-invite")) {
       router.replace(next);
     }
@@ -56,6 +60,7 @@ function LoginInner() {
     auth.isReady,
     auth.isAuthenticated,
     auth.needsPersonaSelection,
+    auth.needsPortalProfileOnboarding,
     auth.activePersona,
     next,
     router,
@@ -100,7 +105,7 @@ function LoginInner() {
         <CardHeader>
           <CardTitle>Sign in to Amuse Console</CardTitle>
           <CardDescription>
-            Business and platform administration portal.
+            Your journey starts here.
           </CardDescription>
         </CardHeader>
         <CardContent>

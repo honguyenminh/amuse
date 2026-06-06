@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell } from "@/components/ui/AppShell";
+import { PageContent } from "@/components/ui/PageContent";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
@@ -11,6 +12,7 @@ import type {
   ReleaseSummary,
   ReleaseType,
 } from "@/lib/api/types";
+import { ReleaseTile } from "@/components/playback/ReleaseTile";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -46,7 +48,7 @@ export default function HomePage() {
 
   return (
     <AppShell title="Home" activePath="/home">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4 md:p-6">
+      <PageContent gap="8">
         {loading && (
           <section className="flex flex-col gap-3">
             <Skeleton className="h-7 w-48" />
@@ -74,7 +76,11 @@ export default function HomePage() {
               <Text variant="title-large">Recent releases</Text>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                 {data.recentReleases.map((release) => (
-                  <ReleaseTile key={release.id} release={release} />
+                  <ReleaseTile
+                    key={release.id}
+                    release={release}
+                    subtitle={`${release.artistName} · ${releaseTypeLabel[release.releaseType]}`}
+                  />
                 ))}
               </div>
             </section>
@@ -89,39 +95,14 @@ export default function HomePage() {
             </section>
           </>
         )}
-      </div>
+      </PageContent>
     </AppShell>
-  );
-}
-
-function ReleaseTile({ release }: { release: ReleaseSummary }) {
-  return (
-    <Link href={`/release/${release.id}`} className="group block">
-      <Card>
-        <div className="flex flex-col gap-2">
-          {release.coverArtUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={release.coverArtUrl}
-              alt={release.title}
-              className="aspect-square w-full rounded-md object-cover"
-            />
-          )}
-          <Text variant="title-medium" className="truncate">
-            {release.title}
-          </Text>
-          <Text variant="label-medium" className="truncate text-on-surface-variant">
-            {release.artistName} · {releaseTypeLabel[release.releaseType]}
-          </Text>
-        </div>
-      </Card>
-    </Link>
   );
 }
 
 function ArtistTile({ artist }: { artist: ArtistSummary }) {
   return (
-    <Link href={`/artist/${artist.id}`} className="group block">
+    <Link href={`/artist/${artist.slug}`} className="group block">
       <Card>
         <div className="flex flex-col gap-2">
           {artist.avatarUrl && (

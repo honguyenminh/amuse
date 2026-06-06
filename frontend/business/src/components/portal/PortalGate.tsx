@@ -12,6 +12,22 @@ type PortalGateProps = {
   children: ReactNode;
 };
 
+const ONBOARDING_ALLOWLIST = [
+  "/onboarding",
+  "/login",
+  "/signup",
+  "/confirm-email",
+  "/create-organization",
+  "/select-persona",
+  "/accept-invite",
+];
+
+function isAllowlisted(pathname: string): boolean {
+  return ONBOARDING_ALLOWLIST.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
 export function PortalGate({ children }: PortalGateProps) {
   const auth = useAuth();
   const router = useRouter();
@@ -27,6 +43,10 @@ export function PortalGate({ children }: PortalGateProps) {
     }
     if (auth.needsPersonaSelection) {
       router.replace("/select-persona");
+      return;
+    }
+    if (auth.needsPortalProfileOnboarding && !isAllowlisted(pathname)) {
+      router.replace(`/onboarding?returnTo=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -59,6 +79,7 @@ export function PortalGate({ children }: PortalGateProps) {
     auth.isReady,
     auth.isAuthenticated,
     auth.needsPersonaSelection,
+    auth.needsPortalProfileOnboarding,
     auth.activePersona,
     auth.businessPersonas,
     pathname,
@@ -77,6 +98,10 @@ export function PortalGate({ children }: PortalGateProps) {
   }
 
   if (!auth.isAuthenticated || auth.needsPersonaSelection) {
+    return null;
+  }
+
+  if (auth.needsPortalProfileOnboarding && !isAllowlisted(pathname)) {
     return null;
   }
 

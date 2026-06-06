@@ -43,6 +43,7 @@ internal sealed class CreateReleaseGroupHandler(CatalogDbContext db, IClock cloc
             orgResult.Value!,
             typedArtistId,
             request.Title,
+            requestedReleaseSlug: null,
             request.Description,
             cancellationToken);
 

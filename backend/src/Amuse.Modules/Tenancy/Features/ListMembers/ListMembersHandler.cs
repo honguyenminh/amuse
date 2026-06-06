@@ -1,5 +1,7 @@
 using Amuse.Domain.Tenancy;
 using Amuse.Domain.SharedKernel;
+using Amuse.Modules.Catalog.Features.BrowseHome;
+using Amuse.Modules.Media;
 using Amuse.Modules.Tenancy.Contracts;
 using Amuse.Modules.Tenancy.Features.Shared;
 using Amuse.Modules.Tenancy.Persistence;
@@ -9,7 +11,9 @@ namespace Amuse.Modules.Tenancy.Features.ListMembers;
 
 internal sealed class ListMembersHandler(
     TenancyDbContext dbContext,
-    IAccountMemberActivityLookup activityLookup)
+    IAccountMemberActivityLookup activityLookup,
+    IBusinessPortalProfileLookup portalProfileLookup,
+    IObjectStorage storage)
 {
     public async Task<Result<OrganizationMemberListResponse>> HandleAsync(
         Guid organizationId,
@@ -31,13 +35,22 @@ internal sealed class ListMembersHandler(
 
         var accountIds = members.Select(m => m.AccountId).ToArray();
         var activity = await activityLookup.GetByAccountIdsAsync(orgId, accountIds, cancellationToken);
+        var portalProfiles = await portalProfileLookup.GetByAccountIdsAsync(
+            accountIds.Select(id => id.Value).ToArray(),
+            cancellationToken);
 
         var rows = members.Select(member =>
         {
             activity.TryGetValue(member.AccountId.Value, out var snapshot);
+            portalProfiles.TryGetValue(member.AccountId.Value, out var portalProfile);
             return new MemberRow(
                 member,
                 snapshot?.Email,
+                portalProfile?.DisplayName,
+                portalProfile?.AvatarAccentSeed,
+                string.IsNullOrEmpty(portalProfile?.AvatarObjectKey)
+                    ? null
+                    : BrowseHomeHandler.CoverArtUrlFor(storage, portalProfile.AvatarObjectKey),
                 snapshot?.JoinedAt,
                 snapshot?.LastLoginAt,
                 snapshot?.LastActiveAt);
@@ -48,6 +61,7 @@ internal sealed class ListMembersHandler(
             var term = query.Search.ToLowerInvariant();
             rows = rows.Where(row =>
                     (row.Email?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (row.DisplayName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
                     || row.Member.AccountId.Value.ToString().Contains(term, StringComparison.OrdinalIgnoreCase)
                     || (row.Member.PresetRoleLabel?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
                     || row.Member.Claims.Any(c => c.Contains(term, StringComparison.OrdinalIgnoreCase)))
@@ -60,7 +74,7 @@ internal sealed class ListMembersHandler(
             "lastlogin" => OrderDate(rows, r => r.LastLoginAt, query.SortDirection),
             "lastactive" => OrderDate(rows, r => r.LastActiveAt, query.SortDirection),
             "joined" => OrderDate(rows, r => r.JoinedAt, query.SortDirection),
-            _ => Order(rows, r => r.Email ?? r.Member.AccountId.Value.ToString(), query.SortDirection),
+            _ => Order(rows, r => r.DisplayName ?? r.Email ?? r.Member.AccountId.Value.ToString(), query.SortDirection),
         };
 
         var totalCount = rows.Count;
@@ -71,6 +85,9 @@ internal sealed class ListMembersHandler(
                 row.Member.Id,
                 row.Member.AccountId.Value,
                 row.Email,
+                row.DisplayName,
+                row.AvatarAccentSeed,
+                row.AvatarUrl,
                 row.Member.Status.ToString(),
                 row.Member.PresetRoleLabel,
                 row.Member.Claims,
@@ -122,6 +139,9 @@ internal sealed class ListMembersHandler(
     private sealed record MemberRow(
         OrganizationMember Member,
         string? Email,
+        string? DisplayName,
+        int? AvatarAccentSeed,
+        string? AvatarUrl,
         DateTimeOffset? JoinedAt,
         DateTimeOffset? LastLoginAt,
         DateTimeOffset? LastActiveAt);

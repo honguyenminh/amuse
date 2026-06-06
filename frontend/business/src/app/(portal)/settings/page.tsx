@@ -229,6 +229,16 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium">Your account</h2>
+            <p className="text-sm text-muted-foreground">
+              Update the display name and avatar shown in the portal chrome and member
+              lists.
+            </p>
+            <Button variant="outline" render={<Link href="/settings/account" />}>
+              Manage account profile
+            </Button>
+          </section>
+          <section className="flex flex-col gap-2">
             <h2 className="text-sm font-medium">Organizations</h2>
             <p className="text-sm text-muted-foreground">
               Create another indie group or backing organization on your signed-in

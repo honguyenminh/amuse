@@ -1,11 +1,20 @@
 "use client";
 
+import { VolumeControl } from "@/components/player/VolumeControl";
 import { IconButton } from "@/components/ui/IconButton";
-import { NextIcon, PauseIcon, PlayIcon, PrevIcon } from "@/components/ui/PlaybackIcons";
+import {
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PrevIcon,
+  RepeatIcon,
+  ShuffleIcon,
+} from "@/components/ui/PlaybackIcons";
 import { Slider } from "@/components/ui/Slider";
 import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
+import { shellContentPaddingClass } from "@/lib/ui/pageLayout";
 import { usePlayback, usePlaybackPosition } from "@/lib/playback/PlaybackContext";
 import { useScrubPosition } from "@/lib/playback/useScrubPosition";
 import Link from "next/link";
@@ -26,7 +35,17 @@ import Link from "next/link";
  * so the audio element's pushback can't yank the thumb around.
  */
 export function MiniPlayer() {
-  const { state, currentTrack, toggle, next, previous, beginScrub, endScrub } = usePlayback();
+  const {
+    state,
+    currentTrack,
+    toggle,
+    next,
+    previous,
+    beginScrub,
+    endScrub,
+    setRepeat,
+    toggleShuffle,
+  } = usePlayback();
   const smoothMs = usePlaybackPosition();
   const max = Math.max(state.durationMs, 1);
   const { displayMs: value, sliderProps } = useScrubPosition(smoothMs, max, {
@@ -36,7 +55,10 @@ export function MiniPlayer() {
 
   if (!currentTrack) return null;
 
-  const canNext = state.currentIndex < state.queue.length - 1 || state.repeat === "queue";
+  const canNext =
+    state.playOrderIndex < state.playOrder.length - 1 || state.repeat === "queue";
+  const nextRepeat: typeof state.repeat =
+    state.repeat === "off" ? "queue" : state.repeat === "queue" ? "one" : "off";
 
   return (
     <div
@@ -55,7 +77,7 @@ export function MiniPlayer() {
         size="sm"
         className="px-0"
       />
-      <div className="flex items-center gap-3 px-3 py-2">
+      <div className={cn("flex items-center gap-3 py-2", shellContentPaddingClass)}>
         <Link
           href="/playing"
           className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden"
@@ -85,6 +107,27 @@ export function MiniPlayer() {
           <Text variant="label-small">{formatDuration(value)}</Text>
           <span aria-hidden>/</span>
           <Text variant="label-small">{formatDuration(state.durationMs)}</Text>
+        </div>
+
+        <VolumeControl variant="compact" className="hidden items-center gap-1 md:flex" />
+
+        <div className="hidden items-center gap-0.5 sm:flex">
+          <IconButton
+            label={`Shuffle ${state.shuffle ? "on" : "off"}`}
+            variant={state.shuffle ? "tonal" : "ghost"}
+            size="sm"
+            onClick={toggleShuffle}
+          >
+            <ShuffleIcon />
+          </IconButton>
+          <IconButton
+            label={`Repeat ${state.repeat}`}
+            variant={state.repeat !== "off" ? "tonal" : "ghost"}
+            size="sm"
+            onClick={() => setRepeat(nextRepeat)}
+          >
+            <RepeatIcon />
+          </IconButton>
         </div>
 
         <div className="flex items-center gap-1">

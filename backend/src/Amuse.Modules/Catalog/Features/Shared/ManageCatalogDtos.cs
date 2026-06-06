@@ -77,6 +77,11 @@ public sealed record ArtistSlugAvailabilityResponse(
     bool IsValid,
     bool IsAvailable);
 
+public sealed record ReleaseSlugAvailabilityResponse(
+    string NormalizedSlug,
+    bool IsValid,
+    bool IsAvailable);
+
 public sealed record ManageArtistReleaseSummary(
     Guid Id,
     string Slug,
@@ -119,6 +124,7 @@ public sealed record CreateReleaseRequest(
     ReleaseType ReleaseType,
     DateTimeOffset ReleaseDate,
     Guid? ReleaseGroupId,
+    string? Slug = null,
     string? Description = null,
     string? Upc = null,
     string? PrimaryGenre = null,
@@ -136,6 +142,7 @@ public sealed record UpdateReleaseRequest(
     ReleaseType ReleaseType,
     DateTimeOffset ReleaseDate,
     Guid? ReleaseGroupId,
+    string? Slug = null,
     string? Description = null,
     string? Upc = null,
     string? PrimaryGenre = null,

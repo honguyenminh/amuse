@@ -40,17 +40,11 @@ public static class CatalogModule
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
         services.AddDbContext<CatalogDbContext>(options =>
-            options.UseNpgsql(
-                connectionString,
-                npgsql =>
-                {
-                    npgsql.MigrationsHistoryTable("__EFMigrationsHistory_catalog", "catalog");
-                    npgsql.MapEnum<ReleaseType>("release_type", "catalog");
-                    npgsql.MapEnum<AudioTranscodeJobStatus>("audio_transcode_job_status", "catalog");
-                    npgsql.MapEnum<ArtistVisibilityTier>("artist_visibility_tier", "catalog");
-                    npgsql.MapEnum<ReleaseLifecycleStatus>("release_lifecycle_status", "catalog");
-                    npgsql.MapEnum<TrackLifecycleStatus>("track_lifecycle_status", "catalog");
-                }));
+        {
+            CatalogDbContextOptions.Configure(
+                (DbContextOptionsBuilder<CatalogDbContext>)options,
+                connectionString);
+        });
 
         services.AddScoped<ICatalogOrganizationBootstrap, CatalogOrganizationBootstrap>();
         services.AddScoped<ICatalogManagedArtistVisibility, CatalogManagedArtistVisibility>();
@@ -77,6 +71,7 @@ public static class CatalogModule
         services.AddScoped<UpdateArtistHandler>();
 
         services.AddScoped<CreateReleaseHandler>();
+        services.AddScoped<CheckReleaseSlugAvailabilityHandler>();
         services.AddScoped<ListReleasesHandler>();
         services.AddScoped<GetReleaseHandler>();
         services.AddScoped<UpdateReleaseHandler>();

@@ -15,6 +15,7 @@ internal static class ReleaseGroupProvisioning
         OrganizationId organizationId,
         ArtistId artistId,
         string releaseTitle,
+        string? requestedReleaseSlug,
         Guid? requestedGroupId,
         CancellationToken cancellationToken)
     {
@@ -44,6 +45,7 @@ internal static class ReleaseGroupProvisioning
             organizationId,
             artistId,
             releaseTitle,
+            requestedReleaseSlug,
             description: null,
             cancellationToken);
     }
@@ -54,6 +56,7 @@ internal static class ReleaseGroupProvisioning
         OrganizationId organizationId,
         ArtistId artistId,
         string title,
+        string? requestedReleaseSlug,
         string? description,
         CancellationToken cancellationToken)
     {
@@ -61,6 +64,7 @@ internal static class ReleaseGroupProvisioning
             db,
             artistId,
             title,
+            requestedReleaseSlug,
             cancellationToken);
         if (!slugResult.IsSuccess)
             return Result<ReleaseGroupId>.Failure(slugResult.Error!);

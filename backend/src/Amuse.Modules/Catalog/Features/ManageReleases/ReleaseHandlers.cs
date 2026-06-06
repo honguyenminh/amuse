@@ -46,6 +46,7 @@ internal sealed class CreateReleaseHandler(CatalogDbContext db, IClock clock, Ca
             organizationId,
             typedArtistId,
             request.Title,
+            request.Slug,
             request.ReleaseGroupId,
             cancellationToken);
         if (!groupResult.IsSuccess)
@@ -53,10 +54,11 @@ internal sealed class CreateReleaseHandler(CatalogDbContext db, IClock clock, Ca
 
         releaseGroupId = groupResult.Value!;
 
-        var slugResult = await CatalogSlugHelper.AllocateUniqueReleaseSlugAsync(
+        var slugResult = await CatalogSlugHelper.ResolveReleaseSlugForCreateAsync(
             db,
             typedArtistId,
             request.Title,
+            request.Slug,
             cancellationToken);
         if (!slugResult.IsSuccess)
             return Result<ManageReleaseDetailResponse>.Failure(slugResult.Error!);
@@ -287,6 +289,26 @@ internal sealed class UpdateReleaseHandler(
             return Result<ManageReleaseDetailResponse>.Failure(groupResult.Error!);
 
         releaseGroupId = groupResult.Value;
+
+        if (!string.IsNullOrWhiteSpace(request.Slug))
+        {
+            var slugResult = await CatalogSlugHelper.EnsureAvailableReleaseSlugAsync(
+                db,
+                release.ArtistId,
+                request.Slug,
+                release.Id,
+                cancellationToken);
+            if (!slugResult.IsSuccess)
+                return Result<ManageReleaseDetailResponse>.Failure(slugResult.Error!);
+
+            if (slugResult.Value! != release.Slug)
+            {
+                var slugUpdateResult = release.UpdateSlug(slugResult.Value!, clock.UtcNow);
+                if (!slugUpdateResult.IsSuccess)
+                    return Result<ManageReleaseDetailResponse>.Failure(slugUpdateResult.Error!);
+            }
+        }
+
         var updateResult = release.UpdateMetadata(
             request.Title,
             request.ReleaseType,
@@ -478,6 +500,51 @@ internal static class ReleaseMapper
                     HasAudioMaster: !string.IsNullOrEmpty(t.AudioMasterKey),
                     HasAudioStream: !string.IsNullOrEmpty(t.AudioStreamKey)))
                 .ToArray());
+}
+
+internal sealed class CheckReleaseSlugAvailabilityHandler(CatalogDbContext db)
+{
+    public async Task<Result<ReleaseSlugAvailabilityResponse>> HandleAsync(
+        Guid artistId,
+        string rawSlug,
+        Guid? excludingReleaseId,
+        CancellationToken cancellationToken)
+    {
+        if (artistId == Guid.Empty)
+            return Result<ReleaseSlugAvailabilityResponse>.Failure(CatalogErrors.ArtistNotFound);
+
+        var typedArtistId = ArtistId.From(artistId);
+        var artistExists = await db.Artists
+            .AsNoTracking()
+            .AnyAsync(a => a.Id == typedArtistId, cancellationToken);
+        if (!artistExists)
+            return Result<ReleaseSlugAvailabilityResponse>.Failure(CatalogErrors.ArtistNotFound);
+
+        var normalized = CatalogSlugHelper.NormalizeSlugInput(rawSlug);
+        var parseResult = CatalogSlugHelper.TryParseReleaseSlug(rawSlug);
+        if (!parseResult.IsSuccess)
+        {
+            return Result<ReleaseSlugAvailabilityResponse>.Success(
+                new ReleaseSlugAvailabilityResponse(normalized, IsValid: false, IsAvailable: false));
+        }
+
+        ReleaseId? typedExcluding = excludingReleaseId is { } id && id != Guid.Empty
+            ? ReleaseId.From(id)
+            : null;
+
+        var available = await CatalogSlugHelper.IsReleaseSlugAvailableAsync(
+            db,
+            typedArtistId,
+            rawSlug,
+            typedExcluding,
+            cancellationToken);
+
+        return Result<ReleaseSlugAvailabilityResponse>.Success(
+            new ReleaseSlugAvailabilityResponse(
+                parseResult.Value!.Value,
+                IsValid: true,
+                IsAvailable: available));
+    }
 }
 
 internal static class ReleaseGroupLookup

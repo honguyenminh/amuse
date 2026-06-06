@@ -57,10 +57,15 @@ export function Slider({
   const scrubbingRef = useRef(false);
 
   return (
-    <span className={cn("group relative block w-full select-none", className)}>
+    <span
+      className={cn(
+        "group relative block h-4 w-full min-w-0 select-none",
+        className,
+      )}
+    >
       <span
         className={cn(
-          "block w-full overflow-hidden rounded-full bg-surface-variant",
+          "pointer-events-none absolute inset-x-0 top-1/2 w-full -translate-y-1/2 overflow-hidden rounded-full bg-surface-variant",
           sizeClass[size],
         )}
         aria-hidden

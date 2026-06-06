@@ -12,6 +12,27 @@ public static class ManageReleasesEndpoint
 {
     public static IEndpointRouteBuilder MapManageReleasesEndpoint(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/api/v1/catalog/artists/{artistId:guid}/releases/slug-availability", async (
+                Guid artistId,
+                string slug,
+                Guid? excludingReleaseId,
+                CheckReleaseSlugAvailabilityHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleAsync(
+                    artistId,
+                    slug,
+                    excludingReleaseId,
+                    cancellationToken);
+                return result.ToResult(Results.Ok);
+            })
+            .RequireAuthorization(OrgPolicies.WriteDraftCatalog)
+            .WithName("CheckCatalogReleaseSlugAvailability")
+            .WithSummary(
+                "Check whether a release slug is valid and available for the roster artist. Slugs are unique per artist.")
+            .Produces<ReleaseSlugAvailabilityResponse>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         endpoints.MapPost("/api/v1/catalog/artists/{artistId:guid}/releases", async (
                 Guid artistId,
                 CreateReleaseRequest request,
@@ -27,7 +48,8 @@ public static class ManageReleasesEndpoint
             .RequireAuthorization(OrgPolicies.WriteDraftCatalog)
             .WithRequestValidation()
             .WithName("CreateCatalogRelease")
-            .WithSummary("Create a draft release for a roster artist.")
+            .WithSummary(
+                "Create a draft release for a roster artist. Optional slug; when omitted, a unique slug is generated from the title. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when the slug is invalid or already taken for this artist.")
             .Produces<ManageReleaseDetailResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);
@@ -90,7 +112,8 @@ public static class ManageReleasesEndpoint
             .RequireAuthorization(OrgPolicies.WriteDraftCatalog)
             .WithRequestValidation()
             .WithName("UpdateCatalogRelease")
-            .WithSummary("Update draft release metadata.")
+            .WithSummary(
+                "Update draft release metadata. Optional slug change while the release is still a draft. Returns 400 with catalog.invalid_slug or catalog.duplicate_slug when invalid or taken for this artist.")
             .Produces<ManageReleaseDetailResponse>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);

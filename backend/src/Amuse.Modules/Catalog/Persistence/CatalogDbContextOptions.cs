@@ -19,5 +19,7 @@ internal static class CatalogDbContextOptions
                 npgsql.MapEnum<ArtistVisibilityTier>("artist_visibility_tier", "catalog");
                 npgsql.MapEnum<ReleaseLifecycleStatus>("release_lifecycle_status", "catalog");
                 npgsql.MapEnum<TrackLifecycleStatus>("track_lifecycle_status", "catalog");
+                npgsql.MapEnum<ReleaseCollaboratorRole>("release_collaborator_role", "catalog");
+                npgsql.MapEnum<AudioCodec>("audio_codec", "catalog");
             });
 }

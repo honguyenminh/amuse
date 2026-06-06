@@ -36,6 +36,48 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage
         if (artist is null)
             return Result<GetArtistDetailResponse>.Failure(CatalogErrors.ArtistNotFound);
 
+        return await BuildResponseAsync(artist.Id, artist.Slug, artist.Name, artist.Bio, artist.AvatarKey, artist.CoverKey, cancellationToken);
+    }
+
+    public async Task<Result<GetArtistDetailResponse>> HandleBySlugAsync(
+        string artistSlug,
+        CancellationToken cancellationToken)
+    {
+        var parseResult = CatalogSlugHelper.TryParseArtistSlug(artistSlug);
+        if (!parseResult.IsSuccess)
+            return Result<GetArtistDetailResponse>.Failure(CatalogErrors.ArtistNotFound);
+
+        var typedSlug = parseResult.Value!;
+
+        var artist = await db.Artists
+            .AsNoTracking()
+            .Where(a => a.Slug == typedSlug)
+            .Select(a => new
+            {
+                a.Id,
+                a.Slug,
+                a.Name,
+                a.Bio,
+                a.AvatarKey,
+                a.CoverKey,
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (artist is null)
+            return Result<GetArtistDetailResponse>.Failure(CatalogErrors.ArtistNotFound);
+
+        return await BuildResponseAsync(artist.Id, artist.Slug, artist.Name, artist.Bio, artist.AvatarKey, artist.CoverKey, cancellationToken);
+    }
+
+    private async Task<Result<GetArtistDetailResponse>> BuildResponseAsync(
+        ArtistId typedId,
+        Slug artistSlug,
+        string artistName,
+        string? bio,
+        string? avatarKey,
+        string? coverKey,
+        CancellationToken cancellationToken)
+    {
         var releaseRows = await db.Releases
             .AsNoTracking()
             .Where(r => r.ArtistId == typedId && r.LifecycleStatus == ReleaseLifecycleStatus.Published)
@@ -58,20 +100,20 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage
                 r.ReleaseSlug,
                 r.Title,
                 r.ArtistId,
-                artist.Name,
-                artist.Slug.Value,
+                artistName,
+                artistSlug.Value,
                 r.ReleaseType,
                 r.ReleaseDate,
                 BrowseHomeHandler.CoverArtUrlFor(storage, r.CoverArtKey)))
             .ToArray();
 
         var response = new GetArtistDetailResponse(
-            artist.Id.Value,
-            artist.Slug.Value,
-            artist.Name,
-            artist.Bio,
-            BrowseHomeHandler.CoverArtUrlFor(storage, artist.AvatarKey),
-            BrowseHomeHandler.CoverArtUrlFor(storage, artist.CoverKey),
+            typedId.Value,
+            artistSlug.Value,
+            artistName,
+            bio,
+            BrowseHomeHandler.CoverArtUrlFor(storage, avatarKey),
+            BrowseHomeHandler.CoverArtUrlFor(storage, coverKey),
             releases);
 
         return Result<GetArtistDetailResponse>.Success(response);

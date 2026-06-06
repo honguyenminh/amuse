@@ -1,5 +1,6 @@
 "use client";
 
+import { UserAccountChip } from "@/components/account/UserAccountChip";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import {
@@ -8,7 +9,7 @@ import {
   LibraryIcon,
   LogoIcon,
   SearchIcon,
-  UserIcon,
+  SettingsIcon,
 } from "@/components/ui/NavIcons";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -122,21 +123,18 @@ export function Sidebar({
           active={isActive("/library")}
           onClick={onNavigate}
         />
+        <NavLink
+          href="/settings"
+          icon={<SettingsIcon />}
+          label="Settings"
+          active={isActive("/settings")}
+          onClick={onNavigate}
+        />
       </nav>
 
       <div className="mt-auto flex flex-col gap-2 border-t-2 border-outline pt-3">
         {auth.isAuthenticated ? (
-          <>
-            <div className="flex items-center gap-2 px-3">
-              <UserIcon className="text-on-surface-variant" />
-              <Text variant="label-medium" className="truncate text-on-surface-variant">
-                listener · {auth.listenerId?.slice(0, 8) ?? "—"}
-              </Text>
-            </div>
-            <Button type="button" variant="outlined" onClick={() => void auth.logout()}>
-              Log out
-            </Button>
-          </>
+          <UserAccountChip />
         ) : (
           <>
             <Text variant="label-medium" className="px-3 text-on-surface-variant">

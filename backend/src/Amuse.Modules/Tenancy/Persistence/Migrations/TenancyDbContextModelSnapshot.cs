@@ -28,6 +28,39 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "tenancy", "organization_trust_tier", new[] { "unverified", "identity_verified", "platform_verified" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Amuse.Domain.Tenancy.BusinessPortalProfile", b =>
+                {
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<int?>("AvatarAccentSeed")
+                        .HasColumnType("integer")
+                        .HasColumnName("avatar_accent_seed");
+
+                    b.Property<string>("AvatarObjectKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("avatar_object_key");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("display_name");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("AccountId");
+
+                    b.ToTable("business_portal_profile", "tenancy");
+                });
+
             modelBuilder.Entity("Amuse.Domain.Tenancy.Organization", b =>
                 {
                     b.Property<Guid>("Id")

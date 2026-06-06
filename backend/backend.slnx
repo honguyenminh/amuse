@@ -2,9 +2,6 @@
   <Folder Name="/Solution Items/">
     <File Path="compose.yaml" />
   </Folder>
-  <Folder Name="/src/">
-    <Project Path="src/Amuse.Worker.Scheduler/Amuse.Worker.Scheduler.csproj" />
-  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Amuse.Api.IntegrationTests/Amuse.Api.IntegrationTests.csproj" />
     <Project Path="tests/Amuse.Domain.Tests/Amuse.Domain.Tests.csproj" />
@@ -20,6 +17,7 @@
     <Project Path="tests/Amuse.Modules.Tenancy.Tests/Amuse.Modules.Tenancy.Tests.csproj" />
     <Project Path="tests/Amuse.Worker.Transcoder.Tests/Amuse.Worker.Transcoder.Tests.csproj" />
   </Folder>
+  <Project Path="src/Amuse.Worker.Scheduler/Amuse.Worker.Scheduler.csproj" />
   <Project Path="src/Amuse.Api/Amuse.Api.csproj" />
   <Project Path="src/Amuse.Domain/Amuse.Domain.csproj" />
   <Project Path="src/Amuse.Modules/Amuse.Modules.csproj" />

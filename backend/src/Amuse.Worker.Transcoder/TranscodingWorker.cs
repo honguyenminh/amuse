@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Amuse.Domain.Catalog;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Media;
@@ -132,9 +133,10 @@ internal sealed class TranscodingWorker(
                 {
                     await TranscodeMasterToDashAsync(
                         storage,
+                        db,
                         job.MasterKey,
                         job.StreamKey,
-                        job.TrackId.Value,
+                        job.TrackId,
                         job.Id,
                         stoppingToken);
                 }
@@ -144,6 +146,12 @@ internal sealed class TranscodingWorker(
                         "DASH manifest already present at {StreamKey} for job {JobId}; skipping ffmpeg",
                         job.StreamKey,
                         job.Id);
+                    await EnsureRenditionsFromManifestAsync(
+                        storage,
+                        db,
+                        job.StreamKey,
+                        job.TrackId,
+                        stoppingToken);
                 }
 
                 var track = await db.Tracks
@@ -224,19 +232,20 @@ internal sealed class TranscodingWorker(
 
     private async Task TranscodeMasterToDashAsync(
         IObjectStorage storage,
+        CatalogDbContext db,
         string audioMasterKey,
         string dashManifestKey,
-        Guid trackId,
+        TrackId trackId,
         Guid jobId,
         CancellationToken ct)
     {
         var transcodeStopwatch = Stopwatch.StartNew();
-        var manifestId = ExtractManifestId(dashManifestKey);
+        var manifestId = Guid.Parse(ExtractManifestId(dashManifestKey));
 
         logger.LogInformation(
             "Starting DASH packaging for job {JobId} track {TrackId}; master {MasterKey} -> {StreamKey}",
             jobId,
-            trackId,
+            trackId.Value,
             audioMasterKey,
             dashManifestKey);
 
@@ -246,8 +255,8 @@ internal sealed class TranscodingWorker(
         var outDir = Path.Combine(
             Path.GetTempPath(),
             "amuse-dash",
-            trackId.ToString(),
-            manifestId);
+            trackId.Value.ToString(),
+            manifestId.ToString());
         Directory.CreateDirectory(outDir);
 
         var manifestLocalName = Path.GetFileName(dashManifestKey);
@@ -259,21 +268,29 @@ internal sealed class TranscodingWorker(
         logger.LogDebug(
             "DASH work directory for job {JobId} track {TrackId}: {WorkDirectory}",
             jobId,
-            trackId,
+            trackId.Value,
             outDir);
 
         var args =
             $"-hide_banner -loglevel error -y -nostdin -i \"{inputUrl}\" -vn " +
-            "-map 0:a:0 -c:a aac -b:a 128k -ar 48000 " +
+            "-af loudnorm=I=-14:TP=-1.0:LRA=11:linear=true:print_format=none " +
+            "-map 0:a:0 -c:a:0 flac " +
+            "-map 0:a:0 -c:a:1 libopus -b:a:1 64k -ar 48000 " +
+            "-map 0:a:0 -c:a:2 libopus -b:a:2 128k -ar 48000 " +
+            "-map 0:a:0 -c:a:3 libopus -b:a:3 256k -ar 48000 " +
+            "-map 0:a:0 -c:a:4 aac -b:a:4 96k -ar 48000 " +
+            "-map 0:a:0 -c:a:5 aac -b:a:5 128k -ar 48000 " +
+            "-map 0:a:0 -c:a:6 aac -b:a:6 256k -ar 48000 " +
             "-f dash -seg_duration 4 -use_timeline 1 -use_template 1 " +
             "-init_seg_name init-stream$RepresentationID$.m4s " +
             "-media_seg_name chunk-stream$RepresentationID$-$Number%05d$.m4s " +
-            $"-adaptation_sets \"id=0,streams=0\" \"{manifestPath}\"";
+            "-adaptation_sets \"id=0,streams=0 id=1,streams=1,2,3 id=2,streams=4,5,6\" " +
+            $"\"{manifestPath}\"";
 
-        await RunFfmpegAsync(args, trackId, jobId, ct);
+        await RunFfmpegAsync(args, trackId.Value, jobId, ct);
 
         if (!File.Exists(manifestPath))
-            throw new InvalidOperationException($"DASH manifest not produced for track {trackId}.");
+            throw new InvalidOperationException($"DASH manifest not produced for track {trackId.Value}.");
 
         var prefix = dashManifestKey[..(dashManifestKey.LastIndexOf('/') + 1)];
         var artifactPaths = Directory.EnumerateFiles(outDir).ToList();
@@ -282,8 +299,15 @@ internal sealed class TranscodingWorker(
             "Uploading {ArtifactCount} DASH artifacts for job {JobId} track {TrackId} under prefix {StoragePrefix}",
             artifactPaths.Count,
             jobId,
+                trackId.Value,
+                prefix);
+
+        await PersistRenditionsAsync(
+            db,
             trackId,
-            prefix);
+            manifestId,
+            manifestPath,
+            ct);
 
         foreach (var filePath in artifactPaths)
         {
@@ -299,14 +323,76 @@ internal sealed class TranscodingWorker(
                 key,
                 bytes.Length,
                 jobId,
-                trackId);
+                trackId.Value);
         }
 
         logger.LogInformation(
             "DASH packaging completed for job {JobId} track {TrackId} in {ElapsedMs}ms",
             jobId,
-            trackId,
+            trackId.Value,
             transcodeStopwatch.ElapsedMilliseconds);
+    }
+
+    private static async Task EnsureRenditionsFromManifestAsync(
+        IObjectStorage storage,
+        CatalogDbContext db,
+        string dashManifestKey,
+        TrackId trackId,
+        CancellationToken ct)
+    {
+        var manifestId = Guid.Parse(ExtractManifestId(dashManifestKey));
+        var hasRenditions = await db.TrackAudioRenditions
+            .AnyAsync(r => r.TrackId == trackId && r.ManifestId == manifestId, ct);
+        if (hasRenditions) return;
+
+        var manifest = await storage.GetAsync(MediaBucket.Audio, dashManifestKey, ct);
+        if (manifest is null) return;
+
+        var xml = Encoding.UTF8.GetString(manifest.Data.Span);
+        await ReplaceRenditionsAsync(db, trackId, manifestId, xml, ct);
+    }
+
+    private static async Task PersistRenditionsAsync(
+        CatalogDbContext db,
+        TrackId trackId,
+        Guid manifestId,
+        string manifestPath,
+        CancellationToken ct)
+    {
+        var xml = await File.ReadAllTextAsync(manifestPath, ct);
+        await ReplaceRenditionsAsync(db, trackId, manifestId, xml, ct);
+    }
+
+    private static async Task ReplaceRenditionsAsync(
+        CatalogDbContext db,
+        TrackId trackId,
+        Guid manifestId,
+        string manifestXml,
+        CancellationToken ct)
+    {
+        var parsed = DashManifestRenditionParser.Parse(manifestXml);
+        var existing = await db.TrackAudioRenditions
+            .Where(r => r.TrackId == trackId && r.ManifestId == manifestId)
+            .ToListAsync(ct);
+        db.TrackAudioRenditions.RemoveRange(existing);
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var rendition in parsed)
+        {
+            db.TrackAudioRenditions.Add(
+                TrackAudioRendition.Create(
+                    trackId,
+                    rendition.Codec,
+                    rendition.BitrateKbps,
+                    rendition.SampleRateHz,
+                    rendition.Bandwidth,
+                    rendition.RepresentationId,
+                    rendition.AdaptationSetId,
+                    manifestId,
+                    now));
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 
     private static string ContentTypeForDashAsset(string fileName)

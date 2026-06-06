@@ -5,4 +5,5 @@ public static class PersonaPolicies
     public const string RequireOrgPersona = "RequireOrgPersona";
     public const string RequireListenerPersona = "RequireListenerPersona";
     public const string RequirePlatformPersona = "RequirePlatformPersona";
+    public const string RequireBusinessPortalPersona = "RequireBusinessPortalPersona";
 }

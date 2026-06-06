@@ -4,6 +4,11 @@ import {
   FeaturingArtistsDialog,
   FeaturingArtistsSummary,
 } from "@/components/catalog/FeaturingArtistsDialog";
+import {
+  ReleaseSlugField,
+  releaseSlugReadyForSubmit,
+  type ReleaseSlugStatus,
+} from "@/components/catalog/ReleaseSlugField";
 import { PendingCoverArtPreview } from "@/components/catalog/ReleaseCoverArtPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +30,7 @@ import {
   type ManageReleaseGroupResponse,
   type ReleaseType,
 } from "@/lib/api/catalogClient";
+import { normalizeSlugInput } from "@/lib/catalog/slug";
 import { ApiError } from "@/lib/api/types";
 import {
   extractEmbeddedCoverArtFromFiles,
@@ -99,6 +105,10 @@ export default function NewReleasePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [artistName, setArtistName] = useState<string | null>(null);
+  const [artistSlug, setArtistSlug] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<ReleaseSlugStatus>("idle");
   const [rosterArtists, setRosterArtists] = useState<ManageArtistSummaryResponse[]>([]);
   const [title, setTitle] = useState("");
   const [releaseType, setReleaseType] = useState<ReleaseType>("single");
@@ -169,7 +179,10 @@ export default function NewReleasePage() {
     }
 
     getArtist(artistId)
-      .then((artist) => setArtistName(artist.name))
+      .then((artist) => {
+        setArtistName(artist.name);
+        setArtistSlug(artist.slug);
+      })
       .catch(() => undefined);
 
     listArtists()
@@ -325,12 +338,26 @@ export default function NewReleasePage() {
       return;
     }
 
+    if (!releaseSlugReadyForSubmit(slug, slugStatus, true)) {
+      const normalized = normalizeSlugInput(slug);
+      if (normalized && slugStatus === "checking") {
+        setError("Wait for slug availability check to finish.");
+      } else if (normalized && slugStatus === "taken") {
+        setError("Choose a different release slug.");
+      } else if (normalized) {
+        setError("Fix the release slug before saving.");
+      }
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     try {
+      const normalizedSlug = normalizeSlugInput(slug);
       const release = await createRelease(artistId, {
         title: trimmedTitle,
+        slug: normalizedSlug || undefined,
         releaseType,
         releaseDate: toReleaseDateIso(releaseDate),
         releaseGroupId: linkToExistingGroup && releaseGroupId ? releaseGroupId : undefined,
@@ -506,6 +533,21 @@ export default function NewReleasePage() {
                   disabled={submitting}
                 />
               </div>
+
+              {artistSlug ? (
+                <ReleaseSlugField
+                  artistId={artistId}
+                  artistSlug={artistSlug}
+                  title={title}
+                  slug={slug}
+                  onSlugChange={setSlug}
+                  slugManuallyEdited={slugManuallyEdited}
+                  onSlugManuallyEditedChange={setSlugManuallyEdited}
+                  onSlugStatusChange={setSlugStatus}
+                  disabled={submitting}
+                  optional
+                />
+              ) : null}
 
               <div className="grid gap-2 sm:grid-cols-2 sm:items-start">
                 <div className="grid gap-2">

@@ -95,4 +95,22 @@ public static class TenancyErrors
 
     public static readonly DomainError DuplicatePendingInvite =
         new("tenancy.duplicate_pending_invite", "A pending invite already exists for this email.");
+
+    public static readonly DomainError InvalidPortalProfileDisplayName =
+        new("tenancy.invalid_portal_profile_display_name", "Business portal display name is invalid.");
+
+    public static readonly DomainError InvalidPortalProfileAvatarAccentSeed =
+        new("tenancy.invalid_portal_profile_avatar_accent_seed", "Avatar accent seed is out of range.");
+
+    public static readonly DomainError PortalProfileIncomplete =
+        new("tenancy.portal_profile_incomplete", "Business portal profile is not complete.");
+
+    public static readonly DomainError InvalidPortalAvatarUploadRequest =
+        new("tenancy.invalid_portal_avatar_upload_request", "Avatar upload request is invalid.");
+
+    public static readonly DomainError InvalidPortalAvatarObjectKey =
+        new("tenancy.invalid_portal_avatar_object_key", "Avatar object key is invalid.");
+
+    public static readonly DomainError PortalAvatarObjectMissing =
+        new("tenancy.portal_avatar_object_missing", "Avatar image was not found in storage.");
 }
