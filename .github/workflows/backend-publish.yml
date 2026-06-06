@@ -79,7 +79,7 @@ jobs:
           echo "push_tags=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${FLOATING_TAG},ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Build image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.15.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v6.15.0
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Push image
         if: success()
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.15.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v6.15.0
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
