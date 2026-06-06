@@ -14,6 +14,8 @@ When making changes, implementing a new features etc. You MUST ALWAYS consider w
 
 **Platform operator claims:** Never gate features with a raw JWT check for only `manage:platform:organizations`. The break-glass `platform:root` operator must receive full platform access via `PlatformClaims` (`Amuse.Domain/Platform/PlatformClaims.cs`) on the backend and `frontend/business/src/lib/auth/platformClaims.ts` on the business portal. Token mint expands root to explicit manage/review claims, but handlers and UI must still use the shared helpers so implied grants are not missed.
 
+Must use pnpm for frontend actions.
+
 # .NET C#
 
 Adhere to DDD-style patterns, like rich domain models, only valid state (if a state is invalid, it shouldn't be able to exist/instatiate into a domain model), etc.

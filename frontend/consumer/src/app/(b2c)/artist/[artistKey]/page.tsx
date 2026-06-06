@@ -62,13 +62,20 @@ export default function ArtistPage({
           <>
             <Card>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                {artist.avatarUrl && (
+                {artist.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={artist.avatarUrl}
                     alt={artist.name}
                     className="aspect-square w-32 rounded-full object-cover"
                   />
+                ) : (
+                  <div
+                    className="grid aspect-square w-32 place-items-center rounded-full bg-surface-container-high text-3xl font-semibold text-on-surface-variant"
+                    aria-hidden
+                  >
+                    {artist.name.trim().charAt(0).toUpperCase() || "?"}
+                  </div>
                 )}
                 <div className="flex flex-col gap-1">
                   <Text variant="headline-medium">{artist.name}</Text>

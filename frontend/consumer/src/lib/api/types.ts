@@ -167,6 +167,170 @@ export type GetReleaseDetailResponse = {
   otherEditions: ReleaseEditionSummary[];
 };
 
+export type PlaylistOwnerDto = {
+  listenerProfileId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
+export type PlaylistKind = "user" | "liked";
+
+export type PlaylistSummaryDto = {
+  id: string;
+  title: string;
+  kind: PlaylistKind;
+  visibility: string;
+  trackCount: number;
+  updatedAt: string;
+  owner: PlaylistOwnerDto | null;
+  forkedFromPlaylistId: string | null;
+  isOwned: boolean;
+  isSaved: boolean;
+  isFollowed: boolean;
+  isDeletable: boolean;
+  coverArtUrls: string[];
+};
+
+export type PlaylistItemDto = {
+  itemId: string;
+  trackId: string;
+  position: number;
+  title: string;
+  durationMs: number;
+  hasAudio: boolean;
+  coverArtUrl: string | null;
+  releaseId: string;
+  releaseTitle: string;
+  artistName: string;
+};
+
+export type PlaylistDetailDto = {
+  id: string;
+  title: string;
+  kind: PlaylistKind;
+  description: string | null;
+  visibility: string;
+  owner: PlaylistOwnerDto | null;
+  forkedFromPlaylistId: string | null;
+  items: PlaylistItemDto[];
+  shareEmails: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+  isOwned: boolean;
+  isSaved: boolean;
+  isFollowed: boolean;
+  isDeletable: boolean;
+};
+
+export type PlaylistListResponse = {
+  playlists: PlaylistSummaryDto[];
+};
+
+export type SearchItemDto = {
+  kind: string;
+  id: string;
+  title: string;
+  subtitle: string | null;
+  artistSlug: string | null;
+  releaseSlug: string | null;
+  artistId: string | null;
+  releaseId: string | null;
+  coverArtUrl: string | null;
+  isVerified: boolean;
+};
+
+export type PublicPlaylistSearchCardDto = {
+  id: string;
+  title: string;
+  trackCount: number;
+  owner: PlaylistOwnerDto;
+  updatedAt: string;
+  coverArtUrls: string[];
+};
+
+export type SearchResponse = {
+  verified: SearchItemDto[];
+  unverified: SearchItemDto[];
+  publicPlaylists: PublicPlaylistSearchCardDto[];
+};
+
+export type LikedTrackRowDto = {
+  trackId: string;
+  title: string;
+  durationMs: number;
+  hasAudio: boolean;
+  coverArtUrl: string | null;
+  releaseId: string;
+  releaseTitle: string;
+  artistName: string;
+  likedAt: string;
+};
+
+export type LikedTracksResponse = {
+  tracks: LikedTrackRowDto[];
+};
+
+export type SavedReleaseRowDto = {
+  releaseId: string;
+  title: string;
+  artistName: string;
+  artistSlug: string;
+  releaseSlug: string;
+  coverArtUrl: string | null;
+  savedAt: string;
+};
+
+export type SavedReleasesResponse = {
+  releases: SavedReleaseRowDto[];
+};
+
+export type PlayableTrackDto = {
+  trackId: string;
+  title: string;
+  trackNumber: number;
+  durationMs: number;
+  hasAudio: boolean;
+  coverArtUrl: string | null;
+  releaseId: string;
+  releaseTitle: string;
+  artistName: string;
+  artistSlug: string;
+  releaseSlug: string;
+};
+
+export type PlayableTracksResponse = {
+  tracks: PlayableTrackDto[];
+};
+
+export type CreatePlaylistRequest = {
+  title: string;
+  visibility: string;
+  description?: string;
+};
+
+export type UpdatePlaylistRequest = {
+  title?: string;
+  description?: string;
+  visibility?: string;
+};
+
+export type AddPlaylistItemRequest = {
+  trackId: string;
+};
+
+export type ReorderPlaylistItemsRequest = {
+  itemId: string;
+  newPosition: number;
+};
+
+export type ReplacePlaylistSharesRequest = {
+  emails: string[];
+};
+
+export type AddPlaylistItemResponse = {
+  item: PlaylistItemDto;
+};
+
 export type ApiProblem = {
   title?: string;
   detail?: string;

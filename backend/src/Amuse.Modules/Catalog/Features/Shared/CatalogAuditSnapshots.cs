@@ -9,7 +9,8 @@ internal sealed record ArtistAuditSnapshot(
     string? Bio,
     string? CountryCode,
     string? WebsiteUrl,
-    string? Aliases);
+    string? Aliases,
+    string? AvatarKey);
 
 internal sealed record ReleaseAuditSnapshot(
     Guid Id,
@@ -62,7 +63,8 @@ internal static class CatalogAuditSnapshotMapper
             artist.Bio,
             artist.CountryCode,
             artist.WebsiteUrl,
-            artist.Aliases);
+            artist.Aliases,
+            artist.AvatarKey);
 
     internal static ReleaseAuditSnapshot FromRelease(Release release) =>
         new(

@@ -11,6 +11,9 @@ public sealed class ListenerOnboardingMiddleware(RequestDelegate next)
     [
         "/api/v1/listener/profile",
         "/api/v1/identity/",
+        "/api/v1/discovery/search",
+        "/api/v1/discovery/playlists/",
+        "/api/v1/discovery/playables/",
     ];
 
     public async Task InvokeAsync(

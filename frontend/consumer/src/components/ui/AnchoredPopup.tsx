@@ -30,6 +30,8 @@ type AnchoredPopupProps = {
   offset?: number;
   viewportPadding?: number;
   closeOnScroll?: boolean;
+  /** Bumps reposition when menu content changes (e.g. drill-down navigation). */
+  layoutKey?: string | number;
   role?: string;
 };
 
@@ -45,6 +47,7 @@ export function AnchoredPopup({
   offset = 8,
   viewportPadding = 8,
   closeOnScroll = false,
+  layoutKey,
   role,
 }: AnchoredPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
@@ -113,6 +116,7 @@ export function AnchoredPopup({
     offset,
     viewportPadding,
     closeOnScroll,
+    layoutKey,
     onClose,
   ]);
 

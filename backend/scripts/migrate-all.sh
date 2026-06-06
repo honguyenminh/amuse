@@ -13,6 +13,7 @@ contexts=(
   ListenerDbContext
   PlatformDbContext
   CatalogDbContext
+  DiscoveryDbContext
   AuditDbContext
 )
 

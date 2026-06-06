@@ -5,6 +5,7 @@ import type { TrackStreamRenditionDto } from "@/lib/api/types";
 import {
   pruneDisjointAheadBuffer,
   resyncBufferingFromPlayhead,
+  type DashActiveStream,
   type DashPlayerWithStream,
 } from "./dashBufferSync";
 
@@ -57,7 +58,7 @@ type DashPlayerInstance = {
   reset: () => void;
   seek?: (time: number) => void;
   updateSettings?: (settings: object) => void;
-  getActiveStream?: () => ReturnType<DashPlayerWithStream["getActiveStream"]>;
+  getActiveStream?: () => DashActiveStream | null;
   getBitrateInfoListFor?: (type: string) => DashBitrateInfo[];
   getTracksFor?: (type: string) => DashTrackInfo[];
   /** Returns average throughput in kbit/s (not bits/s). */

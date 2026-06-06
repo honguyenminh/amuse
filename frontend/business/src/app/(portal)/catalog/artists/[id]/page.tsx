@@ -1,6 +1,7 @@
 "use client";
 
 import { FormattedCatalogText } from "@amuse/catalog-text";
+import { ArtistAvatarPanel } from "@/components/catalog/ArtistAvatarPanel";
 import { EditArtistProfileDialog } from "@/components/catalog/EditArtistProfileDialog";
 import { ResourceAuditPanel } from "@/components/catalog/ResourceAuditPanel";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ export default function ArtistDetailPage() {
   const token = getAccessToken();
   const canRead = hasClaim(token, "read:catalog:all");
   const canWrite = hasClaim(token, "write_draft:catalog:all");
+  const canUpload = hasClaim(token, "upload:catalog:all");
 
   const [artist, setArtist] = useState<ManageArtistDetailResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -129,6 +131,16 @@ export default function ArtistDetailPage() {
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      {artist ? (
+        <ArtistAvatarPanel
+          artistId={artist.id}
+          artistName={artist.name}
+          avatarUrl={artist.avatarUrl}
+          canUpload={canUpload}
+          onAvatarUpdated={(avatarUrl) => setArtist({ ...artist, avatarUrl })}
+        />
+      ) : null}
 
       {artist ? (
         <Card>

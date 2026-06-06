@@ -1,11 +1,14 @@
 "use client";
 
 import { CollapsibleFormattedText } from "@/components/catalog/CollapsibleFormattedText";
+import { AddToPlaylistButton } from "@/components/discovery/AddToPlaylistButton";
+import { SaveToLibraryButton } from "@/components/discovery/SaveToLibraryButton";
 import { AppShell } from "@/components/ui/AppShell";
 import { PageContent } from "@/components/ui/PageContent";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { IconButton } from "@/components/ui/IconButton";
+import { OverflowMenuButton } from "@/components/ui/OverflowMenuButton";
 import { PauseIcon, PlayIcon } from "@/components/ui/PlaybackIcons";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
@@ -123,7 +126,7 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
                     {new Date(release.releaseDate).getFullYear()} ·{" "}
                     {release.tracks.length} track{release.tracks.length === 1 ? "" : "s"}
                   </Text>
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Button
                       type="button"
                       onClick={isPlayingThisRelease ? toggle : playAll}
@@ -131,6 +134,11 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
                     >
                       {isPlayingThisRelease && state.isPlaying ? "Pause" : "Play"}
                     </Button>
+                    <AddToPlaylistButton
+                      trackIds={playableTracks.map((track) => track.id)}
+                      disabled={playableTracks.length === 0}
+                    />
+                    <SaveToLibraryButton releaseId={release.id} />
                   </div>
                 </div>
               </div>
@@ -228,32 +236,18 @@ function TrackRow({
   onToggle: () => void;
 }) {
   const playbackTrack = toPlaybackTrack(track, release);
-  const onContextMenu = useTrackContextMenu(playbackTrack, track.hasAudio);
+  const { onContextMenu, openMenuAt } = useTrackContextMenu(playbackTrack, track.hasAudio);
 
   return (
     <li
       className={cn(
-        "flex items-center justify-between gap-3 py-2",
+        "group flex items-center justify-between gap-3 py-2",
         isCurrent && "text-primary",
       )}
       onContextMenu={onContextMenu}
     >
-      <button
-        type="button"
-        onClick={onPlay}
-        disabled={!track.hasAudio}
-        className="flex flex-1 items-center gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <span className="w-6 text-right tabular-nums opacity-70">
-          {track.trackNumber}
-        </span>
-        <Text variant="body-medium" className="truncate">
-          {track.title}
-        </Text>
-      </button>
-      <div className="flex items-center gap-3">
-        <Text variant="label-medium">{formatDuration(track.durationMs)}</Text>
-        {isCurrent && (
+      <div className="flex w-8 shrink-0 items-center justify-center">
+        {isCurrent ? (
           <IconButton
             label={isPlaying ? "Pause" : "Play"}
             variant="tonal"
@@ -262,7 +256,36 @@ function TrackRow({
           >
             {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </IconButton>
+        ) : (
+          <span className="w-full text-center tabular-nums opacity-70">
+            {track.trackNumber}
+          </span>
         )}
+      </div>
+      <button
+        type="button"
+        onClick={onPlay}
+        disabled={!track.hasAudio}
+        className="flex min-w-0 flex-1 flex-col text-left disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Text variant="body-medium" className="truncate">
+          {track.title}
+        </Text>
+        <Text variant="label-medium" className="truncate text-on-surface-variant">
+          {release.artistName}
+        </Text>
+      </button>
+      <div className="flex items-center gap-2">
+        <OverflowMenuButton
+          label="Track options"
+          className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openMenuAt(event.clientX, event.clientY);
+          }}
+        />
+        <Text variant="label-medium">{formatDuration(track.durationMs)}</Text>
       </div>
     </li>
   );

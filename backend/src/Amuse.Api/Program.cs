@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Amuse.Api;
 using Amuse.Modules.Audit;
 using Amuse.Modules.Catalog;
+using Amuse.Modules.Discovery;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Catalog.Seeding;
@@ -50,6 +51,7 @@ builder.Services.AddTenancyModule(builder.Configuration);
 builder.Services.AddListenerModule(builder.Configuration);
 builder.Services.AddPlatformModule(builder.Configuration);
 builder.Services.AddCatalogModule(builder.Configuration);
+builder.Services.AddDiscoveryModule(builder.Configuration);
 builder.Services.AddMediaModule(builder.Configuration);
 builder.Services.AddAuditModule(builder.Configuration);
 
@@ -94,6 +96,7 @@ app.MapTenancyModule();
 app.MapListenerModule();
 app.MapPlatformModule();
 app.MapCatalogModule();
+app.MapDiscoveryModule();
 app.MapGet("/demo", () => "Hello, World!").RequireAuthorization();
 
 app.Run();

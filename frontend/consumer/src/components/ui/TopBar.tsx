@@ -45,7 +45,7 @@ export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
         {title}
       </Text>
 
-      {/* Desktop search field — placeholder; routes to /search once that exists. */}
+      {/* Desktop search affordance — opens the search page. */}
       <Link
         href="/search"
         className={cn(

@@ -219,6 +219,8 @@ internal sealed class GetArtistHandler(CatalogDbContext db, IObjectStorage stora
                 artist.CountryCode,
                 artist.WebsiteUrl,
                 artist.Aliases,
+                BrowseHomeHandler.CoverArtUrlFor(storage, artist.AvatarKey),
+                BrowseHomeHandler.CoverArtUrlFor(storage, artist.CoverKey),
                 artist.VisibilityTier,
                 artist.CreatedAt,
                 releases,

@@ -10,6 +10,7 @@ using Amuse.Modules.Catalog.Features.GetTrackDashAsset;
 using Amuse.Modules.Catalog.Features.GetTrackIngestion;
 using Amuse.Modules.Catalog.Features.GetTrackStreamInfo;
 using Amuse.Modules.Catalog.Features.HideRelease;
+using Amuse.Modules.Catalog.Features.ManageArtistAvatar;
 using Amuse.Modules.Catalog.Features.ManageArtists;
 using Amuse.Modules.Catalog.Features.ManageReleaseCover;
 using Amuse.Modules.Catalog.Features.ManageReleaseGroups;
@@ -48,6 +49,7 @@ public static class CatalogModule
 
         services.AddScoped<ICatalogOrganizationBootstrap, CatalogOrganizationBootstrap>();
         services.AddScoped<ICatalogManagedArtistVisibility, CatalogManagedArtistVisibility>();
+        services.AddScoped<ICatalogDiscoveryReadModel, CatalogDiscoveryReadModel>();
         services.AddScoped<CatalogAuditWriter>();
 
         services.AddScoped<BrowseHomeHandler>();
@@ -93,6 +95,8 @@ public static class CatalogModule
 
         services.AddScoped<PresignReleaseCoverUploadHandler>();
         services.AddScoped<CompleteReleaseCoverUploadHandler>();
+        services.AddScoped<PresignArtistAvatarUploadHandler>();
+        services.AddScoped<CompleteArtistAvatarUploadHandler>();
 
         services.AddScoped<ListResourceAuditsHandler>();
 
@@ -121,6 +125,7 @@ public static class CatalogModule
         endpoints.MapGetTrackIngestionEndpoint();
         endpoints.MapRetryTrackTranscodeEndpoint();
         endpoints.MapManageReleaseCoverEndpoint();
+        endpoints.MapManageArtistAvatarEndpoint();
         endpoints.MapGetResourceAuditEndpoint();
 
         return endpoints;

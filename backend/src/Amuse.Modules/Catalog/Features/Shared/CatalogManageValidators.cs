@@ -162,3 +162,20 @@ internal sealed class CompleteReleaseCoverUploadRequestValidator : AbstractValid
         RuleFor(x => x.Key).NotEmpty().MaximumLength(Release.MaxKeyLength);
     }
 }
+
+internal sealed class PresignArtistAvatarUploadRequestValidator : AbstractValidator<PresignArtistAvatarUploadRequest>
+{
+    public PresignArtistAvatarUploadRequestValidator()
+    {
+        RuleFor(x => x.FileName).NotEmpty().MaximumLength(300);
+        RuleFor(x => x.ContentType).NotEmpty().MaximumLength(200);
+    }
+}
+
+internal sealed class CompleteArtistAvatarUploadRequestValidator : AbstractValidator<CompleteArtistAvatarUploadRequest>
+{
+    public CompleteArtistAvatarUploadRequestValidator()
+    {
+        RuleFor(x => x.Key).NotEmpty().MaximumLength(Artist.MaxKeyLength);
+    }
+}

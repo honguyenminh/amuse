@@ -220,7 +220,7 @@ export default function PlayingPage() {
 }
 
 function UpNextRow({ track }: { track: PlaybackTrack }) {
-  const onContextMenu = useTrackContextMenu(track, true);
+  const { onContextMenu } = useTrackContextMenu(track, true);
 
   return (
     <li

@@ -156,6 +156,14 @@ public sealed class Artist
     public void SetVisibilityTier(ArtistVisibilityTier visibilityTier) =>
         VisibilityTier = visibilityTier;
 
+    public void SetAvatarKey(string avatarKey)
+    {
+        if (string.IsNullOrWhiteSpace(avatarKey) || avatarKey.Length > MaxKeyLength)
+            throw new ArgumentException("Avatar key is invalid.", nameof(avatarKey));
+
+        AvatarKey = avatarKey;
+    }
+
     private static Result ValidateKey(string? key, string paramName)
     {
         if (key is null)

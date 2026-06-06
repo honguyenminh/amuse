@@ -107,6 +107,8 @@ public sealed record ManageArtistDetailResponse(
     string? CountryCode,
     string? WebsiteUrl,
     string? Aliases,
+    string? AvatarUrl,
+    string? CoverUrl,
     ArtistVisibilityTier VisibilityTier,
     DateTimeOffset CreatedAt,
     IReadOnlyList<ManageArtistReleaseSummary> Releases,
@@ -276,3 +278,21 @@ public sealed record CompleteReleaseCoverUploadResponse(
     Guid ReleaseId,
     string CoverArtKey,
     string? CoverArtUrl);
+
+public sealed record PresignArtistAvatarUploadRequest(
+    string FileName,
+    string ContentType);
+
+public sealed record PresignArtistAvatarUploadResponse(
+    Guid ArtistId,
+    string Key,
+    string Url,
+    DateTimeOffset ExpiresAt,
+    string Method);
+
+public sealed record CompleteArtistAvatarUploadRequest(string Key);
+
+public sealed record CompleteArtistAvatarUploadResponse(
+    Guid ArtistId,
+    string AvatarKey,
+    string? AvatarUrl);

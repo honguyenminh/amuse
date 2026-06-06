@@ -16,13 +16,19 @@ export type PlaybackContextMenuItem = {
   id: string;
   label: string;
   disabled?: boolean;
+  children?: PlaybackContextMenuItem[];
   onSelect: () => void;
+};
+
+type MenuLevel = {
+  title?: string;
+  items: PlaybackContextMenuItem[];
 };
 
 type MenuState = {
   x: number;
   y: number;
-  items: PlaybackContextMenuItem[];
+  stack: MenuLevel[];
 };
 
 type PlaybackContextMenuContextValue = {
@@ -41,10 +47,27 @@ export function PlaybackContextMenuProvider({ children }: { children: ReactNode 
 
   const openAt = useCallback((x: number, y: number, items: PlaybackContextMenuItem[]) => {
     if (items.length === 0) return;
-    setMenu({ x, y, items });
+    setMenu({ x, y, stack: [{ items }] });
+  }, []);
+
+  const pushLevel = useCallback((title: string, items: PlaybackContextMenuItem[]) => {
+    setMenu((current) => {
+      if (!current) return current;
+      return { ...current, stack: [...current.stack, { title, items }] };
+    });
+  }, []);
+
+  const popLevel = useCallback(() => {
+    setMenu((current) => {
+      if (!current || current.stack.length <= 1) return current;
+      return { ...current, stack: current.stack.slice(0, -1) };
+    });
   }, []);
 
   const value = useMemo(() => ({ openAt, close }), [openAt, close]);
+
+  const currentLevel = menu?.stack[menu.stack.length - 1];
+  const canGoBack = (menu?.stack.length ?? 0) > 1;
 
   return (
     <PlaybackContextMenuContext.Provider value={value}>
@@ -60,32 +83,73 @@ export function PlaybackContextMenuProvider({ children }: { children: ReactNode 
         preferredPlacement="bottom"
         align="start"
         closeOnScroll
+        layoutKey={menu?.stack.length ?? 0}
         className="min-w-[11rem] rounded-md border-2 border-outline bg-surface py-1 shadow-lg"
         role="menu"
       >
-        {menu?.items.map((item) => (
+        {canGoBack ? (
           <button
-            key={item.id}
             type="button"
             role="menuitem"
-            disabled={item.disabled}
-            className={cn(
-              "flex w-full px-4 py-2 text-left text-body-medium transition-colors",
-              item.disabled
-                ? "cursor-not-allowed opacity-50"
-                : "hover:bg-surface-variant",
-            )}
-            onClick={() => {
-              if (item.disabled) return;
-              item.onSelect();
-              close();
-            }}
+            className="flex w-full px-4 py-2 text-left text-body-medium transition-colors hover:bg-surface-variant"
+            onClick={popLevel}
           >
-            <Text variant="body-medium">{item.label}</Text>
+            <Text variant="body-medium">← {currentLevel?.title ?? "Back"}</Text>
           </button>
+        ) : null}
+        {currentLevel?.items.map((item) => (
+          <ContextMenuRow
+            key={item.id}
+            item={item}
+            onClose={close}
+            onOpenSubmenu={pushLevel}
+          />
         )) ?? null}
       </AnchoredPopup>
     </PlaybackContextMenuContext.Provider>
+  );
+}
+
+function ContextMenuRow({
+  item,
+  onClose,
+  onOpenSubmenu,
+}: {
+  item: PlaybackContextMenuItem;
+  onClose: () => void;
+  onOpenSubmenu: (title: string, items: PlaybackContextMenuItem[]) => void;
+}) {
+  const hasChildren = (item.children?.length ?? 0) > 0;
+
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      aria-haspopup={hasChildren ? "menu" : undefined}
+      disabled={item.disabled}
+      className={cn(
+        "flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-body-medium transition-colors",
+        item.disabled
+          ? "cursor-not-allowed opacity-50"
+          : "hover:bg-surface-variant",
+      )}
+      onClick={() => {
+        if (item.disabled) return;
+        if (hasChildren && item.children) {
+          onOpenSubmenu(item.label, item.children);
+          return;
+        }
+        item.onSelect();
+        onClose();
+      }}
+    >
+      <Text variant="body-medium">{item.label}</Text>
+      {hasChildren ? (
+        <span aria-hidden className="text-on-surface-variant">
+          ›
+        </span>
+      ) : null}
+    </button>
   );
 }
 

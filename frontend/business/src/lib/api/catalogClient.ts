@@ -61,6 +61,8 @@ export type ManageArtistDetailResponse = {
   countryCode: string | null;
   websiteUrl: string | null;
   aliases: string | null;
+  avatarUrl: string | null;
+  coverUrl: string | null;
   visibilityTier: ArtistVisibilityTier;
   createdAt: string;
   releases: ManageArtistReleaseSummary[];
@@ -247,6 +249,20 @@ export type CompleteReleaseCoverUploadResponse = {
   releaseId: string;
   coverArtKey: string;
   coverArtUrl: string | null;
+};
+
+export type PresignArtistAvatarUploadResponse = {
+  artistId: string;
+  key: string;
+  url: string;
+  expiresAt: string;
+  method: string;
+};
+
+export type CompleteArtistAvatarUploadResponse = {
+  artistId: string;
+  avatarKey: string;
+  avatarUrl: string | null;
 };
 
 export const CATALOG_AUDIT_TABLES = {
@@ -572,6 +588,32 @@ export function completeReleaseCoverUpload(
 ): Promise<CompleteReleaseCoverUploadResponse> {
   return authFetch<CompleteReleaseCoverUploadResponse>(
     `/api/v1/catalog/releases/${releaseId}/cover/complete`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function presignArtistAvatarUpload(
+  artistId: string,
+  body: { fileName: string; contentType: string },
+): Promise<PresignArtistAvatarUploadResponse> {
+  return authFetch<PresignArtistAvatarUploadResponse>(
+    `/api/v1/catalog/artists/${artistId}/avatar/presign-upload`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function completeArtistAvatarUpload(
+  artistId: string,
+  body: { key: string },
+): Promise<CompleteArtistAvatarUploadResponse> {
+  return authFetch<CompleteArtistAvatarUploadResponse>(
+    `/api/v1/catalog/artists/${artistId}/avatar/complete`,
     {
       method: "POST",
       body: JSON.stringify(body),

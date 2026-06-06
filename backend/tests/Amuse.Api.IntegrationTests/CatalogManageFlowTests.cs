@@ -315,6 +315,87 @@ public sealed class CatalogManageFlowTests(AmuseApiFixture fixture)
     }
 
     [Fact]
+    public async Task Artist_avatar_upload_is_audited_and_returned_in_org_view()
+    {
+        using var client = fixture.CreateClient();
+        const string email = "catalog-avatar-audit@amuse.test";
+        const string password = "Password1234!";
+
+        await RegisterAndConfirmAsync(client, email, password);
+        var accountTokens = await LoginAccountTokensAsync(client, email, password);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accountTokens.AccessToken);
+
+        var createOrg = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new
+            {
+                displayName = "Avatar Audit Indie",
+                orgClass = OrganizationClass.IndieGroup,
+                createDefaultArtist = true,
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, createOrg.StatusCode);
+        var org = await createOrg.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions);
+        Assert.NotNull(org);
+
+        var orgTokens = await RefreshOrgPersonaAsync(
+            client,
+            accountTokens.RefreshToken!,
+            org.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+
+        var artists = await client.GetFromJsonAsync<ManageArtistListResponse>(
+            "/api/v1/catalog/manage/artists",
+            JsonOptions);
+        Assert.NotNull(artists);
+        Assert.NotEmpty(artists.Items);
+        var artistId = artists.Items[0].Id;
+
+        var presign = await client.PostAsJsonAsync(
+            $"/api/v1/catalog/artists/{artistId}/avatar/presign-upload",
+            new { fileName = "avatar.jpg", contentType = "image/jpeg" },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, presign.StatusCode);
+        var presignResponse = await presign.Content.ReadFromJsonAsync<PresignArtistAvatarUploadResponse>(JsonOptions);
+        Assert.NotNull(presignResponse);
+
+        await fixture.ObjectStorage.PutAsync(
+            MediaBucket.Covers,
+            presignResponse.Key,
+            new byte[] { 0xFF, 0xD8, 0xFF },
+            "image/jpeg",
+            CancellationToken.None);
+
+        var complete = await client.PostAsJsonAsync(
+            $"/api/v1/catalog/artists/{artistId}/avatar/complete",
+            new { key = presignResponse.Key },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, complete.StatusCode);
+        var completeResponse = await complete.Content.ReadFromJsonAsync<CompleteArtistAvatarUploadResponse>(JsonOptions);
+        Assert.NotNull(completeResponse);
+        Assert.Equal(presignResponse.Key, completeResponse.AvatarKey);
+        Assert.False(string.IsNullOrWhiteSpace(completeResponse.AvatarUrl));
+
+        var artistDetail = await client.GetFromJsonAsync<ManageArtistDetailResponse>(
+            $"/api/v1/catalog/manage/artists/{artistId}",
+            JsonOptions);
+        Assert.NotNull(artistDetail);
+        Assert.Equal(completeResponse.AvatarUrl, artistDetail.AvatarUrl);
+
+        var audit = await client.GetFromJsonAsync<CatalogAuditListResponse>(
+            $"/api/v1/catalog/manage/audit?tableName=catalog.artist&targetId={artistId}",
+            JsonOptions);
+        Assert.NotNull(audit);
+        Assert.Contains(
+            audit.Items,
+            entry => entry.Action == "updated"
+                     && entry.AfterJson?.Contains(presignResponse.Key) == true);
+    }
+
+    [Fact]
     public async Task Release_without_group_id_auto_creates_artist_scoped_release_group()
     {
         using var client = fixture.CreateClient();

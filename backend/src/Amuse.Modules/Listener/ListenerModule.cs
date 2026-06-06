@@ -30,6 +30,8 @@ public static class ListenerModule
 
         services.AddScoped<IListenerPersonaReadModel, ListenerPersonaReadModel>();
         services.AddScoped<IListenerOnboardingStatusReadModel, ListenerOnboardingStatusReadModel>();
+        services.AddScoped<IListenerPreferenceReadModel, ListenerPreferenceReadModel>();
+        services.AddScoped<IListenerProfilePresentationReadModel, ListenerProfilePresentationReadModel>();
         services.AddScoped<EnsureListenerProfileService>();
         services.AddScoped<ListenerProfileService>();
         services.AddScoped<EnsureListenerProfileHandler>();
