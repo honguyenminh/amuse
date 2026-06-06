@@ -1,7 +1,11 @@
+# syntax=docker/dockerfile:1
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 
-RUN apt-get update \
+RUN --mount=type=cache,id=apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=apt-lib,target=/var/lib/apt,sharing=locked \
+    apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -11,10 +15,14 @@ WORKDIR /src
 COPY ["Amuse.Worker.Transcoder/Amuse.Worker.Transcoder.csproj", "Amuse.Worker.Transcoder/"]
 COPY ["Amuse.Modules/Amuse.Modules.csproj", "Amuse.Modules/"]
 COPY ["Amuse.Domain/Amuse.Domain.csproj", "Amuse.Domain/"]
-RUN dotnet restore "Amuse.Worker.Transcoder/Amuse.Worker.Transcoder.csproj"
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
+    --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/http-cache,sharing=locked \
+    dotnet restore "Amuse.Worker.Transcoder/Amuse.Worker.Transcoder.csproj"
 COPY . .
 WORKDIR "/src/Amuse.Worker.Transcoder"
-RUN dotnet publish "./Amuse.Worker.Transcoder.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
+    --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/http-cache,sharing=locked \
+    dotnet publish "./Amuse.Worker.Transcoder.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

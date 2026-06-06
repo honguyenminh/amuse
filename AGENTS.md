@@ -33,3 +33,16 @@ DO NOT USE `ConfigureAwait(false)`. `SynchronizationContext` has been removed fr
 Every new possible errors added must be using the project's pattern of Problems with error codes and messages registered, and must document that in the endpoint's openapi docs. **Always keep openapi validations generation from componentmodel aligned with validation changes**.
 
 Use Version7 GUID.
+
+# Docker
+
+All Dockerfiles use [BuildKit cache mounts](https://docs.docker.com/build/cache/optimize/#use-cache-mounts) on package-install `RUN` steps to speed up local and CI rebuilds:
+
+- **NuGet** — mount `/root/.nuget/packages` and `/root/.local/share/NuGet/http-cache` on every `dotnet restore`, `dotnet build`, and `dotnet publish` in multi-stage images
+- **apt** — mount `/var/cache/apt` and `/var/lib/apt` on `apt-get install` (transcoder worker)
+
+Use `sharing=locked` on cache mounts. Keep the `# syntax=docker/dockerfile:1` directive at the top of each Dockerfile.
+
+BuildKit must be enabled (`DOCKER_BUILDKIT=1`; default in Docker 23+ and `docker compose build`). When adding a new Dockerfile or a `RUN` step that downloads packages, apply the same cache mounts.
+
+**Exception:** do not use NuGet cache mounts when the restored packages or tools must remain in the final image (e.g. `Dockerfile.migrate` runs `dotnet ef` at container start, so `dotnet tool restore` must bake packages into the image layer).

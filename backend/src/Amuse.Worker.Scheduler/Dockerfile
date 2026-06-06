@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 
@@ -7,10 +9,14 @@ WORKDIR /src
 COPY ["Amuse.Worker.Scheduler/Amuse.Worker.Scheduler.csproj", "Amuse.Worker.Scheduler/"]
 COPY ["Amuse.Modules/Amuse.Modules.csproj", "Amuse.Modules/"]
 COPY ["Amuse.Domain/Amuse.Domain.csproj", "Amuse.Domain/"]
-RUN dotnet restore "Amuse.Worker.Scheduler/Amuse.Worker.Scheduler.csproj"
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
+    --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/http-cache,sharing=locked \
+    dotnet restore "Amuse.Worker.Scheduler/Amuse.Worker.Scheduler.csproj"
 COPY . .
 WORKDIR "/src/Amuse.Worker.Scheduler"
-RUN dotnet publish "./Amuse.Worker.Scheduler.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
+    --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/http-cache,sharing=locked \
+    dotnet publish "./Amuse.Worker.Scheduler.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
