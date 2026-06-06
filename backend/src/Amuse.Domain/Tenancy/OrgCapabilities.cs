@@ -85,6 +85,11 @@ public sealed record OrgCapabilities(
                 "manage" => capabilities.CanReadMembership,
                 _ => false,
             },
+            "member_permissions" => parsed.Action switch
+            {
+                "manage" => capabilities.CanReadMembership,
+                _ => false,
+            },
             "catalog" => parsed.Action switch
             {
                 "read" => capabilities.CanReadOrg || capabilities.CanReadMembership,

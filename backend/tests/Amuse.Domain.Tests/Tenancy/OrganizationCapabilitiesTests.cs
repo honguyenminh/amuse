@@ -85,6 +85,94 @@ public sealed class OrganizationCapabilitiesTests
         Assert.Equal(TenancyErrors.InvalidLifecycleTransition, result.Error);
     }
 
+    /// <summary>
+    /// Regression guard: every claim referenced by presets must map in
+    /// <see cref="OrgCapabilities.FilterAssignableClaims"/> when all member-facing capabilities are on.
+    /// The admin invite bug was caused by <c>manage:member_permissions:all</c> missing from that mapping.
+    /// </summary>
+    [Fact]
+    public void Every_preset_claim_is_assignable_when_all_member_capabilities_enabled()
+    {
+        var fullCapabilities = new OrgCapabilities(
+            CanReadOrg: true,
+            CanReadMembership: true,
+            CanUpload: true,
+            CanWriteDraft: true,
+            CanPublishPublic: true,
+            CanReadPayout: true);
+
+        var presetClaims = OrgClaimPresets.AllDefinitions
+            .SelectMany(p => p.Claims)
+            .Distinct(StringComparer.Ordinal);
+
+        foreach (var claim in presetClaims)
+        {
+            var assignable = OrgCapabilities.FilterAssignableClaims([claim], fullCapabilities);
+            Assert.True(
+                assignable.Contains(claim),
+                $"Preset claim '{claim}' is not assignable even when all member capabilities are enabled.");
+        }
+    }
+
+    [Theory]
+    [InlineData(OrgClaimPresets.OwnerPresetLabel)]
+    [InlineData(OrgClaimPresets.MemberManagerPresetLabel)]
+    [InlineData(OrgClaimPresets.CatalogEditorPresetLabel)]
+    [InlineData(OrgClaimPresets.ViewerPresetLabel)]
+    public void Every_preset_is_fully_assignable_for_active_indie_group(string presetLabel)
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var preset = OrgClaimPresets.AllDefinitions.Single(p =>
+            string.Equals(p.Label, presetLabel, StringComparison.Ordinal));
+
+        var assignable = OrgCapabilities.FilterAssignableClaims(
+            preset.Claims,
+            org.EvaluateCapabilities());
+
+        Assert.Equal(preset.Claims.Count, assignable.Count);
+    }
+
+    [Theory]
+    [InlineData(OrgClaimPresets.MemberManagerPresetLabel)]
+    [InlineData(OrgClaimPresets.ViewerPresetLabel)]
+    public void Membership_presets_are_fully_assignable_for_pending_backing_org(string presetLabel)
+    {
+        var org = Organization.RegisterBackingOrg("Big Label", Creator, Now).Value!;
+        var preset = OrgClaimPresets.AllDefinitions.Single(p =>
+            string.Equals(p.Label, presetLabel, StringComparison.Ordinal));
+
+        var assignable = OrgCapabilities.FilterAssignableClaims(
+            preset.Claims,
+            org.EvaluateCapabilities());
+
+        Assert.Equal(preset.Claims.Count, assignable.Count);
+    }
+
+    [Fact]
+    public void FilterAssignableClaims_allows_full_admin_preset_for_active_indie_group()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var assignable = OrgCapabilities.FilterAssignableClaims(
+            OrgClaimPresets.OwnerAdmin,
+            org.EvaluateCapabilities());
+
+        Assert.Equal(OrgClaimPresets.OwnerAdmin.Count, assignable.Count);
+        Assert.Contains(OrgClaim.MemberPermissionsClaim, assignable);
+    }
+
+    [Fact]
+    public void FilterAssignableClaims_rejects_admin_catalog_writes_for_pending_backing_org()
+    {
+        var org = Organization.RegisterBackingOrg("Big Label", Creator, Now).Value!;
+        var assignable = OrgCapabilities.FilterAssignableClaims(
+            OrgClaimPresets.OwnerAdmin,
+            org.EvaluateCapabilities());
+
+        Assert.DoesNotContain("upload:catalog:all", assignable);
+        Assert.DoesNotContain("write_draft:catalog:all", assignable);
+        Assert.True(assignable.Count < OrgClaimPresets.OwnerAdmin.Count);
+    }
+
     [Fact]
     public void FilterClaimsForCapabilities_removes_member_writes_when_suspended()
     {

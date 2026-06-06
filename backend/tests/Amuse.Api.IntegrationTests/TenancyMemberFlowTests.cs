@@ -94,6 +94,39 @@ public sealed class TenancyMemberFlowTests(AmuseApiFixture fixture)
     }
 
     [Fact]
+    public async Task Admin_preset_invite_succeeds_for_active_indie_group()
+    {
+        fixture.CaptureEmailSender.Reset();
+        using var client = fixture.CreateClient();
+        var ownerTokens = await LoginAsync(client, "root@amuse.local", "ChangeMe_Root123!");
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", ownerTokens.AccessToken);
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new { displayName = "Admin Invite Org", orgClass = OrganizationClass.IndieGroup },
+            JsonOptions);
+        create.EnsureSuccessStatusCode();
+        var org = (await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions))!;
+
+        var orgTokens = await RefreshOrgPersonaAsync(client, ownerTokens.RefreshToken!, org.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+
+        var invite = await client.PostAsJsonAsync(
+            $"/api/v1/tenancy/organizations/{org.Id}/members/invites",
+            new
+            {
+                email = $"admin-{Guid.CreateVersion7():N}@amuse.test",
+                presetRoleLabel = OrgClaimPresets.OwnerPresetLabel,
+                claims = (string[]?)null,
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, invite.StatusCode);
+    }
+
+    [Fact]
     public async Task Owner_member_cannot_be_removed()
     {
         using var client = fixture.CreateClient();
