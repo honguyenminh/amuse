@@ -15,7 +15,7 @@ spec:
       restartPolicy: Never
       initContainers:
         - name: wait-for-minio
-          image: busybox:1.37
+          image: docker.io/busybox:1.37
           command:
             - /bin/sh
             - -c
@@ -26,7 +26,7 @@ spec:
               done
       containers:
         - name: mc
-          image: minio/mc:latest
+          image: docker.io/minio/mc:latest
           env:
             - name: MINIO_ACCESS_KEY
               valueFrom:
