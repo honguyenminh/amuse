@@ -104,8 +104,29 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
-      - name: Verify Docker (Testcontainers)
-        run: docker info
+      - name: Prepare Testcontainers images
+        # Keep in sync with backend/tests/Amuse.Api.IntegrationTests/AmuseApiFixture.cs
+        run: |
+          set -euo pipefail
+          images=(
+            "postgres:18"
+            "redis:8.8-alpine"
+          )
+          for image in "${images[@]}"; do
+            for attempt in 1 2 3 4 5; do
+              if docker pull "$image"; then
+                echo "Pulled $image"
+                break
+              fi
+              if [ "$attempt" -eq 5 ]; then
+                echo "Failed to pull $image after 5 attempts"
+                exit 1
+              fi
+              echo "Retrying pull of $image (attempt $attempt/5)..."
+              sleep $((attempt * 10))
+            done
+          done
+          docker info
 
       - name: Restore
         run: dotnet restore backend.slnx
@@ -114,6 +135,9 @@ jobs:
         run: dotnet build backend.slnx -c Release --no-restore /nr:false
 
       - name: Test
+        env:
+          # Ephemeral GitHub runners are destroyed after the job; Ryuk only adds another Docker Hub pull.
+          TESTCONTAINERS_RYUK_DISABLED: "true"
         run: dotnet test backend.slnx -c Release --no-build --logger "trx;LogFileName=results.trx"
 
       - name: Upload test results

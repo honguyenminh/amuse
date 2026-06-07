@@ -25,7 +25,7 @@ Project: `[Amuse.Api.IntegrationTests](../../backend/tests/Amuse.Api.Integration
 
 ### Requirements
 
-- **Docker** running (Testcontainers starts `postgres:16` and `redis:8.8-alpine` per collection fixture).
+- **Docker** running (Testcontainers starts `postgres:18` and `redis:8.8-alpine` per collection fixture).
 - First run downloads the Postgres and Redis images.
 
 ### Fixture

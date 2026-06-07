@@ -22,7 +22,7 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
     private const string DevDatabaseName = "amuse_development";
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16")
+        .WithImage("postgres:18")
         .WithDatabase("amuse_test")
         .WithUsername("postgres")
         .WithPassword("postgres")
