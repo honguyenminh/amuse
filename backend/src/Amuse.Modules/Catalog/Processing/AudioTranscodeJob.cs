@@ -21,6 +21,7 @@ public sealed class AudioTranscodeJob
     public string? LastError { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+    public DateTimeOffset? ProcessingStartedAt { get; private set; }
 
     private AudioTranscodeJob()
     {
@@ -55,6 +56,7 @@ public sealed class AudioTranscodeJob
         Status = AudioTranscodeJobStatus.Processing;
         AttemptCount++;
         UpdatedAt = now;
+        ProcessingStartedAt = now;
         LastError = null;
     }
 

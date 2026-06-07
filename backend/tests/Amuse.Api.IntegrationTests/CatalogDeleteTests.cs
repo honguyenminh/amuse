@@ -143,6 +143,8 @@ public sealed class CatalogDeleteTests(AmuseApiFixture fixture)
         Assert.NotNull(track);
 
         var masterKey = $"masters/{track.Id}/master.wav";
+        var dashPrefix = $"dash/{track.Id}/{Guid.CreateVersion7()}/";
+        var streamKey = $"{dashPrefix}manifest.mpd";
         var coverKey = $"covers/{release.Id}/cover.jpg";
         await fixture.ObjectStorage.PutAsync(
             MediaBucket.Audio,
@@ -165,6 +167,7 @@ public sealed class CatalogDeleteTests(AmuseApiFixture fixture)
                 .FirstAsync(r => r.Id == ReleaseId.From(release.Id));
             var trackEntity = releaseEntity.Tracks.Single();
             trackEntity.SetAudioMaster(masterKey);
+            trackEntity.SetAudioStream(streamKey);
             releaseEntity.SetCoverArtKey(coverKey, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
         }

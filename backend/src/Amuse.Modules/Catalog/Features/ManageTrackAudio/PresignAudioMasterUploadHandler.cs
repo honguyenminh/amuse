@@ -3,6 +3,8 @@ using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Catalog.Processing;
+using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
 using Amuse.Modules.Media.Options;
 using FluentValidation;
@@ -34,7 +36,8 @@ internal sealed class PresignAudioMasterUploadRequestValidator : AbstractValidat
 internal sealed class PresignAudioMasterUploadHandler(
     CatalogDbContext db,
     IObjectStorage storage,
-    IOptions<MediaOptions> mediaOptions)
+    IOptions<MediaOptions> mediaOptions,
+    IClock clock)
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -81,8 +84,13 @@ internal sealed class PresignAudioMasterUploadHandler(
         var key = $"masters/{trackId}/{Guid.CreateVersion7()}{ext}";
 
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var expiresAt = DateTimeOffset.UtcNow.Add(ttl);
+        var now = clock.UtcNow;
+        var expiresAt = now.Add(ttl);
         var url = storage.GetSignedUploadUrl(MediaBucket.Audio, key, ttl, request.ContentType);
+
+        var intent = AudioMasterUploadIntent.Create(typedId, key, request.ContentType, expiresAt, now);
+        db.AudioMasterUploadIntents.Add(intent);
+        await db.SaveChangesAsync(cancellationToken);
 
         return Result<PresignAudioMasterUploadResponse>.Success(
             new PresignAudioMasterUploadResponse(trackId, key, url, expiresAt, "PUT"));

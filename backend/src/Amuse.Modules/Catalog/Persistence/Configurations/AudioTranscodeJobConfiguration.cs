@@ -48,6 +48,9 @@ internal sealed class AudioTranscodeJobConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.UpdatedAt)
             .HasColumnName("updated_at");
 
+        builder.Property(x => x.ProcessingStartedAt)
+            .HasColumnName("processing_started_at");
+
         builder.HasIndex(x => new { x.Status, x.CreatedAt });
         builder.HasIndex(x => x.TrackId);
     }

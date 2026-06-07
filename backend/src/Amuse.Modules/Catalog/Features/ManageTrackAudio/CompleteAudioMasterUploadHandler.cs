@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.Shared;
+using Amuse.Modules.Catalog.Messaging;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Common.Time;
@@ -11,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.ManageTrackAudio;
 
-public sealed record CompleteAudioMasterUploadRequest(string Key, int DurationMs);
+public sealed record CompleteAudioMasterUploadRequest(string Key);
 
 public sealed record CompleteAudioMasterUploadResponse(
     Guid TrackId,
@@ -24,14 +25,12 @@ internal sealed class CompleteAudioMasterUploadRequestValidator : AbstractValida
     public CompleteAudioMasterUploadRequestValidator()
     {
         RuleFor(x => x.Key).NotEmpty().MaximumLength(Track.MaxKeyLength);
-        RuleFor(x => x.DurationMs).GreaterThan(0);
     }
 }
 
 internal sealed class CompleteAudioMasterUploadHandler(
     CatalogDbContext db,
     IObjectStorage storage,
-    IAudioTranscodeJobQueue jobQueue,
     IClock clock)
 {
     public async Task<Result<CompleteAudioMasterUploadResponse>> HandleAsync(
@@ -50,6 +49,10 @@ internal sealed class CompleteAudioMasterUploadHandler(
         if (string.IsNullOrWhiteSpace(request.Key))
             return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.InvalidAudioUploadRequest);
 
+        var expectedPrefix = $"masters/{trackId}/";
+        if (!request.Key.StartsWith(expectedPrefix, StringComparison.Ordinal))
+            return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.InvalidAudioUploadRequest);
+
         var typedId = TrackId.From(trackId);
         var track = await db.Tracks
             .FirstOrDefaultAsync(t => t.Id == typedId, cancellationToken);
@@ -61,23 +64,38 @@ internal sealed class CompleteAudioMasterUploadHandler(
         if (!scope.IsSuccess)
             return Result<CompleteAudioMasterUploadResponse>.Failure(scope.Error!);
 
-        var masterExists = await storage.ObjectExistsAsync(MediaBucket.Audio, request.Key, cancellationToken);
-        if (!masterExists)
+        var now = clock.UtcNow;
+
+        var intent = await db.AudioMasterUploadIntents
+            .FirstOrDefaultAsync(i => i.TrackId == typedId && i.ObjectKey == request.Key, cancellationToken);
+
+        if (intent is null || !intent.IsConsumable(now))
+            return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.InvalidAudioUploadRequest);
+
+        if (!await storage.ObjectExistsAsync(MediaBucket.Audio, request.Key, cancellationToken))
             return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.AudioMasterObjectMissing);
 
-        TrackDuration duration;
-        try
-        {
-            duration = TrackDuration.FromMilliseconds(request.DurationMs);
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.InvalidTrack);
-        }
+        var inflight = await db.AudioTranscodeJobs.AnyAsync(
+            j => j.TrackId == typedId
+                && (j.Status == AudioTranscodeJobStatus.Queued || j.Status == AudioTranscodeJobStatus.Processing),
+            cancellationToken);
+        if (inflight)
+            return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.TranscodeAlreadyInProgress);
 
-        var setDurationResult = track.SetDurationFromUploadedAudio(duration);
-        if (!setDurationResult.IsSuccess)
-            return Result<CompleteAudioMasterUploadResponse>.Failure(setDurationResult.Error!);
+        intent.Consume(now);
+
+        if (!string.IsNullOrWhiteSpace(track.AudioStreamKey))
+        {
+            await CatalogMediaCleanup.DeleteDashPrefixAsync(storage, track.AudioStreamKey, cancellationToken);
+
+            var clearStream = track.ClearAudioStream();
+            if (!clearStream.IsSuccess)
+                return Result<CompleteAudioMasterUploadResponse>.Failure(clearStream.Error!);
+
+            var clearLoudness = track.ClearLoudnessProfile();
+            if (!clearLoudness.IsSuccess)
+                return Result<CompleteAudioMasterUploadResponse>.Failure(clearLoudness.Error!);
+        }
 
         track.SetAudioMaster(request.Key);
         var processing = track.MarkProcessing();
@@ -87,15 +105,14 @@ internal sealed class CompleteAudioMasterUploadHandler(
         var derivedId = Guid.CreateVersion7();
         var streamKey = $"dash/{trackId}/{derivedId}/manifest.mpd";
 
-        var now = clock.UtcNow;
         var job = AudioTranscodeJob.Enqueue(track.Id, request.Key, streamKey, now);
         db.AudioTranscodeJobs.Add(job);
+        db.CatalogOutboxMessages.Add(
+            CatalogOutboxMessage.EnqueueAudioTranscode(
+                new AudioTranscodeJobMessage(job.Id, track.Id.Value, job.MasterKey, job.StreamKey),
+                now));
 
         await db.SaveChangesAsync(cancellationToken);
-
-        await jobQueue.PublishAsync(
-            new AudioTranscodeJobMessage(job.Id, track.Id.Value, job.MasterKey, job.StreamKey),
-            cancellationToken);
 
         return Result<CompleteAudioMasterUploadResponse>.Success(
             new CompleteAudioMasterUploadResponse(trackId, request.Key, streamKey, job.Id));

@@ -69,6 +69,23 @@ public sealed class InMemoryObjectStorage : IObjectStorage
         return Task.CompletedTask;
     }
 
+    public Task<IReadOnlyList<string>> ListByPrefixAsync(
+        MediaBucket bucket,
+        string prefix,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            return Task.FromResult<IReadOnlyList<string>>([]);
+
+        var keys = _objects.Keys
+            .Where(k => k.Item1 == bucket && k.Item2.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(k => k.Item2)
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(keys);
+    }
+
     public bool Contains(MediaBucket bucket, string key) => _objects.ContainsKey((bucket, key));
 
     private static string BuildSignedGetUrl(MediaBucket bucket, string key, TimeSpan ttl, string audience) =>

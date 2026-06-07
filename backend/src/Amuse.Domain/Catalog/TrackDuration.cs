@@ -11,11 +11,11 @@ public readonly record struct TrackDuration
 
     public static TrackDuration FromMilliseconds(int milliseconds)
     {
-        if (milliseconds <= 0)
+        if (milliseconds <= 0 || milliseconds > TrackDurationLimits.MaxMilliseconds)
             throw new ArgumentOutOfRangeException(
                 nameof(milliseconds),
                 milliseconds,
-                "Track duration must be positive.");
+                $"Track duration must be between 1 and {TrackDurationLimits.MaxMilliseconds} milliseconds.");
         return new TrackDuration(milliseconds);
     }
 

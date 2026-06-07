@@ -1,5 +1,6 @@
 using Amuse.Domain.Catalog;
 using Amuse.Domain.Tenancy;
+using Amuse.Modules.Catalog.Messaging;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Common.Time;
@@ -152,7 +153,7 @@ public static class CatalogDevSeeding
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        await EnsureStreamIngestJobsAsync(db, jobQueue, clock, cancellationToken);
+        await EnsureStreamIngestJobsAsync(db, clock, cancellationToken);
     }
 
     private static void AddTrack(Release release, string idString, string title, int trackNumber, int durationMs)
@@ -202,7 +203,6 @@ public static class CatalogDevSeeding
     /// </summary>
     private static async Task EnsureStreamIngestJobsAsync(
         CatalogDbContext db,
-        IAudioTranscodeJobQueue jobQueue,
         IClock clock,
         CancellationToken cancellationToken)
     {
@@ -225,14 +225,15 @@ public static class CatalogDevSeeding
 
             var derivedId = Guid.CreateVersion7();
             var streamKey = $"dash/{t.Id.Value}/{derivedId}/manifest.mpd";
+            var now = clock.UtcNow;
 
-            var job = AudioTranscodeJob.Enqueue(t.Id, t.AudioMasterKey!, streamKey, clock.UtcNow);
+            var job = AudioTranscodeJob.Enqueue(t.Id, t.AudioMasterKey!, streamKey, now);
             db.AudioTranscodeJobs.Add(job);
+            db.CatalogOutboxMessages.Add(
+                CatalogOutboxMessage.EnqueueAudioTranscode(
+                    new AudioTranscodeJobMessage(job.Id, t.Id.Value, job.MasterKey, job.StreamKey),
+                    now));
             await db.SaveChangesAsync(cancellationToken);
-
-            await jobQueue.PublishAsync(
-                new AudioTranscodeJobMessage(job.Id, t.Id.Value, job.MasterKey, job.StreamKey),
-                cancellationToken);
         }
     }
 

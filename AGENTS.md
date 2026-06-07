@@ -16,6 +16,8 @@ When making changes, implementing a new features etc. You MUST ALWAYS consider w
 
 Must use pnpm for frontend actions.
 
+For every bugs fixed or changes added, MUST add tests to avoid regressions for it if it's backend changes, for frontend UI changes you can be a bit more lax but behavior changes should be tested.
+
 # .NET C#
 
 Adhere to VSA but follow DDD-style patterns, like rich domain models, only valid state (if a state is invalid, it shouldn't be able to exist/instatiate into a domain model), etc. Note this VERY EXPLICITLY in the plans, etc. As LLM models have a tendency to ignore this guidance and do very crude VSA where it calls to dbset in the api handler directly, bypassing the domain layer.

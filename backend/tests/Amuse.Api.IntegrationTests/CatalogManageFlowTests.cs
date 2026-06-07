@@ -122,25 +122,27 @@ public sealed class CatalogManageFlowTests(AmuseApiFixture fixture)
         var track = await createTrack.Content.ReadFromJsonAsync<ManageTrackResponse>(JsonOptions);
         Assert.NotNull(track);
 
-        var masterKey = $"masters/{track.Id}/{Guid.CreateVersion7()}.wav";
-        await fixture.ObjectStorage.PutAsync(
-            MediaBucket.Audio,
-            masterKey,
-            new byte[] { 0x00, 0x01, 0x02 },
-            "audio/wav",
-            CancellationToken.None);
-
         var presign = await client.PostAsJsonAsync(
             $"/api/v1/catalog/tracks/{track.Id}/audio-master/presign-upload",
             new { fileName = "track.wav", contentType = "audio/wav" },
             JsonOptions);
         Assert.Equal(HttpStatusCode.OK, presign.StatusCode);
+        var presigned = await presign.Content.ReadFromJsonAsync<Amuse.Modules.Catalog.Features.ManageTrackAudio.PresignAudioMasterUploadResponse>(JsonOptions);
+        Assert.NotNull(presigned);
+
+        await fixture.ObjectStorage.PutAsync(
+            MediaBucket.Audio,
+            presigned.Key,
+            new byte[] { 0x00, 0x01, 0x02 },
+            "audio/wav",
+            CancellationToken.None);
 
         var complete = await client.PostAsJsonAsync(
             $"/api/v1/catalog/tracks/{track.Id}/audio-master/complete",
-            new { key = masterKey, durationMs = 180_000 },
+            new { key = presigned.Key },
             JsonOptions);
         Assert.Equal(HttpStatusCode.OK, complete.StatusCode);
+        await CatalogOutboxTestSupport.DrainPendingAsync(fixture.Services);
 
         await using (var scope = fixture.Services.CreateAsyncScope())
         {

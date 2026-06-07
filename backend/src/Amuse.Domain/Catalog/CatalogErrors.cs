@@ -25,6 +25,15 @@ public static class CatalogErrors
     public static readonly DomainError AudioMasterObjectMissing =
         new("catalog.audio_master_object_missing", "Uploaded audio master was not found in object storage.");
 
+    public static readonly DomainError AudioDurationUnreadable =
+        new("catalog.audio_duration_unreadable", "Could not determine audio duration from the uploaded master.");
+
+    public static readonly DomainError AudioDurationOutOfRange =
+        new("catalog.audio_duration_out_of_range", "Audio duration is outside the allowed range.");
+
+    public static readonly DomainError TranscodeAlreadyInProgress =
+        new("catalog.transcode_already_in_progress", "A transcode job is already in progress for this track.");
+
     public static readonly DomainError TrackStreamNotReady =
         new("catalog.track_stream_not_ready", "Track stream is not ready yet.");
 

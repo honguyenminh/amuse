@@ -380,7 +380,7 @@ export default function NewReleasePage() {
         const created = await createTrack(release.id, {
           title: track.title.trim(),
           trackNumber: track.trackNumber,
-          durationMs: track.durationMs!,
+          durationMs: 1,
           explicitFlag: track.explicitFlag,
         });
         idMap[track.key] = created.id;
@@ -733,7 +733,7 @@ export default function NewReleasePage() {
               <div>
                 <CardTitle>Tracks</CardTitle>
                 <CardDescription>
-                  Select audio files. Duration is read from each file automatically.
+                  Select audio files. Preview duration is read locally; the server confirms duration after upload processing.
                 </CardDescription>
               </div>
               <Button

@@ -1,4 +1,5 @@
 using Amuse.Domain.Catalog;
+using Amuse.Modules.Catalog.Messaging;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,8 @@ public sealed class CatalogDbContext : ModuleDbContextBase
     public DbSet<Track> Tracks => Set<Track>();
     public DbSet<ReleaseCollaborator> ReleaseCollaborators => Set<ReleaseCollaborator>();
     public DbSet<AudioTranscodeJob> AudioTranscodeJobs => Set<AudioTranscodeJob>();
+    public DbSet<AudioMasterUploadIntent> AudioMasterUploadIntents => Set<AudioMasterUploadIntent>();
+    public DbSet<CatalogOutboxMessage> CatalogOutboxMessages => Set<CatalogOutboxMessage>();
     public DbSet<TrackAudioRendition> TrackAudioRenditions => Set<TrackAudioRendition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

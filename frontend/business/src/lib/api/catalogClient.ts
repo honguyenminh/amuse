@@ -689,7 +689,7 @@ export function presignAudioUpload(
 
 export function completeAudioUpload(
   trackId: string,
-  body: { key: string; durationMs: number },
+  body: { key: string },
 ): Promise<CompleteAudioMasterUploadResponse> {
   return authFetch<CompleteAudioMasterUploadResponse>(
     `/api/v1/catalog/tracks/${trackId}/audio-master/complete`,

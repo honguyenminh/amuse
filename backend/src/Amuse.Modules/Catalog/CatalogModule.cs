@@ -22,6 +22,7 @@ using Amuse.Modules.Catalog.Features.PublishRelease;
 using Amuse.Modules.Catalog.Features.RetryTrackTranscode;
 using Amuse.Modules.Catalog.Features.ScheduleRelease;
 using Amuse.Modules.Catalog.Features.Shared;
+using Amuse.Modules.Catalog.Messaging;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Catalog.Services;
@@ -103,6 +104,21 @@ public static class CatalogModule
 
         services.AddScoped<ListResourceAuditsHandler>();
 
+        return services;
+    }
+
+    /// <summary>
+    /// Outbox dispatch and stale-job recovery run in the API process only (requires
+    /// <see cref="Processing.IAudioTranscodeJobQueue"/>). Worker hosts must not call this.
+    /// </summary>
+    public static IServiceCollection AddCatalogTranscodeRecoveryServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<TranscodeJobRecoveryOptions>(
+            configuration.GetSection("Catalog:TranscodeRecovery"));
+        services.AddHostedService<CatalogOutboxProcessor>();
+        services.AddHostedService<TranscodeJobStaleSweeper>();
         return services;
     }
 

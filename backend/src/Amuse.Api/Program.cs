@@ -51,6 +51,7 @@ builder.Services.AddTenancyModule(builder.Configuration);
 builder.Services.AddListenerModule(builder.Configuration);
 builder.Services.AddPlatformModule(builder.Configuration);
 builder.Services.AddCatalogModule(builder.Configuration);
+builder.Services.AddCatalogTranscodeRecoveryServices(builder.Configuration);
 builder.Services.AddDiscoveryModule(builder.Configuration);
 builder.Services.AddMediaModule(builder.Configuration);
 builder.Services.AddAuditModule(builder.Configuration);

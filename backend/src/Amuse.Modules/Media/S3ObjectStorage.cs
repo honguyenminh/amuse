@@ -161,10 +161,30 @@ internal sealed class S3ObjectStorage(
         string prefix,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(prefix))
+        var keys = await ListByPrefixAsync(bucket, prefix, cancellationToken);
+        if (keys.Count == 0)
             return;
 
         var bucketName = BucketName(bucket);
+        await internalClient.DeleteObjectsAsync(
+            new DeleteObjectsRequest
+            {
+                BucketName = bucketName,
+                Objects = keys.Select(key => new KeyVersion { Key = key }).ToList(),
+            },
+            cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<string>> ListByPrefixAsync(
+        MediaBucket bucket,
+        string prefix,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            return [];
+
+        var bucketName = BucketName(bucket);
+        var results = new List<string>();
         string? continuationToken = null;
 
         do
@@ -178,25 +198,16 @@ internal sealed class S3ObjectStorage(
                 },
                 cancellationToken);
 
-            var keys = listing.S3Objects
-                .Select(obj => obj.Key)
-                .Where(key => !string.IsNullOrWhiteSpace(key))
-                .ToList();
-
-            if (keys.Count > 0)
-            {
-                await internalClient.DeleteObjectsAsync(
-                    new DeleteObjectsRequest
-                    {
-                        BucketName = bucketName,
-                        Objects = keys.Select(key => new KeyVersion { Key = key }).ToList(),
-                    },
-                    cancellationToken);
-            }
+            results.AddRange(
+                (listing.S3Objects ?? [])
+                    .Select(obj => obj.Key)
+                    .Where(key => !string.IsNullOrWhiteSpace(key))!);
 
             continuationToken = listing.IsTruncated == true ? listing.NextContinuationToken : null;
         }
         while (continuationToken is not null);
+
+        return results;
     }
 
     private string BucketName(MediaBucket bucket) => bucket switch

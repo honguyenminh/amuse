@@ -26,11 +26,16 @@ internal sealed partial class TranscodingWorker(
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.General);
     private LoudnormAnalyzer? _loudnormAnalyzer;
+    private AudioProbe? _audioProbe;
 
     private LoudnormAnalyzer LoudnormAnalyzer =>
         _loudnormAnalyzer ??= new LoudnormAnalyzer(
             (arguments, trackId, jobId, ct) => RunFfmpegAsync(arguments, trackId, jobId, ct),
             loggerFactory.CreateLogger<LoudnormAnalyzer>());
+
+    private AudioProbe AudioProbe =>
+        _audioProbe ??= new AudioProbe(
+            (arguments, trackId, jobId, ct) => RunFfprobeAsync(arguments, trackId, jobId, ct));
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -121,6 +126,15 @@ internal sealed partial class TranscodingWorker(
                     .FirstOrDefaultAsync(t => t.Id == job.TrackId, stoppingToken)
                     ?? throw new InvalidOperationException($"Track {job.TrackId.Value} not found for transcode job {job.Id}.");
 
+                var probedDuration = await AudioProbe.ProbeDurationAsync(
+                    masterInputUrl,
+                    job.TrackId.Value,
+                    job.Id,
+                    stoppingToken);
+                var setDurationResult = track.SetDurationFromUploadedAudio(probedDuration);
+                if (!setDurationResult.IsSuccess)
+                    throw new InvalidOperationException(setDurationResult.Error!.Message);
+
                 TrackLoudnessProfile loudnessProfile;
                 if (track.LoudnessProfile is not null)
                 {
@@ -136,9 +150,15 @@ internal sealed partial class TranscodingWorker(
                         stoppingToken);
                 }
 
-                var alreadyReady = await storage.ObjectExistsAsync(MediaBucket.Audio, job.StreamKey, stoppingToken);
+                var alreadyReady = await DashPackageVerifier.IsCompleteAsync(storage, job.StreamKey, stoppingToken);
                 if (!alreadyReady)
                 {
+                    if (await storage.ObjectExistsAsync(MediaBucket.Audio, job.StreamKey, stoppingToken))
+                    {
+                        var dashPrefix = job.StreamKey[..(job.StreamKey.LastIndexOf('/') + 1)];
+                        await storage.DeleteByPrefixAsync(MediaBucket.Audio, dashPrefix, stoppingToken);
+                    }
+
                     await TranscodeMasterToDashAsync(
                         storage,
                         db,
@@ -435,6 +455,39 @@ internal sealed partial class TranscodingWorker(
         if (!string.IsNullOrWhiteSpace(stderr))
         {
             LogFfmpegStderr(jobId, trackId, stderr);
+        }
+
+        return new FfmpegRunResult(stdout, stderr);
+    }
+
+    private async Task<FfmpegRunResult> RunFfprobeAsync(string arguments, Guid trackId, Guid jobId, CancellationToken ct)
+    {
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "ffprobe",
+                Arguments = arguments,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
+        process.Start();
+        var stderrTask = process.StandardError.ReadToEndAsync(ct);
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
+
+        await process.WaitForExitAsync(ct);
+
+        var stderr = await stderrTask;
+        var stdout = await stdoutTask;
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"ffprobe failed (exit {process.ExitCode}). stdout='{stdout}' stderr='{stderr}'");
         }
 
         return new FfmpegRunResult(stdout, stderr);

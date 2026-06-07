@@ -316,4 +316,73 @@ public sealed class CatalogLifecycleTests
         Assert.False(result.IsSuccess);
         Assert.Equal(CatalogErrors.ReleaseNotDeletable, result.Error);
     }
+
+    [Fact]
+    public void MarkReady_preserves_published_lifecycle()
+    {
+        var release = Release.Create(
+            ReleaseId.New(),
+            OrgId,
+            ArtistId.New(),
+            "Published Stream",
+            Slug.From("published-stream"),
+            ReleaseType.Single,
+            Now,
+            Now).Value!;
+
+        var track = release.AddTrack(
+            TrackId.New(),
+            "Song",
+            1,
+            TrackDuration.FromMilliseconds(180_000)).Value!;
+
+        track.SetAudioMaster("masters/track/master.wav");
+        track.SetAudioStream("dash/track/original/manifest.mpd");
+        track.MarkReady();
+        release.Publish(Now);
+        track.SetAudioStream("dash/track/new-manifest/manifest.mpd");
+
+        var result = track.MarkReady();
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(TrackLifecycleStatus.Published, track.LifecycleStatus);
+    }
+
+    [Fact]
+    public void TrackDuration_rejects_duration_above_max()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            TrackDuration.FromMilliseconds(TrackDurationLimits.MaxMilliseconds + 1));
+    }
+
+    [Fact]
+    public void SetDurationFromUploadedAudio_updates_published_track()
+    {
+        var release = Release.Create(
+            ReleaseId.New(),
+            OrgId,
+            ArtistId.New(),
+            "Published Duration",
+            Slug.From("published-duration"),
+            ReleaseType.Single,
+            Now,
+            Now).Value!;
+
+        var track = release.AddTrack(
+            TrackId.New(),
+            "Song",
+            1,
+            TrackDuration.FromMilliseconds(1)).Value!;
+
+        track.SetAudioMaster("masters/track/master.wav");
+        track.SetAudioStream("dash/track/manifest.mpd");
+        track.MarkReady();
+        release.Publish(Now);
+
+        var result = track.SetDurationFromUploadedAudio(TrackDuration.FromMilliseconds(214_000));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(TrackLifecycleStatus.Published, track.LifecycleStatus);
+        Assert.Equal(214_000, track.Duration.Milliseconds);
+    }
 }

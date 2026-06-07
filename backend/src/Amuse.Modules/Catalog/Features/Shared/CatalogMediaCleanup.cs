@@ -70,6 +70,20 @@ internal static class CatalogMediaCleanup
         await DeleteReleaseCoverAsync(storage, release.CoverArtKey, cancellationToken);
     }
 
+    internal static async Task DeleteDashPrefixAsync(
+        IObjectStorage storage,
+        string streamKey,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(streamKey))
+            return;
+
+        await storage.DeleteByPrefixAsync(
+            MediaBucket.Audio,
+            GetDashPrefix(streamKey),
+            cancellationToken);
+    }
+
     private static string GetDashPrefix(string streamKey)
     {
         var lastSlash = streamKey.LastIndexOf('/');

@@ -72,4 +72,12 @@ public interface IObjectStorage
     /// Deletes all objects whose keys start with <paramref name="prefix"/>.
     /// </summary>
     Task DeleteByPrefixAsync(MediaBucket bucket, string prefix, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists object keys in <paramref name="bucket"/> whose keys start with <paramref name="prefix"/>.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListByPrefixAsync(
+        MediaBucket bucket,
+        string prefix,
+        CancellationToken cancellationToken = default);
 }

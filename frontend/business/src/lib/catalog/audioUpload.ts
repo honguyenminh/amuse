@@ -60,11 +60,9 @@ export async function uploadTrackAudioMaster(
     throw new DOMException("Upload aborted.", "AbortError");
   }
 
-  const durationMs = await inferAudioDurationMs(file);
-
   await uploadWithProgress(presigned.url, presigned.method, file, contentType, options);
 
-  await completeAudioUpload(trackId, { key: presigned.key, durationMs });
+  await completeAudioUpload(trackId, { key: presigned.key });
 }
 
 async function uploadWithProgress(

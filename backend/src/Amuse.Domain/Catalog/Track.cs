@@ -141,7 +141,7 @@ public sealed class Track
 
     public Result SetDurationFromUploadedAudio(TrackDuration duration)
     {
-        if (LifecycleStatus is TrackLifecycleStatus.Published or TrackLifecycleStatus.Hidden)
+        if (LifecycleStatus == TrackLifecycleStatus.Hidden)
             return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
 
         Duration = duration;
@@ -164,6 +164,9 @@ public sealed class Track
 
         if (string.IsNullOrWhiteSpace(AudioStreamKey))
             return Result.Failure(CatalogErrors.TrackStreamNotReady);
+
+        if (LifecycleStatus == TrackLifecycleStatus.Published)
+            return Result.Success();
 
         LifecycleStatus = TrackLifecycleStatus.Ready;
         return Result.Success();
@@ -212,10 +215,17 @@ public sealed class Track
         if (string.IsNullOrWhiteSpace(AudioMasterKey))
             return Result.Failure(CatalogErrors.TrackHasNoAudio);
 
+        if (LifecycleStatus is TrackLifecycleStatus.Published or TrackLifecycleStatus.Hidden
+            && !string.IsNullOrWhiteSpace(AudioStreamKey))
+        {
+            return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
+        }
+
         if (LifecycleStatus is not (
             TrackLifecycleStatus.Draft
             or TrackLifecycleStatus.Processing
-            or TrackLifecycleStatus.Ready))
+            or TrackLifecycleStatus.Ready
+            or TrackLifecycleStatus.Published))
         {
             return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
         }
@@ -224,7 +234,23 @@ public sealed class Track
         return Result.Success();
     }
 
-    internal void ClearLoudnessProfile() => LoudnessProfile = null;
+    public Result ClearAudioStream()
+    {
+        if (LifecycleStatus is TrackLifecycleStatus.Published or TrackLifecycleStatus.Hidden)
+            return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
+
+        AudioStreamKey = null;
+        return Result.Success();
+    }
+
+    public Result ClearLoudnessProfile()
+    {
+        if (LifecycleStatus is TrackLifecycleStatus.Published or TrackLifecycleStatus.Hidden)
+            return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
+
+        LoudnessProfile = null;
+        return Result.Success();
+    }
 
     private static bool ValidateOptional(string? value, int maxLength)
     {
