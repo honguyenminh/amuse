@@ -1,0 +1,11 @@
+output "namespace" {
+  value = kubernetes_namespace_v1.this.metadata[0].name
+}
+
+output "release_name" {
+  value = helm_release.this.name
+}
+
+output "ingress_class_name" {
+  value = var.ingress_class_name
+}

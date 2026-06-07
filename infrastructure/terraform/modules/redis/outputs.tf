@@ -1,0 +1,27 @@
+output "id" {
+  value = azurerm_managed_redis.redis.id
+}
+
+output "hostname" {
+  value = azurerm_managed_redis.redis.hostname
+}
+
+output "kv_primary_access_key_id" {
+  value = azurerm_key_vault_secret.primary.versionless_id
+}
+
+output "kv_secondary_access_key_id" {
+  value = azurerm_key_vault_secret.secondary.versionless_id
+}
+
+output "port" {
+  value = azurerm_managed_redis.redis.default_database[0].port
+}
+
+output "cache_url_secret_name" {
+  value = try(azurerm_key_vault_secret.cache_url[0].name, null)
+}
+
+output "celery_broker_url_secret_name" {
+  value = try(azurerm_key_vault_secret.celery_broker_url[0].name, null)
+}

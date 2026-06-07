@@ -1,0 +1,53 @@
+subscription_id = "00000000-0000-0000-0000-000000000000"
+resource_prefix = "uit-amuse"
+environment     = "staging"
+location        = "japaneast"
+
+acr_name       = "uit0amuse0staging"
+aks_name       = "amuse-aks-staging"
+aks_dns_prefix = "amuse-staging"
+
+aks_kubernetes_version        = ""
+aks_sku_tier                  = "Standard"
+aks_node_vm_size              = "Standard_D4ds_v5"
+aks_node_auto_scaling_enabled = true
+aks_node_count                = 2
+aks_node_min_count            = 2
+aks_node_max_count            = 6
+aks_node_os_disk_size_gb      = 128
+aks_max_pods                  = 60
+aks_pod_cidr                  = "10.244.0.0/16"
+aks_service_cidr              = "10.240.0.0/16"
+aks_dns_service_ip            = "10.240.0.10"
+aks_outbound_type             = "loadBalancer"
+
+postgres_admin_username         = "amuse_admin"
+postgres_admin_password         = null
+postgres_admin_password_version = 1
+postgres_db_names               = ["amuse_staging"]
+postgres_connection_db_name     = "amuse_staging"
+postgres_kv_secret_version      = 1
+postgres_sku_name               = "B_Standard_B1ms"
+postgres_enable_pgbouncer       = false
+
+agc_frontend_name      = "amuse-staging-fe"
+agc_gateway_class_name = "azure-alb-external"
+
+amuse_jwt_signing_key         = "REPLACE_ME_MIN_32_CHARS"
+amuse_jwt_signing_key_version = 1
+
+amuse_r2_endpoint         = "https://ACCOUNT_ID.r2.cloudflarestorage.com"
+amuse_r2_endpoint_version = 1
+amuse_r2_access_key       = "REPLACE_ME"
+amuse_r2_access_key_version = 1
+amuse_r2_secret_key       = "REPLACE_ME"
+amuse_r2_secret_key_version = 1
+amuse_r2_public_base_url  = "https://ACCOUNT_ID.r2.cloudflarestorage.com"
+amuse_r2_public_base_url_version = 1
+
+amuse_smtp_host     = "smtp.example.com"
+amuse_smtp_user     = ""
+amuse_smtp_password = ""
+
+amuse_rabbitmq_password         = "REPLACE_ME"
+amuse_rabbitmq_password_version = 1
