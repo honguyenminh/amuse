@@ -188,10 +188,34 @@ Tests use the same `CatalogDevSeeding.SeedAsync` flow (with in-memory queue), ex
 path against the in-memory fake. **Note:** `stream-info` is DASH-only; without a running worker,
 integration tests expect `catalog.track_stream_not_ready` for seeded tracks (see `CatalogEndpointsTests`).
 
+## Stage (AKS + Cloudflare R2 + CDN)
+
+Stage uses **External Secrets** from Azure Key Vault, not in-cluster MinIO.
+
+| Config key | Typical stage value |
+|------------|---------------------|
+| `Media__Endpoint` | `https://<account>.r2.cloudflarestorage.com` |
+| `Media__PublicBaseUrl` | CDN custom domain for `amuse-covers` (e.g. `https://media.staging.example.com`) |
+| `Media__PresignBaseUrl` | R2 S3 API endpoint (same as `Endpoint`) — presigned DASH segments and uploads |
+| `MEDIA_PUBLIC_BASE_URL` | Consumer ConfigMap — must match `Media__PublicBaseUrl` |
+
+Dev proxies `/amuse-covers` and `/amuse-audio` on the API host; **stage does not**. Covers
+are anonymous on the CDN origin; audio segments use API → 302 → presigned R2 URL.
+
+Operational docs:
+
+- `infrastructure/cloudflare/README.md` — buckets, CORS, CDN custom domain
+- `infrastructure/kubernetes/overlays/stage/config/README.md` — `cluster.env` host alignment
+- `infrastructure/kubernetes/scripts/verify-stage-media.sh` — AKS smoke checks
+
+When `Media__PublicBaseUrl` is a CDN host, `Media__PresignBaseUrl` must remain the R2 S3 API
+endpoint (`MediaOptions.ResolvePresignBaseUrl()`). Leaving `PresignBaseUrl` empty keeps
+dev/compose behavior (presign host = `PublicBaseUrl`).
+
 ## Production checklist (when we get there)
 
-- Move `amuse-covers` behind a CDN with image transforms; `PublicBaseUrl` becomes the
-  CDN host.
+- Move `amuse-covers` behind a CDN with image transforms; `PublicBaseUrl` is the CDN host;
+  keep `PresignBaseUrl` on the R2 S3 API endpoint unless edge JWT playback replaces presigns.
 - Add a bucket policy to `amuse-audio` so signed URL TTL is the only access path.
 - Add multi-bitrate DASH ladder outputs (today we package a single audio representation).
 - Add optional HLS packaging from the same transcode worker if we need non-DASH clients.

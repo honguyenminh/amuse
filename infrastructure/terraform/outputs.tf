@@ -1,7 +1,3 @@
-output "acr_name" {
-  value = module.acr.name
-}
-
 output "resource_group_name" {
   value = local.rg_name
 }
@@ -60,18 +56,19 @@ output "amuse_namespace" {
 
 output "amuse_key_vault_secret_names" {
   value = {
-    jwt_signing_key    = azurerm_key_vault_secret.amuse_jwt_signing_key.name
-    r2_endpoint        = azurerm_key_vault_secret.amuse_r2_endpoint.name
-    r2_access_key      = azurerm_key_vault_secret.amuse_r2_access_key.name
-    r2_secret_key      = azurerm_key_vault_secret.amuse_r2_secret_key.name
-    r2_public_base_url = azurerm_key_vault_secret.amuse_r2_public_base_url.name
-    smtp_host          = azurerm_key_vault_secret.amuse_smtp_host.name
-    smtp_user          = azurerm_key_vault_secret.amuse_smtp_user.name
-    smtp_password      = azurerm_key_vault_secret.amuse_smtp_password.name
-    rabbitmq_password  = azurerm_key_vault_secret.amuse_rabbitmq_password.name
-    redis_password     = azurerm_key_vault_secret.amuse_redis_password.name
-    redis_connection   = azurerm_key_vault_secret.amuse_redis_connection_string.name
-    postgres           = "${var.resource_prefix}-postgres-connection-string"
+    jwt_signing_key     = azurerm_key_vault_secret.amuse_jwt_signing_key.name
+    r2_endpoint         = azurerm_key_vault_secret.amuse_r2_endpoint.name
+    r2_access_key       = azurerm_key_vault_secret.amuse_r2_access_key.name
+    r2_secret_key       = azurerm_key_vault_secret.amuse_r2_secret_key.name
+    r2_public_base_url  = azurerm_key_vault_secret.amuse_r2_public_base_url.name
+    r2_presign_base_url = azurerm_key_vault_secret.amuse_r2_presign_base_url.name
+    smtp_host           = azurerm_key_vault_secret.amuse_smtp_host.name
+    smtp_user           = azurerm_key_vault_secret.amuse_smtp_user.name
+    smtp_password       = azurerm_key_vault_secret.amuse_smtp_password.name
+    rabbitmq_password   = azurerm_key_vault_secret.amuse_rabbitmq_password.name
+    redis_password      = azurerm_key_vault_secret.amuse_redis_password.name
+    redis_connection    = azurerm_key_vault_secret.amuse_redis_connection_string.name
+    postgres            = "${var.resource_prefix}-postgres-connection-string"
   }
 }
 

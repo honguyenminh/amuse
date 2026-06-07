@@ -16,7 +16,7 @@ Manifest **structure** for Amuse on Kubernetes. **Live cluster state** is in the
 | `base/` | Shared Deployments, Services, Gateway API routes, RabbitMQ |
 | `overlays/dev/` | K3s: Traefik, in-cluster Postgres/MinIO; hosts from `config/cluster.env`; secrets bootstrap-only (`secrets.example.yaml`, not synced) |
 | `overlays/clusters/*/` | Optional per-cluster wrapper (own `cluster.env`, points Argo CD at a second dev env) |
-| `overlays/stage/` | AKS: AGC, External Secrets, R2 media |
+| `overlays/stage/` | AKS: AGC, External Secrets, R2/CDN media (`config/cluster.env`) |
 | `overlays/*/images-tags/` | Image tag component (local defaults; **live tags in amuse-deploy**) |
 
 Changes merged to `master` under `infrastructure/kubernetes/**` are synced to `amuse-deploy` by [`.github/workflows/sync-kubernetes-manifests.yml`](../../.github/workflows/sync-kubernetes-manifests.yml).

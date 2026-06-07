@@ -8,20 +8,6 @@ variable "environment" {
   default     = null
 }
 
-variable "acr_name" {
-  type = string
-}
-
-variable "acr_sku" {
-  description = "Azure Container Registry SKU. Use Basic for cost-sensitive staging."
-  type        = string
-  default     = "Basic"
-  validation {
-    condition     = contains(["Basic", "Premium", "Standard"], var.acr_sku)
-    error_message = "Invalid SKU, valid values are: Basic, Premium, Standard."
-  }
-}
-
 variable "resource_prefix" {
   description = "Prefix for the name for all resources"
   type        = string
@@ -250,6 +236,17 @@ variable "amuse_r2_public_base_url" {
 }
 
 variable "amuse_r2_public_base_url_version" {
+  type    = number
+  default = 1
+}
+
+variable "amuse_r2_presign_base_url" {
+  description = "R2 S3 API host for presigned segment/upload URLs. Use the same value as amuse_r2_endpoint when covers use a CDN custom domain."
+  type        = string
+  sensitive   = true
+}
+
+variable "amuse_r2_presign_base_url_version" {
   type    = number
   default = 1
 }

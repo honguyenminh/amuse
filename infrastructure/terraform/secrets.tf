@@ -43,6 +43,15 @@ resource "azurerm_key_vault_secret" "amuse_r2_public_base_url" {
   depends_on = [module.key_vault]
 }
 
+resource "azurerm_key_vault_secret" "amuse_r2_presign_base_url" {
+  name             = "amuse-r2-presign-base-url"
+  key_vault_id     = module.key_vault.id
+  value_wo         = var.amuse_r2_presign_base_url
+  value_wo_version = var.amuse_r2_presign_base_url_version
+
+  depends_on = [module.key_vault]
+}
+
 resource "azurerm_key_vault_secret" "amuse_smtp_host" {
   name             = "amuse-smtp-host"
   key_vault_id     = module.key_vault.id

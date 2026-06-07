@@ -1,3 +1,4 @@
+# Gateway listener TLS for stage (hostname comes from config/cluster.env replacements).
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -8,7 +9,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: "*.staging.amuse.local"
+      hostname: "*.amuse.m8.io.vn"
       allowedRoutes:
         namespaces:
           from: Same
@@ -18,38 +19,16 @@ spec:
           - kind: Secret
             name: amuse-tls
             namespace: amuse
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: amuse-api
-  namespace: amuse
-spec:
-  hostnames:
-    - api.staging.amuse.local
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: amuse-consumer
-  namespace: amuse
-spec:
-  hostnames:
-    - app.staging.amuse.local
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: amuse-business
-  namespace: amuse
-spec:
-  hostnames:
-    - business.staging.amuse.local
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: amuse-frontend-env
-  namespace: amuse
-data:
-  NEXT_PUBLIC_API_BASE_URL: "https://api.staging.amuse.local"
+    - name: https-apex
+      protocol: HTTPS
+      port: 443
+      hostname: "amuse.m8.io.vn"
+      allowedRoutes:
+        namespaces:
+          from: Same
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: amuse-tls
+            namespace: amuse

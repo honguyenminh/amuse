@@ -87,16 +87,8 @@
   targets:
     - select:
         kind: ConfigMap
-        name: amuse-api-env
-      fieldPaths:
-        - data.Media__PublicBaseUrl
-      options:
-        create: true
-    - select:
-        kind: ConfigMap
         name: amuse-frontend-env
       fieldPaths:
         - data.MEDIA_PUBLIC_BASE_URL
       options:
         create: true
-

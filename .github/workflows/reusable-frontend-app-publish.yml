@@ -80,7 +80,7 @@ jobs:
               API_URL="https://api.skynet-beta.m8.io.vn"
               ;;
             staging)
-              API_URL="https://api.staging.amuse.local"
+              API_URL="https://api.amuse.m8.io.vn"
               ;;
             production)
               API_URL="https://api.amuse.local"

@@ -3,7 +3,6 @@ resource_prefix = "uit-amuse"
 environment     = "staging"
 location        = "japaneast"
 
-acr_name       = "uit0amuse0staging"
 aks_name       = "amuse-aks-staging"
 aks_dns_prefix = "amuse-staging"
 
@@ -43,8 +42,12 @@ amuse_r2_access_key       = "REPLACE_ME"
 amuse_r2_access_key_version = 1
 amuse_r2_secret_key       = "REPLACE_ME"
 amuse_r2_secret_key_version = 1
-amuse_r2_public_base_url  = "https://ACCOUNT_ID.r2.cloudflarestorage.com"
+# CDN or R2 custom domain for public cover art (must match overlays/stage/config/cluster.env MEDIA_PUBLIC_BASE_URL).
+amuse_r2_public_base_url  = "https://media.amuse.m8.io.vn"
 amuse_r2_public_base_url_version = 1
+# R2 S3 API endpoint for presigned DASH segments and uploads (usually same as amuse_r2_endpoint).
+amuse_r2_presign_base_url  = "https://ACCOUNT_ID.r2.cloudflarestorage.com"
+amuse_r2_presign_base_url_version = 1
 
 amuse_smtp_host     = "smtp.example.com"
 amuse_smtp_user     = ""

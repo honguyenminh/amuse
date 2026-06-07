@@ -7,24 +7,15 @@ module "resource-group" {
 }
 
 locals {
-  rg_name           = module.resource-group.name
-  rg_location       = module.resource-group.location
-  postgres_password = coalesce(var.postgres_admin_password, random_password.postgres_admin.result)
+  rg_name                       = module.resource-group.name
+  rg_location                   = module.resource-group.location
+  postgres_password             = coalesce(var.postgres_admin_password, random_password.postgres_admin.result)
   amuse_redis_connection_string = "redis:6379,password=${urlencode(var.amuse_redis_password)},abortConnect=false"
 }
 
 resource "random_password" "postgres_admin" {
   length  = 32
   special = true
-}
-
-module "acr" {
-  source = "./modules/acr"
-
-  resource_group_name = local.rg_name
-  location            = local.rg_location
-  name                = var.acr_name
-  sku                 = var.acr_sku
 }
 
 module "networking" {
@@ -107,12 +98,6 @@ module "aks" {
   outbound_type  = var.aks_outbound_type
 
   local_account_disabled = true
-}
-
-resource "azurerm_role_assignment" "aks_acr_pull" {
-  scope                = module.acr.id
-  role_definition_name = "AcrPull"
-  principal_id         = module.aks.kubelet_identity_object_id
 }
 
 module "argocd" {

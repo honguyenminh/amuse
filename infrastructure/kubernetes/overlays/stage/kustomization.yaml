@@ -11,9 +11,20 @@ resources:
   - external-secrets/amuse-rabbitmq-external-secret.yaml
   - external-secrets/amuse-redis-external-secret.yaml
 
+configMapGenerator:
+  - name: amuse-cluster-config
+    envs:
+      - config/cluster.env
+    options:
+      disableNameSuffixHash: true
+
+replacements:
+  - path: config/replacements.yaml
+
 patches:
   - path: gateway-patch.yaml
   - path: hosts-patch.yaml
+  - path: consumer-route-patch.yaml
   - path: api-env-patch.yaml
   - path: workload-identity-patch.yaml
   - path: replicas-patch.yaml
