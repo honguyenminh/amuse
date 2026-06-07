@@ -77,7 +77,7 @@ Manifest structure changes in `infrastructure/kubernetes/` are synced to `amuse-
 
 Requires `DEPLOY_REPO_TOKEN` on the **amuse** repo — see [DEPLOY_REPO.md](../../infrastructure/kubernetes/DEPLOY_REPO.md).
 
-**Migrations:** Argo CD PreSync Job `amuse-migrate` runs before app rollouts. API never migrates on startup ([local-development.md](./local-development.md)).
+**Migrations:** `amuse-migrate` is an Argo CD **Sync hook** (`hook: Sync`, `sync-wave: 5`, `hook-delete-policy: BeforeHookCreation`). Backend deploy bumps the migrate image tag in `amuse-deploy`; Argo sync runs the hook once per that change, then applies apps at wave 10. API never migrates on startup ([local-development.md](./local-development.md)).
 
 ## Local parity
 

@@ -120,24 +120,44 @@ kubectl -n amuse get pods
 curl -k https://api.skynet-beta.m8.io.vn/openapi/v1.json
 ```
 
-## Argo CD: migrations before API
+## Database migrations (Argo Sync hook)
 
-Kubernetes has **no** native “Deployment depends on Job”. Ordering is done with **Argo CD sync waves**:
+CI only bumps image tags in `amuse-deploy` — **no kubeconfig in GitHub**. Argo CD runs migrations via a **Sync hook** Job (`base/migrate/job.yaml`):
 
+```yaml
+argocd.argoproj.io/hook: Sync
+argocd.argoproj.io/sync-wave: "5"
+argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+```
 
-| Wave | Resources                                                             |
-| ---- | --------------------------------------------------------------------- |
-| `-5` | Secrets (`secrets-argo-patch.yaml`)                                   |
-| `0`  | Postgres, MinIO, RabbitMQ, Gateway, HTTPRoutes                        |
-| `5`  | `amuse-migrate`, `minio-init` Jobs (Argo waits for Job **Succeeded**) |
-| `10` | API, workers, frontends                                               |
+| When | What happens |
+|------|----------------|
+| Backend deploy bumps `amuse-migrate` tag | Argo sync → deletes prior hook Job → runs new migration → rolls apps (wave 10) |
+| Idle auto-sync, no manifest diff | Hook **does not** re-run |
+| Frontend-only deploy | Migrate tag unchanged → hook not recreated |
 
+Do **not** use `Replace=true` or `HookSucceeded`-only on migrate — that was the old pattern that re-ran migrations on every reconcile.
 
-The API Deployment does not reference the migrate Job in its spec — Argo applies wave 10 only after wave 5 Jobs complete.
+Break-glass: force Argo to re-run the hook (uses the `amuse-migrate` image from `backend/Dockerfile.migrate`):
+
+```bash
+kubectl -n amuse delete job amuse-migrate --ignore-not-found
+argocd app sync amuse-dev --force
+kubectl -n amuse wait --for=condition=complete job/amuse-migrate --timeout=600s
+```
+
+## Argo CD sync waves (dev)
+
+| Wave | Resources |
+|------|-----------|
+| `-5` | Secrets (`secrets-argo-patch.yaml`) |
+| `0` | Postgres, MinIO, RabbitMQ, Gateway, HTTPRoutes |
+| `5` | `amuse-migrate`, `minio-init` Argo **Sync hooks** |
+| `10` | API, workers, frontends |
 
 ### “Missing” Jobs or Gateway in Argo
 
-**Jobs (`amuse-migrate`, `minio-init`)** — If `ttlSecondsAfterFinished` deleted a completed Job, Argo shows **Missing** until the next sync recreates it. Manifests now omit TTL and use `Replace=true` so sync re-runs migrations when needed.
+**`minio-init`** — Argo Sync hook with `hook-delete-policy: BeforeHookCreation`; recreated only when a sync runs the hook phase (not on idle auto-sync of unrelated resources).
 
 **Gateway (`amuse-gateway`) synced but Degraded** — Common causes:
 
@@ -162,8 +182,8 @@ argocd app sync amuse-dev --force   # or your Application name
 
 ```bash
 kubectl -n amuse delete job amuse-migrate --ignore-not-found
-kubectl -n amuse apply -k overlays/dev   # from amuse-deploy clone, or sync in Argo
-kubectl -n amuse wait --for=condition=complete job/amuse-migrate --timeout=300s
+argocd app sync amuse-dev --force
+kubectl -n amuse wait --for=condition=complete job/amuse-migrate --timeout=600s
 kubectl -n amuse rollout restart deployment/amuse-api
 ```
 

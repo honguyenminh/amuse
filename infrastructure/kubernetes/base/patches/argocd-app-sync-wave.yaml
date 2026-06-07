@@ -1,4 +1,4 @@
-# App rollouts run in wave 10 so Argo waits for wave-5 hook Jobs (migrate, minio-init) to succeed first.
+# App rollouts run in wave 10 so Argo waits for wave-5 Sync hooks (migrate, dev minio-init).
 apiVersion: apps/v1
 kind: Deployment
 metadata:

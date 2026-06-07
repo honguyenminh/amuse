@@ -14,6 +14,18 @@ Amuse uses two repositories for GitOps:
 | `sync-kubernetes-manifests.yml` | `base/` + `overlays/` structure (excludes `images-tags/`, `secrets.yaml`) |
 | `backend-deploy.yml` | `overlays/*/images-tags/kustomization.yaml` only |
 
+## Database migrations (Argo CD Sync hook)
+
+CI **does not** need cluster credentials. `backend-deploy.yml` only bumps image tags in `amuse-deploy` (including `amuse-migrate` on backend deploys). Argo CD auto-sync then:
+
+1. Runs the `amuse-migrate` **Sync hook** at wave `5` (`BeforeHookCreation` replaces the prior hook Job)
+2. Waits for Job success
+3. Applies app Deployments at wave `10`
+
+The migrate Job is defined in [`base/migrate/job.yaml`](base/migrate/job.yaml). It is **not** a continuously reconciled normal resource — avoid `Replace=true` and avoid `HookSucceeded`-only delete policies (those cause idle auto-sync to re-run hooks).
+
+Break-glass: `argocd app sync <app> --force` or delete the hook Job and re-sync so Argo recreates it from [`base/migrate/job.yaml`](base/migrate/job.yaml) (image is `backend/Dockerfile.migrate`).
+
 ## Create `DEPLOY_REPO_TOKEN`
 
 On the **amuse** repository → Settings → Secrets and variables → Actions → New repository secret:

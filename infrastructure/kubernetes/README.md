@@ -20,7 +20,9 @@ Manifest **structure** for Amuse on Kubernetes. **Live cluster state** is in the
 
 Changes merged to `master` under `infrastructure/kubernetes/**` are synced to `amuse-deploy` by [`.github/workflows/sync-kubernetes-manifests.yml`](../../.github/workflows/sync-kubernetes-manifests.yml).
 
-Image releases are deployed by [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml), which commits tag bumps to `amuse-deploy` only.
+Image releases are deployed by [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml), which commits tag bumps to `amuse-deploy`. Argo CD syncs the cluster and runs the `amuse-migrate` **Sync hook** before app rollouts (no `KUBE_CONFIG` in CI).
+
+See [DEPLOY_REPO.md](DEPLOY_REPO.md) for `DEPLOY_REPO_TOKEN`.
 
 ## Local validation
 

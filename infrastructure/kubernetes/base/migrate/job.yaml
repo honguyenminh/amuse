@@ -1,3 +1,6 @@
+# Argo CD Sync hook: runs once per sync that changes this manifest (e.g. new migrate image tag).
+# BeforeHookCreation replaces the previous hook Job; apps (wave 10) wait until this succeeds.
+# Do not use Replace=true or HookSucceeded alone — those cause idle auto-sync to re-run migrations.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -7,13 +10,11 @@ metadata:
     app.kubernetes.io/name: amuse-migrate
     app.kubernetes.io/part-of: amuse
   annotations:
-    # Wave 5: after postgres/minio (wave 0) and secrets (wave -5); before app Deployments (wave 10).
-    # Argo CD waits for Job success before applying the next wave.
+    argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/sync-wave: "5"
-    argocd.argoproj.io/sync-options: Replace=true
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 6
-  # Do not set ttlSecondsAfterFinished — deleted Jobs make Argo show perpetual Missing/OutOfSync.
   template:
     metadata:
       labels:

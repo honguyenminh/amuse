@@ -75,7 +75,7 @@ Mirrors backend publish (build → Trivy → push). One image per publish workfl
 
 | Publish workflow | Images updated in `amuse-deploy` |
 |------------------|----------------------------------|
-| Backend Publish | API, workers, migrate |
+| Backend Publish | API, workers, migrate (Argo Sync hook on next sync) |
 | Frontend Consumer Publish | `amuse-consumer` |
 | Frontend Business Publish | `amuse-business` |
 
