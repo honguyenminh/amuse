@@ -22,19 +22,46 @@ git clone https://github.com/honguyenminh/amuse-deploy.git
 kubectl apply -f amuse-deploy/overlays/dev/reference-grant-wildcard-tls.yaml
 ```
 
-### 3. Verify Gateway API (Traefik)
+### 3. Traefik Gateway API entryPoints (one-time)
+
+K3s doesnt expose the port that Gateway listeners use on **443**. Until they match, `amuse-gateway` stays `ListenersNotValid`:
+
+```text
+PortUnavailable: no matching entryPoint for port 443 and protocol "HTTPS"
+```
+
+In your `/var/lib/rancher/k3s/server/manifests/k3s-traefik-config.yaml`:
+
+```yaml
+providers:
+  kubernetesGateway:
+    enabled: true
+ports:
+  websecure:
+    port: 443
+    expose:
+      default: true
+    exposedPort: 443
+    protocol: TCP
+```
+
+Confirm:
 
 ```bash
-kubectl get gatewayclass
+kubectl get gatewayclass                    # expect traefik
+kubectl -n amuse get gateway amuse-gateway
+kubectl -n amuse get httproute
 ```
 
 ### 4. DNS
 
-| Host | Service |
-|------|---------|
-| `api.skynet-beta.m8.io.vn` | `amuse-api` |
-| `app.skynet-beta.m8.io.vn` | `consumer` |
-| `business.skynet-beta.m8.io.vn` | `business` |
+
+| Host                            | Service     |
+| ------------------------------- | ----------- |
+| `api.skynet-beta.m8.io.vn`      | `amuse-api` |
+| `app.skynet-beta.m8.io.vn`      | `consumer`  |
+| `business.skynet-beta.m8.io.vn` | `business`  |
+
 
 ### 5. GHCR pull secret
 
@@ -60,12 +87,11 @@ In order to access the server UI you have the following options:
 
 1. `kubectl port-forward service/argocd-server -n argocd 8080:443`
 
-and then open the browser on http://localhost:8080 and accept the certificate
+and then open the browser on [http://localhost:8080](http://localhost:8080) and accept the certificate
 
-2. enable ingress in the values file `server.ingress.enabled` and either
-  - Add the annotation for ssl passthrough: https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/#option-1-ssl-passthrough
-  - Set the `configs.params."server.insecure"` in the values file and terminate SSL at your ingress: https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/#option-2-multiple-ingress-objects-and-hosts
-
+1. enable ingress in the values file `server.ingress.enabled` and either
+  - Add the annotation for ssl passthrough: [https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/#option-1-ssl-passthrough](https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/#option-1-ssl-passthrough)
+  - Set the `configs.params."server.insecure"` in the values file and terminate SSL at your ingress: [https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/#option-2-multiple-ingress-objects-and-hosts](https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/#option-2-multiple-ingress-objects-and-hosts)
 
 After reaching the UI the first time you can login with username: admin and the random password generated during the installation. You can find the password by running:
 
@@ -73,7 +99,7 @@ After reaching the UI the first time you can login with username: admin and the 
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-(You should delete the initial secret afterwards as suggested by the Getting Started Guide: https://argo-cd.readthedocs.io/en/stable/getting_started/#4-login-using-the-cli)
+(You should delete the initial secret afterwards as suggested by the Getting Started Guide: [https://argo-cd.readthedocs.io/en/stable/getting_started/#4-login-using-the-cli](https://argo-cd.readthedocs.io/en/stable/getting_started/#4-login-using-the-cli))
 
 ### 7. Deploy GitOps (dev only)
 
@@ -98,12 +124,14 @@ curl -k https://api.skynet-beta.m8.io.vn/openapi/v1.json
 
 Kubernetes has **no** native “Deployment depends on Job”. Ordering is done with **Argo CD sync waves**:
 
-| Wave | Resources |
-|------|-----------|
-| `-5` | Secrets (`secrets-argo-patch.yaml`) |
-| `0` | Postgres, MinIO, RabbitMQ, Gateway, HTTPRoutes |
-| `5` | `amuse-migrate`, `minio-init` Jobs (Argo waits for Job **Succeeded**) |
-| `10` | API, workers, frontends |
+
+| Wave | Resources                                                             |
+| ---- | --------------------------------------------------------------------- |
+| `-5` | Secrets (`secrets-argo-patch.yaml`)                                   |
+| `0`  | Postgres, MinIO, RabbitMQ, Gateway, HTTPRoutes                        |
+| `5`  | `amuse-migrate`, `minio-init` Jobs (Argo waits for Job **Succeeded**) |
+| `10` | API, workers, frontends                                               |
+
 
 The API Deployment does not reference the migrate Job in its spec — Argo applies wave 10 only after wave 5 Jobs complete.
 
@@ -111,19 +139,24 @@ The API Deployment does not reference the migrate Job in its spec — Argo appli
 
 **Jobs (`amuse-migrate`, `minio-init`)** — If `ttlSecondsAfterFinished` deleted a completed Job, Argo shows **Missing** until the next sync recreates it. Manifests now omit TTL and use `Replace=true` so sync re-runs migrations when needed.
 
-**Gateway (`amuse-gateway`)** — Usually not created because prerequisites failed:
+**Gateway (`amuse-gateway`) synced but Degraded** — Common causes:
+
+
+| Symptom                               | Fix                                                                                                               |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `no matching entryPoint for port 443` | Apply [traefik-helmchartconfig.yaml](traefik-helmchartconfig.yaml) (step 3 above)                                 |
+| TLS / `certificateRefs` rejected      | `kubectl apply -f overlays/dev/reference-grant-wildcard-tls.yaml`; confirm `wildcard-tls-secret` in `kube-system` |
+| Gateway never created                 | Argo sync errors, missing Gateway API CRDs, wrong `gatewayClassName`                                              |
+
 
 ```bash
-kubectl get gatewayclass                    # expect traefik
 kubectl apply -f overlays/dev/reference-grant-wildcard-tls.yaml
 kubectl get secret wildcard-tls-secret -n kube-system
-kubectl -n amuse describe gateway amuse-gateway   # after sync
+kubectl -n amuse describe gateway amuse-gateway
 argocd app sync amuse-dev --force   # or your Application name
 ```
 
-If the Gateway never appears, check Argo **Sync** errors (invalid `certificateRefs`, missing Gateway API CRDs, wrong `gatewayClassName`).
-
-**`spec.listeners[0].port/protocol: Required value`** — Kustomize replaces the whole listener when overlay patches only set `hostname`/`tls` (Gateway API has no strategic-merge schema). Listener patches must include `protocol`, `port`, and `allowedRoutes`. Verify with `kubectl kustomize overlays/dev | rg -A20 'kind: Gateway'`.
+`**spec.listeners[0].port/protocol: Required value**` — Kustomize replaces the whole listener when overlay patches only set `hostname`/`tls` (Gateway API has no strategic-merge schema). Listener patches must include `protocol`, `port`, and `allowedRoutes`. Verify with `kubectl kustomize overlays/dev | rg -A20 'kind: Gateway'`.
 
 ### Manual migration (break-glass)
 
@@ -133,3 +166,4 @@ kubectl -n amuse apply -k overlays/dev   # from amuse-deploy clone, or sync in A
 kubectl -n amuse wait --for=condition=complete job/amuse-migrate --timeout=300s
 kubectl -n amuse rollout restart deployment/amuse-api
 ```
+
