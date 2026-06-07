@@ -11,7 +11,7 @@ Canonical claim strings for Amuse B2B org members and platform operators. See [a
 | Segment | Description |
 |---------|-------------|
 | `action` | Verb (`read`, `manage`, `upload`, `write_draft`, `publish_public`, `review`, …) |
-| `scope` | Product area (`org`, `membership`, `catalog`, `payout`, `platform`) |
+| `scope` | Product area (`org`, `membership`, `catalog`, `payout`, `platform`, `accounting`) |
 | `target` | `all` (entire scope) or, for catalog only, `{resourceKind}:{resourceId}` |
 
 Examples:
@@ -42,7 +42,9 @@ There is **no** implicit implication (e.g. `manage` does not grant `read`). Pres
 | `upload:catalog:all` | Upload masters (when org capability allows) |
 | `write_draft:catalog:all` | Create/edit drafts |
 | `publish_public:catalog:all` | Publish to public catalog (approved backing orgs) |
+| `manage:catalog:pricing:all` | Set track/release price floor and ceiling (pay what you want); see [buying.md](../finance/buying.md) |
 | `read:payout:all` | View payout statements |
+| `manage:purchase:refund:all` | Initiate refund on purchases where org is a payee ([payment.md §15](../finance/payment.md#15-pricing-authority-and-refund-claims-locked)) |
 
 Per-resource catalog claims use kinds: `artist`, `release`, `track`, `release_group`.
 
@@ -56,7 +58,7 @@ Merged into the org persona JWT from `Organization.EvaluateCapabilities()`; not 
 
 | Label | Claims copied at assign time |
 |-------|------------------------------|
-| `admin` | Full owner/admin set (`read/manage` org + membership + permissions, catalog read/upload/draft) |
+| `admin` | Full owner/admin set (`read/manage` org + membership + permissions, catalog read/upload/draft/**pricing**, **purchase refund**) |
 | `member_manager` | `read:org:all`, `read/manage:membership:all` |
 | `catalog_editor` | `read:org:all`, `read/upload/write_draft:catalog:all` |
 | `viewer` | `read:org:all`, `read:membership:all`, `read:catalog:all` |
@@ -70,6 +72,10 @@ Merged into the org persona JWT from `Organization.EvaluateCapabilities()`; not 
 | `review:platform:organizations` | List/approve/reject backing organization applications; backing orgs created by this operator are **approved immediately** |
 | `manage:platform:organizations` | Force-transfer organization ownership; recover soft-deleted organizations; **assume any organization persona** with owner-admin claims at token mint; backing orgs created by this operator are **approved immediately** |
 | `manage:platform:all` | Same effective access as manage organizations (scope-wide) |
-| `platform:root` | Break-glass full platform access (operator id `1` only). At token mint, expanded to include manage + review claims. Implies everything in this table. |
+| `read:platform:accounting:all` | View tax invoices, VAT liability summaries, accounting exports ([payment.md §10](../finance/payment.md#10-tax-and-invoicing-locked)) |
+| `manage:platform:accounting:all` | Issue credit notes, accounting adjustments, period-close helpers (with audit) |
+| `manage:platform:purchases:all` | Refund any purchase; choose refund fee bearer ([payment.md §15](../finance/payment.md#15-pricing-authority-and-refund-claims-locked)) |
+| `manage:platform:payouts:all` | Approve/reject seller withdrawals above auto-approve threshold ([payment.md §12](../finance/payment.md#12-withdrawals-locked)) |
+| `platform:root` | Break-glass full platform access (operator id `1` only). At token mint, expanded to include manage + review + accounting + purchases + payouts claims. Implies everything in this table. |
 
 Legacy strings (`org:read`, `platform:organizations:review`, …) are migrated in the database and accepted only when normalizing stored rows.
