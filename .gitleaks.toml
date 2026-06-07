@@ -1,0 +1,7 @@
+title = "Amuse gitleaks config"
+
+[allowlist]
+description = "Terraform example tfvars contain placeholder secret names, not real credentials."
+paths = [
+  '''(?:^|/)infrastructure/terraform/environments/.*\.tfvars\.example$''',
+]

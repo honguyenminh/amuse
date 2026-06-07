@@ -33,7 +33,8 @@ postgres_enable_pgbouncer       = false
 agc_frontend_name      = "amuse-staging-fe"
 agc_gateway_class_name = "azure-alb-external"
 
-amuse_jwt_signing_key         = "REPLACE_ME_MIN_32_CHARS"
+# Copy to staging.tfvars and set a random string (min 32 chars).
+amuse_jwt_signing_key         = ""
 amuse_jwt_signing_key_version = 1
 
 amuse_r2_endpoint         = "https://ACCOUNT_ID.r2.cloudflarestorage.com"

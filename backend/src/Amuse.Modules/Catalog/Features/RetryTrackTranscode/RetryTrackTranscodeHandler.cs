@@ -38,7 +38,10 @@ internal sealed class RetryTrackTranscodeHandler(
             return Result<RetryTrackTranscodeResponse>.Failure(orgResult.Error!);
 
         var typedTrackId = TrackId.From(trackId);
-        var track = await db.Tracks.FirstOrDefaultAsync(t => t.Id == typedTrackId, cancellationToken);
+        var track = await db.Tracks
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == typedTrackId, cancellationToken);
         if (track is null)
             return Result<RetryTrackTranscodeResponse>.Failure(CatalogErrors.TrackNotFound);
 
