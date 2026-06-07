@@ -270,6 +270,20 @@ body {
   }
 }
 
+.shortcut-help-backdrop-idle {
+  opacity: 0;
+}
+
+.shortcut-help-panel-idle {
+  opacity: 0;
+  transform: scale(0.94) translateY(12px);
+}
+
+.shortcut-help-row-idle {
+  opacity: 0;
+  transform: translateX(-16px);
+}
+
 @keyframes shortcut-help-row-enter {
   from {
     opacity: 0;
@@ -314,15 +328,15 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   .shortcut-help-backdrop {
-    animation: shortcut-help-backdrop-enter 0.28s ease forwards;
+    animation: shortcut-help-backdrop-enter 0.28s ease both;
   }
 
   .shortcut-help-panel {
-    animation: shortcut-help-panel-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: shortcut-help-panel-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .shortcut-help-row {
-    animation: shortcut-help-row-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: shortcut-help-row-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .shortcut-help-backdrop-exit {

@@ -94,7 +94,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   },
   {
     id: "help",
-    label: "Open keyboard shortcuts",
+    label: "Toggle keyboard shortcuts",
     keys: [["Ctrl", "/"]],
     group: "Help",
   },

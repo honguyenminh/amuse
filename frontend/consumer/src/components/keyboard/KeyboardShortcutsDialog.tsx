@@ -11,7 +11,14 @@ import {
 import { useKeyboardShortcuts } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { activateFocusTrap } from "@/lib/ui/focusTrap";
 import { createSmoothScrollAnimator } from "@/lib/ui/smoothScrollAnimator";
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 
 const HELP_EXIT_MS = 320;
 
@@ -41,6 +48,7 @@ export function KeyboardShortcutsDialog() {
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const [enterActive, setEnterActive] = useState(false);
 
   useEffect(() => {
     if (helpOpen) {
@@ -56,6 +64,30 @@ export function KeyboardShortcutsDialog() {
     }, HELP_EXIT_MS);
     return () => window.clearTimeout(timer);
   }, [helpOpen, visible]);
+
+  useLayoutEffect(() => {
+    if (!visible || exiting) {
+      setEnterActive(false);
+      return;
+    }
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+      setEnterActive(true);
+      return;
+    }
+
+    setEnterActive(false);
+    let outer = 0;
+    let inner = 0;
+    outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setEnterActive(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [visible, exiting]);
 
   useEffect(() => {
     if (!visible) return;
@@ -162,12 +194,18 @@ export function KeyboardShortcutsDialog() {
 
   if (!visible) return null;
 
+  const showEnter = enterActive && !exiting;
+  const showIdle = !enterActive && !exiting;
+  let rowIndex = 0;
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-8">
       <div
         className={cn(
-          "shortcut-help-backdrop absolute inset-0 bg-background/35 backdrop-blur-xl",
+          "absolute inset-0 bg-background/35 backdrop-blur-xl",
           exiting && "shortcut-help-backdrop-exit",
+          showEnter && "shortcut-help-backdrop",
+          showIdle && "shortcut-help-backdrop-idle",
         )}
         onClick={requestClose}
         aria-hidden
@@ -178,8 +216,10 @@ export function KeyboardShortcutsDialog() {
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "shortcut-help-panel relative z-10 w-full max-w-2xl overflow-hidden rounded-3xl border-2 border-outline/60 bg-surface/85 shadow-2xl backdrop-blur-md",
+          "relative z-10 w-full max-w-2xl overflow-hidden rounded-3xl border-2 border-outline/60 bg-surface/85 shadow-2xl backdrop-blur-md",
           exiting && "shortcut-help-panel-exit",
+          showEnter && "shortcut-help-panel",
+          showIdle && "shortcut-help-panel-idle",
         )}
       >
         <div className="border-b-2 border-outline/40 px-6 py-5 sm:px-8">
@@ -187,9 +227,9 @@ export function KeyboardShortcutsDialog() {
             Keyboard shortcuts
           </h2>
           <Text variant="body-medium" className="mt-1 text-on-surface-variant">
-            Use {modKeyLabel()} on this device (⌘ on Mac). Press {modKeyLabel()} + / to open this
-            panel. Alt + click adds playable items to the queue; Alt + right-click shows the browser
-            menu instead of the app menu.
+            Use {modKeyLabel()} on this device (⌘ on Mac). Press {modKeyLabel()} + / to toggle this
+            panel (Esc also closes). Alt + click adds playable items to the queue; Alt + right-click
+            shows the browser menu instead of the app menu.
           </Text>
         </div>
 
@@ -212,17 +252,19 @@ export function KeyboardShortcutsDialog() {
                   {group}
                 </Text>
                 <ul className="flex flex-col gap-2">
-                  {rows.map((row, index) => (
+                  {rows.map((row) => {
+                    const staggerIndex = rowIndex++;
+                    return (
                     <li
                       key={row.id}
                       className={cn(
-                        "shortcut-help-row flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-outline/30 bg-surface-variant/35 px-4 py-3",
+                        "flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-outline/30 bg-surface-variant/35 px-4 py-3",
                         exiting && "shortcut-help-row-exit",
+                        showEnter && "shortcut-help-row",
+                        showIdle && "shortcut-help-row-idle",
                       )}
                       style={
-                        exiting
-                          ? undefined
-                          : { animationDelay: `${index * 45}ms` }
+                        showEnter ? { animationDelay: `${staggerIndex * 45}ms` } : undefined
                       }
                     >
                       <Text variant="body-medium">{row.label}</Text>
@@ -232,7 +274,8 @@ export function KeyboardShortcutsDialog() {
                         ))}
                       </div>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </section>
             );

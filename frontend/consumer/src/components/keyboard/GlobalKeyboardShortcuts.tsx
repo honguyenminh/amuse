@@ -2,7 +2,7 @@
 
 import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
 import { libraryPlaylistsPath } from "@/lib/discovery/paths";
-import { hasModKey, isEditableTarget } from "@/lib/keyboard/isEditableTarget";
+import { hasModKey } from "@/lib/keyboard/isEditableTarget";
 import { useKeyboardShortcuts } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { usePlayback } from "@/lib/playback/PlaybackContext";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ export function GlobalKeyboardShortcuts() {
     nudgeVolume,
     currentTrack,
   } = usePlayback();
-  const { helpOpen, openHelp, closeHelp, toggleHelp, focusSearch } = useKeyboardShortcuts();
+  const { helpOpen, closeHelp, toggleHelp, focusSearch } = useKeyboardShortcuts();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -31,88 +31,91 @@ export function GlobalKeyboardShortcuts() {
         if (event.key === "Escape") {
           event.preventDefault();
           closeHelp();
+          return;
+        }
+        if (hasModKey(event) && event.key === "/") {
+          event.preventDefault();
+          closeHelp();
         }
         return;
       }
 
       const mod = hasModKey(event);
-      const editable = isEditableTarget(event.target);
+      if (!mod) return;
 
-      if (mod && event.key === "/") {
+      if (event.key === "/") {
         event.preventDefault();
         toggleHelp();
         return;
       }
 
-      if (mod && event.code === "Space") {
+      if (event.code === "Space") {
         event.preventDefault();
         toggle();
         return;
       }
 
-      if (mod && (event.key === "s" || event.key === "S")) {
+      if (event.key === "s" || event.key === "S") {
         event.preventDefault();
         stop();
         return;
       }
 
-      if (mod && event.key === "ArrowRight") {
+      if (event.key === "ArrowRight") {
         event.preventDefault();
         next();
         return;
       }
 
-      if (mod && event.key === "ArrowLeft") {
+      if (event.key === "ArrowLeft") {
         event.preventDefault();
         previous();
         return;
       }
 
-      if (mod && event.key === "ArrowUp") {
+      if (event.key === "ArrowUp") {
         event.preventDefault();
         nudgeVolume(0.05);
         return;
       }
 
-      if (mod && event.key === "ArrowDown") {
+      if (event.key === "ArrowDown") {
         event.preventDefault();
         nudgeVolume(-0.05);
         return;
       }
 
-      if (mod && (event.key === "m" || event.key === "M")) {
+      if (event.key === "m" || event.key === "M") {
         event.preventDefault();
         toggleMute();
         return;
       }
 
-      if (mod && (event.key === "k" || event.key === "K")) {
+      if (event.key === "k" || event.key === "K") {
         event.preventDefault();
         focusSearch();
         return;
       }
 
-      if (editable) return;
-
-      if (mod && (event.key === "i" || event.key === "I")) {
+      if (event.key === "i" || event.key === "I") {
         event.preventDefault();
         if (currentTrack) router.push("/playing");
         return;
       }
 
-      if (mod && (event.key === "h" || event.key === "H")) {
+      if (event.key === "h" || event.key === "H") {
         event.preventDefault();
         router.push("/home");
         return;
       }
 
-      if (mod && (event.key === "l" || event.key === "L")) {
+      if (event.key === "l" || event.key === "L") {
         event.preventDefault();
         router.push(libraryPlaylistsPath);
         return;
       }
 
-      if (mod && event.key === ",") {
+      if (event.key === ",") {
         event.preventDefault();
         router.push("/settings");
         return;
