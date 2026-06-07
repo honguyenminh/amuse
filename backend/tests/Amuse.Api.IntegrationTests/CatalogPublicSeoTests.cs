@@ -112,4 +112,16 @@ public sealed class CatalogPublicSeoTests(AmuseApiFixture fixture)
         var nextPayload = await nextPage.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         Assert.Equal(1, nextPayload.GetProperty("entries").GetArrayLength());
     }
+
+    [Fact]
+    public async Task Sitemap_invalid_cursor_returns_problem()
+    {
+        using var client = fixture.CreateClient();
+
+        var response = await client.GetAsync("/api/v1/catalog/sitemap?cursor=not-a-valid-cursor");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        Assert.Equal("catalog.sitemap_invalid_cursor", problem.GetProperty("title").GetString());
+    }
 }

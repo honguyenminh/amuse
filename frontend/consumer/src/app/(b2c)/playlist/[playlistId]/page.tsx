@@ -1,5 +1,8 @@
 import { PlaylistDetailView } from "@/components/discovery/PlaylistDetailView";
-import { isNotFoundError } from "@/lib/api/errors";
+import {
+  isNotFoundError,
+  shouldFallbackToClientFetch,
+} from "@/lib/api/errors";
 import { getCachedPlaylist } from "@/lib/api/discoveryServer";
 import { playlistMetadata } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
@@ -18,6 +21,9 @@ export async function generateMetadata({ params }: PlaylistPageProps): Promise<M
     return playlistMetadata(playlist);
   } catch (error) {
     if (isNotFoundError(error)) return {};
+    if (shouldFallbackToClientFetch(error)) {
+      return { title: "Playlist | Amuse" };
+    }
     throw error;
   }
 }
@@ -30,6 +36,9 @@ export default async function PlaylistPage({ params }: PlaylistPageProps) {
     return <PlaylistDetailView playlistId={playlistId} initialPlaylist={playlist} />;
   } catch (error) {
     if (isNotFoundError(error)) notFound();
+    if (shouldFallbackToClientFetch(error)) {
+      return <PlaylistDetailView playlistId={playlistId} />;
+    }
     throw error;
   }
 }

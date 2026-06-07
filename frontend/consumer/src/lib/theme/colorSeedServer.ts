@@ -2,10 +2,15 @@ import "server-only";
 
 import { cache } from "react";
 import { deterministicSeedFromString } from "@/theme/extractSeedFromImage";
+import { isAllowedCoverArtUrl } from "@/theme/allowedCoverArtUrl";
 import { colorSeedFromWeightedRgba } from "@/theme/sampleColorSeed";
 import type { ColorSeed } from "@/theme/types";
 
 async function extractSeedFromImageServer(coverUrl: string): Promise<ColorSeed> {
+  if (!isAllowedCoverArtUrl(coverUrl)) {
+    return deterministicSeedFromString(coverUrl);
+  }
+
   try {
     const response = await fetch(coverUrl, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) {

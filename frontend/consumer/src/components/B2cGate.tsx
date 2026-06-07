@@ -55,6 +55,9 @@ export function B2cGate({ children }: { children: ReactNode }) {
   }
 
   if (auth.isAuthenticated && auth.bootstrapError) {
+    if (publicBrowse) {
+      return children;
+    }
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-background p-8">
         <Text variant="headline-medium">Could not prepare listener profile</Text>
@@ -69,7 +72,8 @@ export function B2cGate({ children }: { children: ReactNode }) {
   if (
     auth.isAuthenticated &&
     auth.needsListenerOnboarding &&
-    !isAllowlisted(pathname)
+    !isAllowlisted(pathname) &&
+    !publicBrowse
   ) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background p-8">

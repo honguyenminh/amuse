@@ -93,6 +93,13 @@
       options:
         create: true
     - select:
+        kind: ConfigMap
+        name: amuse-frontend-env
+      fieldPaths:
+        - data.MEDIA_PUBLIC_BASE_URL
+      options:
+        create: true
+    - select:
         kind: Secret
         name: amuse-api-secrets
       fieldPaths:

@@ -126,4 +126,7 @@ public static class CatalogErrors
 
     public static readonly DomainError InvalidFormattedText =
         new("catalog.invalid_formatted_text", "Text contains unsupported formatting or invalid links.");
+
+    public static readonly DomainError SitemapInvalidCursor =
+        new("catalog.sitemap_invalid_cursor", "Sitemap cursor is invalid.");
 }

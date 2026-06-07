@@ -38,6 +38,12 @@ spec:
                   key: NEXT_PUBLIC_SITE_URL
             - name: API_INTERNAL_BASE_URL
               value: "http://amuse-api"
+            - name: MEDIA_PUBLIC_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: amuse-frontend-env
+                  key: MEDIA_PUBLIC_BASE_URL
+                  optional: true
           readinessProbe:
             httpGet:
               path: /

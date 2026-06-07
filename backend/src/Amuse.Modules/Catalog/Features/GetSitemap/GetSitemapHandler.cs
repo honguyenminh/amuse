@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Amuse.Modules.Catalog.Features.GetSitemap;
 
@@ -51,8 +52,12 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
         int? pageSize,
         CancellationToken cancellationToken)
     {
+        var cursorParse = TryParseCursor(cursor);
+        if (!cursorParse.IsSuccess)
+            return Result<GetSitemapResponse>.Failure(cursorParse.Error!);
+
         var take = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
-        var (segment, lastId) = ParseCursor(cursor);
+        var (segment, lastId) = cursorParse.Value!;
 
         var buffer = new List<SitemapRow>(take + 1);
 
@@ -82,7 +87,7 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
 
         var hasMore = buffer.Count > take;
         var page = buffer.Take(take).Select(row => row.Entry).ToList();
-        string? nextCursor = hasMore && buffer.Count > take
+        string? nextCursor = hasMore
             ? EncodeCursor(buffer[take - 1])
             : null;
 
@@ -99,9 +104,29 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
         if (remaining <= 0)
             return;
 
-        var candidates = await catalogDb.Artists.AsNoTracking()
-            .Where(a => catalogDb.Releases.Any(r =>
-                r.ArtistId == a.Id && r.LifecycleStatus == ReleaseLifecycleStatus.Published))
+        var ids = await QueryGuidPageAsync(
+            catalogDb.Database,
+            $"""
+             SELECT a.id
+             FROM catalog.artist AS a
+             WHERE EXISTS (
+                 SELECT 1
+                 FROM catalog.release AS r
+                 WHERE r.artist_id = a.id
+                   AND r.lifecycle_status = 'published'::catalog.release_lifecycle_status
+             )
+             AND ({lastId}::uuid IS NULL OR a.id > {lastId}::uuid)
+             ORDER BY a.id
+             LIMIT {remaining}
+             """,
+            cancellationToken);
+
+        if (ids.Count == 0)
+            return;
+
+        var artistIds = ids.Select(ArtistId.From).ToList();
+        var page = await catalogDb.Artists.AsNoTracking()
+            .Where(a => artistIds.Contains(a.Id))
             .OrderBy(a => a.Id)
             .Select(a => new
             {
@@ -113,7 +138,7 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
             })
             .ToListAsync(cancellationToken);
 
-        foreach (var row in candidates.Where(row => lastId is null || row.Id.Value > lastId).Take(remaining))
+        foreach (var row in page)
         {
             rows.Add(new SitemapRow(
                 SitemapSegment.Artist,
@@ -132,8 +157,24 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
         if (remaining <= 0)
             return;
 
-        var candidates = await catalogDb.Releases.AsNoTracking()
-            .Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published)
+        var ids = await QueryGuidPageAsync(
+            catalogDb.Database,
+            $"""
+             SELECT r.id
+             FROM catalog.release AS r
+             WHERE r.lifecycle_status = 'published'::catalog.release_lifecycle_status
+               AND ({lastId}::uuid IS NULL OR r.id > {lastId}::uuid)
+             ORDER BY r.id
+             LIMIT {remaining}
+             """,
+            cancellationToken);
+
+        if (ids.Count == 0)
+            return;
+
+        var releaseIds = ids.Select(ReleaseId.From).ToList();
+        var page = await catalogDb.Releases.AsNoTracking()
+            .Where(r => releaseIds.Contains(r.Id))
             .OrderBy(r => r.Id)
             .Join(
                 catalogDb.Artists.AsNoTracking(),
@@ -148,7 +189,7 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
                 })
             .ToListAsync(cancellationToken);
 
-        foreach (var row in candidates.Where(row => lastId is null || row.Id.Value > lastId).Take(remaining))
+        foreach (var row in page)
         {
             rows.Add(new SitemapRow(
                 SitemapSegment.Release,
@@ -167,9 +208,29 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
         if (remaining <= 0)
             return;
 
-        var candidates = await catalogDb.ReleaseGroups.AsNoTracking()
-            .Where(g => catalogDb.Releases.Any(r =>
-                r.ReleaseGroupId == g.Id && r.LifecycleStatus == ReleaseLifecycleStatus.Published))
+        var ids = await QueryGuidPageAsync(
+            catalogDb.Database,
+            $"""
+             SELECT g.id
+             FROM catalog.release_group AS g
+             WHERE EXISTS (
+                 SELECT 1
+                 FROM catalog.release AS r
+                 WHERE r.release_group_id = g.id
+                   AND r.lifecycle_status = 'published'::catalog.release_lifecycle_status
+             )
+             AND ({lastId}::uuid IS NULL OR g.id > {lastId}::uuid)
+             ORDER BY g.id
+             LIMIT {remaining}
+             """,
+            cancellationToken);
+
+        if (ids.Count == 0)
+            return;
+
+        var groupIds = ids.Select(ReleaseGroupId.From).ToList();
+        var page = await catalogDb.ReleaseGroups.AsNoTracking()
+            .Where(g => groupIds.Contains(g.Id))
             .OrderBy(g => g.Id)
             .Join(
                 catalogDb.Artists.AsNoTracking(),
@@ -184,7 +245,7 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
                 })
             .ToListAsync(cancellationToken);
 
-        foreach (var row in candidates.Where(row => lastId is null || row.Id.Value > lastId).Take(remaining))
+        foreach (var row in page)
         {
             rows.Add(new SitemapRow(
                 SitemapSegment.ReleaseGroup,
@@ -203,13 +264,30 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
         if (remaining <= 0)
             return;
 
-        var candidates = await discoveryDb.Playlists.AsNoTracking()
-            .Where(p => p.Visibility == PlaylistVisibility.Public && p.Kind == PlaylistKind.User)
+        var ids = await QueryGuidPageAsync(
+            discoveryDb.Database,
+            $"""
+             SELECT p.id
+             FROM discovery.playlist AS p
+             WHERE p.visibility = 'public'::discovery.playlist_visibility
+               AND p.kind = 'user'::discovery.playlist_kind
+               AND ({lastId}::uuid IS NULL OR p.id > {lastId}::uuid)
+             ORDER BY p.id
+             LIMIT {remaining}
+             """,
+            cancellationToken);
+
+        if (ids.Count == 0)
+            return;
+
+        var playlistIds = ids.Select(PlaylistId.From).ToList();
+        var page = await discoveryDb.Playlists.AsNoTracking()
+            .Where(p => playlistIds.Contains(p.Id))
             .OrderBy(p => p.Id)
             .Select(p => new { p.Id, p.UpdatedAt })
             .ToListAsync(cancellationToken);
 
-        foreach (var row in candidates.Where(row => lastId is null || row.Id.Value > lastId).Take(remaining))
+        foreach (var row in page)
         {
             rows.Add(new SitemapRow(
                 SitemapSegment.Playlist,
@@ -218,26 +296,33 @@ internal sealed class GetSitemapHandler(CatalogDbContext catalogDb, DiscoveryDbC
         }
     }
 
+    private static Task<List<Guid>> QueryGuidPageAsync(
+        DatabaseFacade database,
+        FormattableString sql,
+        CancellationToken cancellationToken) =>
+        database.SqlQuery<Guid>(sql).ToListAsync(cancellationToken);
+
     private static string EncodeCursor(SitemapRow row) => $"{row.Segment}:{row.SortId}";
 
-    private static (SitemapSegment Segment, Guid? LastId) ParseCursor(string? cursor)
+    private static Result<(SitemapSegment Segment, Guid? LastId)> TryParseCursor(string? cursor)
     {
         if (string.IsNullOrWhiteSpace(cursor))
-            return (SitemapSegment.Artist, null);
+            return Result<(SitemapSegment, Guid?)>.Success((SitemapSegment.Artist, null));
 
         var separatorIndex = cursor.IndexOf(':');
-        if (separatorIndex <= 0)
-            return (SitemapSegment.Artist, null);
+        if (separatorIndex <= 0 || separatorIndex >= cursor.Length - 1)
+            return Result<(SitemapSegment, Guid?)>.Failure(CatalogErrors.SitemapInvalidCursor);
 
         var segmentRaw = cursor[..separatorIndex];
         var payload = cursor[(separatorIndex + 1)..];
 
-        if (!Enum.TryParse<SitemapSegment>(segmentRaw, ignoreCase: true, out var segment))
-            return (SitemapSegment.Artist, null);
+        if (!Enum.TryParse(segmentRaw, ignoreCase: true, out SitemapSegment segment))
+            return Result<(SitemapSegment, Guid?)>.Failure(CatalogErrors.SitemapInvalidCursor);
 
-        return Guid.TryParse(payload, out var id)
-            ? (segment, id)
-            : (SitemapSegment.Artist, null);
+        if (!Guid.TryParse(payload, out var id))
+            return Result<(SitemapSegment, Guid?)>.Failure(CatalogErrors.SitemapInvalidCursor);
+
+        return Result<(SitemapSegment, Guid?)>.Success((segment, id));
     }
 
     private enum SitemapSegment
