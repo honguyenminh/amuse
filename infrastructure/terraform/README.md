@@ -26,6 +26,18 @@ Application images are built and published to **GHCR** by GitHub Actions — not
 | `agc-controller` | Gateway API ALB controller |
 | `external-secrets` | External Secrets Operator Helm release |
 
+## Common apply errors
+
+**AKS `VM size ... is not allowed`** — Your subscription/region may not offer newer SKUs (e.g. `Standard_D4ds_v5`). Set `aks_node_vm_size = "Standard_D4ds_v4"` in `staging.tfvars` (or another size from the error’s allowed list).
+
+**Key Vault `403 ForbiddenByConnection`** — Key Vault was created with public access disabled while Terraform runs from your laptop. Default is now `key_vault_public_network_access_enabled = true`. Re-apply to update the vault, then secret writes succeed. AKS still uses the private endpoint.
+
+**AKS `disableLocalAccounts can only be set on Azure AD integration enabled cluster`** — Set `aks_local_account_disabled = false` (default). Enabling `true` requires AKS-managed Entra ID on the cluster.
+
+**AKS `Insufficient regional vcpu quota`** — `Standard_D4ds_v4` uses 4 vCPUs per node; `aks_node_min_count = 2` needs 8. On quota-tight subs, set `aks_node_min_count = 1` and `aks_node_max_count = 1`.
+
+**AKS `maxSurge and maxUnavailable cannot both be 0`** — Keep `aks_node_upgrade_max_surge = "1"` (default). Do not set it to `"0"` unless the azurerm provider gains `max_unavailable` support.
+
 ## Prerequisites
 
 - Azure CLI + Terraform >= 1.11

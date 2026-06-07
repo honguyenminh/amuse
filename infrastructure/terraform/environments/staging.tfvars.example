@@ -8,11 +8,12 @@ aks_dns_prefix = "amuse-staging"
 
 aks_kubernetes_version        = ""
 aks_sku_tier                  = "Standard"
-aks_node_vm_size              = "Standard_D4ds_v5"
+# D4ds_v4 = 4 vCPU/node. min 2 nodes ≈ 8 vCPU (needs ~10+ regional quota with Postgres/AGC overhead).
+aks_node_vm_size              = "Standard_D4ds_v4"
 aks_node_auto_scaling_enabled = true
 aks_node_count                = 2
 aks_node_min_count            = 2
-aks_node_max_count            = 6
+aks_node_max_count            = 3
 aks_node_os_disk_size_gb      = 128
 aks_max_pods                  = 60
 aks_pod_cidr                  = "10.244.0.0/16"

@@ -31,7 +31,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
     upgrade_settings {
       drain_timeout_in_minutes      = 0
-      max_surge                     = "10%"
+      max_surge                     = var.node_upgrade_max_surge
       node_soak_duration_in_minutes = 0
     }
   }

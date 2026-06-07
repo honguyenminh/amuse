@@ -29,11 +29,12 @@ module "networking" {
 module "key_vault" {
   source = "./modules/key-vault"
 
-  resource_prefix     = var.resource_prefix
-  resource_group_name = local.rg_name
-  location            = local.rg_location
-  subnet_id           = module.networking.endpoints-subnet-id
-  virtual_network_id  = module.networking.main-vnet-id
+  resource_prefix               = var.resource_prefix
+  resource_group_name           = local.rg_name
+  location                      = local.rg_location
+  subnet_id                     = module.networking.endpoints-subnet-id
+  virtual_network_id            = module.networking.main-vnet-id
+  public_network_access_enabled = var.key_vault_public_network_access_enabled
 }
 
 module "postgres" {
@@ -97,7 +98,11 @@ module "aks" {
   dns_service_ip = var.aks_dns_service_ip
   outbound_type  = var.aks_outbound_type
 
-  local_account_disabled = true
+  node_upgrade_max_surge = var.aks_node_upgrade_max_surge
+
+  # true requires AKS-managed Entra ID (see aka.ms/aks/managed-aad). false keeps
+  # local admin for Terraform/helm providers and break-glass kubectl during bootstrap.
+  local_account_disabled = var.aks_local_account_disabled
 }
 
 module "argocd" {

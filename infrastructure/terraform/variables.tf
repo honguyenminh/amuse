@@ -85,8 +85,27 @@ variable "aks_sku_tier" {
 }
 
 variable "aks_node_vm_size" {
-  type    = string
-  default = "Standard_D4ds_v5"
+  description = "AKS system node VM size. Must be available in your subscription/region (D4ds_v5 is often blocked on student/sponsored subs — use Standard_D4ds_v4)."
+  type        = string
+  default     = "Standard_D4ds_v4"
+}
+
+variable "key_vault_public_network_access_enabled" {
+  description = "Allow Terraform to write secrets to Key Vault from outside the VNet. Workloads on AKS use the private endpoint regardless."
+  type        = bool
+  default     = true
+}
+
+variable "aks_local_account_disabled" {
+  description = "Disable local Kubernetes accounts. Requires AKS-managed Entra ID integration — leave false for staging bootstrap unless azure_active_directory_role_based_access_control is configured."
+  type        = bool
+  default     = false
+}
+
+variable "aks_node_upgrade_max_surge" {
+  description = "AKS node pool upgrade maxSurge (e.g. 1 or 10%). Cannot be 0 with current azurerm provider."
+  type        = string
+  default     = "1"
 }
 
 variable "aks_node_auto_scaling_enabled" {
@@ -106,7 +125,7 @@ variable "aks_node_min_count" {
 
 variable "aks_node_max_count" {
   type    = number
-  default = 6
+  default = 3
 }
 
 variable "aks_node_os_disk_size_gb" {

@@ -38,7 +38,7 @@ variable "node_subnet_id" {
 variable "node_vm_size" {
   description = "VM size for the system node pool"
   type        = string
-  default     = "Standard_D4ds_v5"
+  default     = "Standard_D4ds_v4"
 }
 
 variable "node_auto_scaling_enabled" {
@@ -105,6 +105,12 @@ variable "outbound_type" {
 variable "local_account_disabled" {
   type    = bool
   default = false
+}
+
+variable "node_upgrade_max_surge" {
+  description = "Extra nodes during pool upgrades (consumes vCPU quota). Must not be 0 — AKS rejects maxSurge=0 unless maxUnavailable is set (not exposed in this azurerm version)."
+  type        = string
+  default     = "1"
 }
 
 variable "enable_key_vault_csi" {

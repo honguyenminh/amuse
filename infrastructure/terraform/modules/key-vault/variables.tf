@@ -22,3 +22,9 @@ variable "virtual_network_id" {
   description = "Virtual network ID for private DNS zone linking"
   type        = string
 }
+
+variable "public_network_access_enabled" {
+  description = "Allow Key Vault API access over the public internet (required for Terraform apply from a laptop). AKS still reaches KV via the private endpoint. Set false only when apply runs inside the VNet."
+  type        = bool
+  default     = true
+}
