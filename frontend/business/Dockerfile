@@ -27,7 +27,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3001
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+RUN addgroup -S nodejs && adduser -S nextjs -G nodejs \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=builder /app/business/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/business/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/business/.next/static ./.next/static

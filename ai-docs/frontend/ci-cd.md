@@ -53,6 +53,7 @@ lint (+ optional unit tests in same job)
 
 - **Consumer** — `tsc --noEmit`, `check:colors`, `vitest run`
 - **Business** — `tsc --noEmit` only (no test script yet)
+- **Next.js build cache** — `actions/cache` on `frontend/<app>/.next/cache` in the reusable build job ([Next.js CI docs](https://nextjs.org/docs/app/guides/ci-build-caching#github-actions)); separate key per app, includes shared `catalog-text`
 
 **ESLint:** `pnpm lint` is not in CI yet — outstanding violations. Add via `extra_lint_script` once clean.
 

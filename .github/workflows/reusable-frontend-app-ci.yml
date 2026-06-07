@@ -78,6 +78,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/${{ inputs.app_dir }}/pnpm-lock.yaml
 
+      # https://nextjs.org/docs/app/guides/ci-build-caching#github-actions
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: frontend/${{ inputs.app_dir }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ inputs.app_dir }}-${{ hashFiles(format('frontend/{0}/pnpm-lock.yaml', inputs.app_dir), 'frontend/packages/catalog-text/package.json') }}-${{ hashFiles(format('frontend/{0}/**/*.js', inputs.app_dir), format('frontend/{0}/**/*.jsx', inputs.app_dir), format('frontend/{0}/**/*.ts', inputs.app_dir), format('frontend/{0}/**/*.tsx', inputs.app_dir), 'frontend/packages/catalog-text/**/*.js', 'frontend/packages/catalog-text/**/*.jsx', 'frontend/packages/catalog-text/**/*.ts', 'frontend/packages/catalog-text/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ inputs.app_dir }}-${{ hashFiles(format('frontend/{0}/pnpm-lock.yaml', inputs.app_dir), 'frontend/packages/catalog-text/package.json') }}-
+
       - name: Build
         working-directory: frontend/${{ inputs.app_dir }}
         run: |
