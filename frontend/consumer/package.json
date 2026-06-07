@@ -11,22 +11,22 @@
     "check:colors": "node scripts/check-token-colors.mjs"
   },
   "dependencies": {
-    "@material/material-color-utilities": "0.4.0",
     "@amuse/catalog-text": "file:../packages/catalog-text",
+    "@material/material-color-utilities": "0.4.0",
     "dashjs": "^5.1.1",
-    "next": "16.2.4",
+    "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/node": "^20.19.39",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
     "eslint-config-next": "16.2.4",
-    "tailwindcss": "^4",
-    "typescript": "^5",
-    "vitest": "^4.1.0"
+    "tailwindcss": "^4.2.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
   }
 }
