@@ -1,0 +1,40 @@
+# App rollouts run in wave 10 so Argo waits for wave-5 hook Jobs (migrate, minio-init) to succeed first.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amuse-api
+  namespace: amuse
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amuse-worker-transcoder
+  namespace: amuse
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amuse-worker-scheduler
+  namespace: amuse
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer
+  namespace: amuse
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: business
+  namespace: amuse
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"

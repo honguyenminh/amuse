@@ -30,3 +30,6 @@ resources:
   - business/service.yaml
   - gateway/gateway.yaml
   - gateway/httproutes.yaml
+
+patches:
+  - path: patches/argocd-app-sync-wave.yaml
