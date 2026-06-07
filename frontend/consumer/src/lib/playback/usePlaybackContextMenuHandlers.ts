@@ -4,6 +4,7 @@ import { getCatalogRelease } from "@/lib/api/catalogClient";
 import { likeTrack, listMyPlaylists, unlikeTrack } from "@/lib/api/discoveryClient";
 import { ApiError } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { consumeAppContextMenu } from "@/lib/ui/contextMenu";
 import { useCallback } from "react";
 import type { PlaybackContextMenuItem } from "./PlaybackContextMenuProvider";
 import { usePlaybackContextMenu } from "./PlaybackContextMenuProvider";
@@ -214,8 +215,7 @@ export function useTrackContextMenu(
 
   const onContextMenu = useCallback(
     (e: React.MouseEvent) => {
-      e.preventDefault();
-      openMenuAt(e.clientX, e.clientY);
+      consumeAppContextMenu(e, () => openMenuAt(e.clientX, e.clientY));
     },
     [openMenuAt],
   );
@@ -230,7 +230,7 @@ export function useReleaseContextMenu(releaseId: string) {
 
   return useCallback(
     (e: React.MouseEvent) => {
-      e.preventDefault();
+      consumeAppContextMenu(e, () => {
       const x = e.clientX;
       const y = e.clientY;
       openAt(x, y, loadingItems);
@@ -266,6 +266,7 @@ export function useReleaseContextMenu(releaseId: string) {
             },
           ]);
         });
+      });
     },
     [releaseId, auth.isAuthenticated, addToQueue, playNext, openAt],
   );

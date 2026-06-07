@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { handlePopupBackdropContextMenu, suppressBrowserContextMenu } from "@/lib/ui/contextMenu";
 import {
   computeAnchoredPosition,
   domRectToAnchorRect,
@@ -139,16 +140,17 @@ export function AnchoredPopup({
 
   return createPortal(
     <>
-      <button
-        type="button"
+      <div
         className="fixed inset-0 z-40 cursor-default bg-transparent"
-        aria-label="Close menu"
+        aria-hidden
         onClick={onClose}
+        onContextMenu={(event) => handlePopupBackdropContextMenu(event, onClose)}
       />
       <div
         ref={popupRef}
         role={role}
         className={cn("fixed z-50 overflow-y-auto", className)}
+        onContextMenu={suppressBrowserContextMenu}
         style={{
           top: position?.top ?? 0,
           left: position?.left ?? 0,
