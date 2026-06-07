@@ -5,6 +5,7 @@ using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.GetArtistDetail;
 using Amuse.Modules.Catalog.Features.GetReleaseDetail;
 using Amuse.Modules.Catalog.Features.GetReleaseGroupDetail;
+using Amuse.Modules.Catalog.Features.GetSitemap;
 using Amuse.Modules.Catalog.Features.GetResourceAudit;
 using Amuse.Modules.Catalog.Features.GetTrackDashAsset;
 using Amuse.Modules.Catalog.Features.GetTrackIngestion;
@@ -72,6 +73,7 @@ public static class CatalogModule
         services.AddScoped<ListReleaseGroupsHandler>();
         services.AddScoped<GetReleaseGroupDetailHandler>();
         services.AddScoped<GetPublicReleaseGroupDetailHandler>();
+        services.AddScoped<GetSitemapHandler>();
         services.AddScoped<UpdateReleaseGroupHandler>();
 
         services.AddScoped<CreateArtistHandler>();
@@ -139,6 +141,7 @@ public static class CatalogModule
 
         endpoints.MapManageReleaseGroupsEndpoint();
         endpoints.MapGetPublicReleaseGroupDetailEndpoint();
+        endpoints.MapGetSitemapEndpoint();
         endpoints.MapManageArtistsEndpoint();
         endpoints.MapManageReleasesEndpoint();
         endpoints.MapManageTracksEndpoint();

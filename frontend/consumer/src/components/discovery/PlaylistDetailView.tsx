@@ -51,19 +51,23 @@ type PlaylistDetailViewProps = {
   mode?: "playlist" | "liked";
   /** When true, omits AppShell (e.g. inside library layout). */
   embedded?: boolean;
+  initialPlaylist?: PlaylistDetailDto;
 };
 
 export function PlaylistDetailView({
   playlistId,
   mode = "playlist",
   embedded = false,
+  initialPlaylist,
 }: PlaylistDetailViewProps) {
   const isLikedMode = mode === "liked";
   const auth = useAuth();
   const router = useRouter();
   const { state, currentTrack, playQueue, toggle } = usePlayback();
 
-  const [playlist, setPlaylist] = useState<PlaylistDetailDto | null>(null);
+  const [playlist, setPlaylist] = useState<PlaylistDetailDto | null>(
+    initialPlaylist ?? null,
+  );
   const [playableByTrackId, setPlayableByTrackId] = useState<
     Map<string, PlayableTrackDto>
   >(new Map());
@@ -91,21 +95,37 @@ export function PlaylistDetailView({
     setPlayableByTrackId(new Map(playables.tracks.map((t) => [t.trackId, t])));
   }, [isLikedMode, playlistId]);
 
+  const loadPlayables = useCallback(async () => {
+    const playables = isLikedMode
+      ? await getLikedPlayableTracks()
+      : await getPlaylistPlayableTracks(playlistId!);
+    setPlayableByTrackId(new Map(playables.tracks.map((t) => [t.trackId, t])));
+  }, [isLikedMode, playlistId]);
+
   useEffect(() => {
     let cancelled = false;
-    setPlaylist(null);
-    setPlayableByTrackId(new Map());
-    void load()
-      .then(() => {
-        if (cancelled) return;
-      })
-      .catch((err: Error) => {
+    setError(null);
+
+    const hasInitialDetail =
+      initialPlaylist && !isLikedMode && initialPlaylist.id === playlistId;
+
+    if (hasInitialDetail) {
+      setSharesDraft((initialPlaylist.shareEmails ?? []).join("\n"));
+      void loadPlayables().catch((err: Error) => {
         if (!cancelled) setError(err.message);
       });
+    } else {
+      setPlaylist(null);
+      setPlayableByTrackId(new Map());
+      void load().catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      });
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [load, isLikedMode]);
+  }, [load, loadPlayables, isLikedMode, initialPlaylist, playlistId]);
 
   useEffect(() => {
     setReorderMode(false);

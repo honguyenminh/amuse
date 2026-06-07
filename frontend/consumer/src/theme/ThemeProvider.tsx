@@ -3,7 +3,7 @@
 import {
   createContext,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -42,7 +42,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [pageSeed, playingSeed],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyThemeVariables(seedToPalette(effectiveSeed, { paused: isPaused }));
   }, [effectiveSeed, isPaused]);
 
@@ -75,7 +75,7 @@ export function useTheme(): ThemeContextValue {
 
 export function usePageSeed(seed: ColorSeed | null): void {
   const { setPageSeed } = useTheme();
-  useEffect(() => {
+  useLayoutEffect(() => {
     setPageSeed(seed);
     return () => setPageSeed(null);
   }, [seed, setPageSeed]);

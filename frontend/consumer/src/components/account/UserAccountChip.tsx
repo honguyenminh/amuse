@@ -37,8 +37,10 @@ export function UserAccountChip({
         ref={triggerRef}
         type="button"
         className={cn(
-          "flex w-full items-center gap-2 rounded-xl border-2 border-outline bg-surface px-2 py-2 text-left hover:bg-surface-variant",
-          compact && "w-auto",
+          "flex items-center gap-2 text-left",
+          compact
+            ? "size-10 shrink-0 justify-center rounded-full hover:bg-surface-variant"
+            : "w-full rounded-xl border-2 border-outline bg-surface px-2 py-2 hover:bg-surface-variant",
         )}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -49,7 +51,7 @@ export function UserAccountChip({
           email={email}
           accentSeed={auth.listenerProfile.avatarAccentSeed}
           avatarUrl={auth.listenerProfile.avatarUrl}
-          size={compact ? "sm" : "md"}
+          size="md"
         />
         {!compact ? (
           <span className="min-w-0 flex-1">

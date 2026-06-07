@@ -1,4 +1,4 @@
-import { rgbToOklch } from "./colorConvert";
+import { clampColorSeed, colorSeedFromWeightedRgba } from "./sampleColorSeed";
 import type { ColorSeed } from "./types";
 
 /**
@@ -18,8 +18,7 @@ export async function extractSeedFromImage(url: string): Promise<ColorSeed | nul
   if (typeof window === "undefined") return null;
   try {
     const img = await loadImage(url);
-    const { r, g, b } = sampleWeightedMean(img);
-    return clampSeed(rgbToOklch(r, g, b));
+    return sampleColorSeedFromImage(img);
   } catch {
     return null;
   }
@@ -33,7 +32,7 @@ export function deterministicSeedFromString(input: string): ColorSeed {
     hash = (hash * 16777619) >>> 0;
   }
   const hue = hash % 360;
-  return { l: 0.55, c: 0.28, h: hue };
+  return clampColorSeed({ l: 0.55, c: 0.28, h: hue });
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -46,11 +45,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-function sampleWeightedMean(img: HTMLImageElement): {
-  r: number;
-  g: number;
-  b: number;
-} {
+function sampleColorSeedFromImage(img: HTMLImageElement): ColorSeed {
   const size = 16;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -59,37 +54,5 @@ function sampleWeightedMean(img: HTMLImageElement): {
   if (!ctx) throw new Error("canvas unavailable");
   ctx.drawImage(img, 0, 0, size, size);
   const data = ctx.getImageData(0, 0, size, size).data;
-
-  let weightedR = 0;
-  let weightedG = 0;
-  let weightedB = 0;
-  let totalWeight = 0;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i] / 255;
-    const g = data[i + 1] / 255;
-    const b = data[i + 2] / 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const chromaProxy = max - min;
-    const weight = 0.08 + chromaProxy * 3.5;
-    weightedR += r * weight;
-    weightedG += g * weight;
-    weightedB += b * weight;
-    totalWeight += weight;
-  }
-
-  return {
-    r: weightedR / totalWeight,
-    g: weightedG / totalWeight,
-    b: weightedB / totalWeight,
-  };
-}
-
-function clampSeed({ l, c, h }: ColorSeed): ColorSeed {
-  return {
-    l: Math.min(0.68, Math.max(0.42, l)),
-    c: Math.min(0.38, Math.max(0.14, c)),
-    h: ((h % 360) + 360) % 360,
-  };
+  return colorSeedFromWeightedRgba(data, 4);
 }

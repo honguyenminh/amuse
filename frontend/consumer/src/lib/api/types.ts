@@ -167,6 +167,17 @@ export type GetReleaseDetailResponse = {
   otherEditions: ReleaseEditionSummary[];
 };
 
+export type GetReleaseGroupDetailResponse = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  artistId: string;
+  artistName: string;
+  artistSlug: string;
+  releases: ReleaseEditionSummary[];
+};
+
 export type PlaylistOwnerDto = {
   listenerProfileId: string;
   displayName: string | null;

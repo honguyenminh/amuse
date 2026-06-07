@@ -30,7 +30,7 @@ export function ReleaseTile({ release, subtitle }: ReleaseTileProps) {
 
   return (
     <Link
-      href={catalogReleaseHref(release.artistSlug, release.slug, { title: release.title })}
+      href={catalogReleaseHref(release.artistSlug, release.slug)}
       className="group block"
       onClick={onClick}
       onContextMenu={onContextMenu}
