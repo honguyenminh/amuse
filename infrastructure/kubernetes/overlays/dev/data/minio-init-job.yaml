@@ -6,9 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: minio-init
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   backoffLimit: 5
   ttlSecondsAfterFinished: 300

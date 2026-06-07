@@ -16,6 +16,7 @@ patches:
   - path: hosts-patch.yaml
   - path: api-env-patch.yaml
   - path: workload-identity-patch.yaml
+  - path: secrets-argo-patch.yaml
 
 components:
   - images-tags
