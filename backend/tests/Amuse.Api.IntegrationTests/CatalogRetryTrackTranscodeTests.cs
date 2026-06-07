@@ -6,7 +6,7 @@ using Amuse.Domain.Catalog;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.RetryTrackTranscode;
-using Amuse.Modules.Catalog.Features.Shared;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Identity.Features.Common;

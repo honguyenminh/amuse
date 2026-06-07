@@ -5,7 +5,7 @@ using System.Text.Json;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Features.Common;
-using Amuse.Modules.Catalog.Features.Shared;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Identity.Features.Common;
 using Amuse.Modules.Tenancy.Features.Common;
 

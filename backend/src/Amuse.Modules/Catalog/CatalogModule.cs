@@ -21,7 +21,7 @@ using Amuse.Modules.Catalog.Features.ManageTracks;
 using Amuse.Modules.Catalog.Features.PublishRelease;
 using Amuse.Modules.Catalog.Features.RetryTrackTranscode;
 using Amuse.Modules.Catalog.Features.ScheduleRelease;
-using Amuse.Modules.Catalog.Features.Shared;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Messaging;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
