@@ -1,0 +1,7 @@
+# Shared Trivy defaults for CI image scans (see backend-publish.yml).
+scan:
+  scanners:
+    - vuln
+  severity:
+    - CRITICAL
+    - HIGH

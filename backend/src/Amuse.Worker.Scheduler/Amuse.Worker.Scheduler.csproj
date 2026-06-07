@@ -17,4 +17,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>

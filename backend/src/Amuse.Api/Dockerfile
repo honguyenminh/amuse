@@ -26,6 +26,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "./Amuse.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
+ENV ASPNETCORE_ENVIRONMENT=Production
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "Amuse.Api.dll"]

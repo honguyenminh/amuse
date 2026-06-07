@@ -99,7 +99,11 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
+          scanners: vuln
+          ignore-unfixed: true
+          limit-severities-for-sarif: true
           exit-code: 1
+          trivy-config: trivy.yaml
 
       - name: Upload Trivy SARIF
         if: always()

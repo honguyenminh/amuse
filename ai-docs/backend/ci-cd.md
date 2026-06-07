@@ -26,17 +26,28 @@ Promotion:
 | Workflow | File | Triggers |
 |----------|------|----------|
 | Backend CI | [`.github/workflows/backend-ci.yml`](../../.github/workflows/backend-ci.yml) | PR + push to `master`/`staging`/`production` (`backend/**`) |
+| Backend Dependency Review | [`.github/workflows/backend-dependency-review.yml`](../../.github/workflows/backend-dependency-review.yml) | PR only (`backend/**`) |
 | Backend CodeQL | [`.github/workflows/backend-codeql.yml`](../../.github/workflows/backend-codeql.yml) | Same + weekly Monday 06:00 UTC |
 | Backend Publish | [`.github/workflows/backend-publish.yml`](../../.github/workflows/backend-publish.yml) | After successful Backend CI on push to env branches, or **PR → `master`** |
 | Backend Deploy | [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml) | Auto after publish (push or PR to `master`); manual for `staging`/`production` |
 
-### CI jobs
+### CI jobs (ordered with `needs` blockers)
 
-- **Format** — `dotnet format backend.slnx --verify-no-changes`
-- **Build and test** — `dotnet restore/build/test` on `backend.slnx` (Testcontainers / Docker required for integration tests)
-- **Docker verify** — PRs only; builds all four Dockerfiles
-- **Gitleaks** — secret scan
-- **Dependency review** — PRs only; fails on high+ severity new vulnerabilities
+```
+format
+├── gitleaks
+└── build → test → docker-verify
+```
+
+- **Format** — `dotnet format backend.slnx --verify-no-changes` (runs first)
+- **Gitleaks** — secret scan; waits for format
+- **Build** — `dotnet restore/build` on `backend.slnx`; waits for format
+- **Test** — `dotnet test`; waits for build (Testcontainers / Docker required for integration tests)
+- **Docker verify** — builds all four Dockerfiles; waits for tests
+
+Separate workflow (PR only — GitHub API limitation):
+
+- **Dependency review** — fails on high+ severity new dependency vulnerabilities
 
 ### Images (GHCR)
 
@@ -45,7 +56,7 @@ Promotion:
 - `ghcr.io/honguyenminh/amuse-worker-scheduler`
 - `ghcr.io/honguyenminh/amuse-migrate`
 
-Publish runs Trivy (CRITICAL/HIGH) before push. Tags: floating tag (`master`, `staging`, `production`, or `pr-<number>`) + immutable `sha-<7-char>`. PR builds do **not** update the `master` floating tag.
+Publish runs Trivy (`scanners: vuln`, CRITICAL/HIGH, `ignore-unfixed`, `limit-severities-for-sarif`) before push. Release images exclude `appsettings.Development.json`; secrets come from cluster env/External Secrets. Tags: floating tag (`master`, `staging`, `production`, or `pr-<number>`) + immutable `sha-<7-char>`. PR builds do **not** update the `master` floating tag.
 
 ### Deploy (GitOps via amuse-deploy)
 

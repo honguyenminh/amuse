@@ -1,0 +1,9 @@
+<Project>
+  <!-- Why separate config file from .props? Web SDK adds appsettings.Development.json after Directory.Build.props is imported. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <Content Update="appsettings.Development.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

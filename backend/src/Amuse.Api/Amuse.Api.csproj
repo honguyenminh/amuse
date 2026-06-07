@@ -26,4 +26,8 @@
       <ProjectReference Include="..\Amuse.Modules\Amuse.Modules.csproj" />
     </ItemGroup>
 
+    <ItemGroup Condition="'$(Configuration)' == 'Release'">
+      <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+    </ItemGroup>
+
 </Project>

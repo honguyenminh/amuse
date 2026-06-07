@@ -25,6 +25,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "./Amuse.Worker.Transcoder.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
+ENV DOTNET_ENVIRONMENT=Production
 WORKDIR /app
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Amuse.Worker.Transcoder.dll"]
