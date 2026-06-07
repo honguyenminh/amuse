@@ -2,8 +2,10 @@
 
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
+import { cn } from "@/lib/cn";
 import type { ReleaseSummary } from "@/lib/api/types";
 import { catalogReleasePathFromSummary } from "@/lib/catalog/paths";
+import { useReleasePlayableClick } from "@/lib/playback/useAltClickAddToQueue";
 import { useReleaseContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import Link from "next/link";
 
@@ -14,14 +16,19 @@ type ReleaseTileProps = {
 
 export function ReleaseTile({ release, subtitle }: ReleaseTileProps) {
   const onContextMenu = useReleaseContextMenu(release.id);
+  const { onClick, queueAddPulsing } = useReleasePlayableClick({
+    releaseId: release.id,
+    releaseTitle: release.title,
+  });
 
   return (
     <Link
       href={catalogReleasePathFromSummary(release)}
       className="group block"
+      onClick={onClick}
       onContextMenu={onContextMenu}
     >
-      <Card>
+      <Card className={cn("relative", queueAddPulsing && "queue-add-pulse")}>
         <div className="flex flex-col gap-2">
           {release.coverArtUrl && (
             // eslint-disable-next-line @next/next/no-img-element

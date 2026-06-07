@@ -1,6 +1,8 @@
 "use client";
 
 import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardShortcuts";
+import { QueueAddBurstProvider } from "@/components/ui/QueueAddBurstProvider";
+import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { KeyboardShortcutsProvider } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { PlaybackProvider } from "@/lib/playback/PlaybackContext";
@@ -13,12 +15,16 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <AuthProvider>
         <PlaybackProvider>
-          <KeyboardShortcutsProvider>
-            <PlaybackContextMenuProvider>
-              <GlobalKeyboardShortcuts />
-              {children}
-            </PlaybackContextMenuProvider>
-          </KeyboardShortcutsProvider>
+          <SnackbarProvider>
+            <QueueAddBurstProvider>
+            <KeyboardShortcutsProvider>
+              <PlaybackContextMenuProvider>
+                <GlobalKeyboardShortcuts />
+                {children}
+              </PlaybackContextMenuProvider>
+            </KeyboardShortcutsProvider>
+            </QueueAddBurstProvider>
+          </SnackbarProvider>
         </PlaybackProvider>
       </AuthProvider>
     </ThemeProvider>

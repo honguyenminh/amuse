@@ -22,6 +22,10 @@ import { usePlayback } from "@/lib/playback/PlaybackContext";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import { toPlaybackTrack, playableTracksFromRelease } from "@/lib/playback/toPlaybackTrack";
 import {
+  usePlayableClick,
+  useReleasePlayableClick,
+} from "@/lib/playback/useAltClickAddToQueue";
+import {
   useReleaseContextMenu,
   useTrackContextMenu,
 } from "@/lib/playback/usePlaybackContextMenuHandlers";
@@ -90,6 +94,22 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
   const isPlayingThisRelease =
     currentTrack !== null && release !== null && currentTrack.releaseId === release.id;
 
+  const { onClick: onReleaseAltClick, queueAddPulsing: releaseQueuePulsing } =
+    useReleasePlayableClick({
+      releaseId: release?.id ?? "",
+      releaseTitle: release?.title ?? "",
+      tracks: playableTracks,
+    });
+  const { onClick: onPlayAllClick } = usePlayableClick({
+    tracks: playableTracks,
+    hasAudio: playableTracks.length > 0,
+    releaseTitle: release?.title,
+    onDefaultClick: () => {
+      if (isPlayingThisRelease) toggle();
+      else playAll();
+    },
+  });
+
   const chromeTitle = release ? release.title : "Release";
 
   return (
@@ -106,14 +126,22 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
           <>
             <Card onContextMenu={onReleaseContextMenu}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                {release.coverArtUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={release.coverArtUrl}
-                    alt={release.title}
-                    className="aspect-square w-40 rounded-md object-cover"
-                  />
-                )}
+                {release.coverArtUrl ? (
+                  <div
+                    onClick={onReleaseAltClick}
+                    className={cn(
+                      "relative shrink-0 rounded-md",
+                      releaseQueuePulsing && "queue-add-pulse",
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={release.coverArtUrl}
+                      alt={release.title}
+                      className="aspect-square w-40 rounded-md object-cover"
+                    />
+                  </div>
+                ) : null}
                 <div className="flex flex-col gap-1">
                   <Text variant="label-medium" className="text-on-surface-variant">
                     {releaseTypeLabel[release.releaseType]}
@@ -130,7 +158,7 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
                     <Button
                       type="button"
                       variant="primary"
-                      onClick={isPlayingThisRelease ? toggle : playAll}
+                      onClick={onPlayAllClick}
                       disabled={playableTracks.length === 0}
                     >
                       {isPlayingThisRelease && state.isPlaying ? "Pause" : "Play"}
@@ -238,12 +266,18 @@ function TrackRow({
 }) {
   const playbackTrack = toPlaybackTrack(track, release);
   const { onContextMenu, openMenuAt } = useTrackContextMenu(playbackTrack, track.hasAudio);
+  const { onClick, queueAddPulsing } = usePlayableClick({
+    tracks: [playbackTrack],
+    hasAudio: track.hasAudio,
+    onDefaultClick: onPlay,
+  });
 
   return (
     <li
       className={cn(
-        "group flex items-center justify-between gap-3 py-2",
+        "group relative flex items-center justify-between gap-3 py-2",
         isCurrent && "text-primary",
+        queueAddPulsing && "queue-add-pulse",
       )}
       onContextMenu={onContextMenu}
     >
@@ -265,7 +299,7 @@ function TrackRow({
       </div>
       <button
         type="button"
-        onClick={onPlay}
+        onClick={onClick}
         disabled={!track.hasAudio}
         className="flex min-w-0 flex-1 flex-col text-left disabled:cursor-not-allowed disabled:opacity-50"
       >

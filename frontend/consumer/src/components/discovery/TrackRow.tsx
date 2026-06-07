@@ -6,6 +6,7 @@ import { PauseIcon, PlayIcon } from "@/components/ui/PlaybackIcons";
 import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
+import { usePlayableClick } from "@/lib/playback/useAltClickAddToQueue";
 import { useTrackContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import type { PlaybackTrack } from "@/lib/playback/types";
 import type { HTMLAttributes } from "react";
@@ -81,6 +82,11 @@ export function TrackRow({
     isLiked,
     remove: removeAction,
   });
+  const { onClick, queueAddPulsing } = usePlayableClick({
+    tracks: [playbackTrack],
+    hasAudio: track.hasAudio,
+    onDefaultClick: onPlay,
+  });
 
   const { className: itemClassName, ...restItemProps } = itemProps ?? {};
 
@@ -88,8 +94,9 @@ export function TrackRow({
     <li
       {...restItemProps}
       className={cn(
-        "group flex items-center justify-between gap-3 border-t border-transparent py-2 transition-colors",
+        "group relative flex items-center justify-between gap-3 border-t border-transparent py-2 transition-colors",
         isCurrent && "text-primary",
+        queueAddPulsing && "queue-add-pulse",
         isDragging && "opacity-50",
         isDropTarget && "border-primary bg-surface-variant/60",
         showDragHandle && "cursor-grab active:cursor-grabbing",
@@ -119,7 +126,7 @@ export function TrackRow({
       <button
         type="button"
         data-no-drag
-        onClick={onPlay}
+        onClick={onClick}
         disabled={!track.hasAudio}
         className="flex min-w-0 flex-1 flex-col text-left disabled:cursor-not-allowed disabled:opacity-50"
       >

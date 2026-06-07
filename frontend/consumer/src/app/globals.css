@@ -244,6 +244,12 @@ body {
   outline-offset: 2px;
 }
 
+.shortcut-help-scroll:focus,
+.shortcut-help-scroll:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+
 @keyframes shortcut-help-backdrop-enter {
   from {
     opacity: 0;
@@ -275,6 +281,37 @@ body {
   }
 }
 
+@keyframes shortcut-help-backdrop-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes shortcut-help-panel-exit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+}
+
+@keyframes shortcut-help-row-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .shortcut-help-backdrop {
     animation: shortcut-help-backdrop-enter 0.28s ease forwards;
@@ -286,5 +323,65 @@ body {
 
   .shortcut-help-row {
     animation: shortcut-help-row-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .shortcut-help-backdrop-exit {
+    animation: shortcut-help-backdrop-exit 0.24s ease forwards;
+  }
+
+  .shortcut-help-panel-exit {
+    animation: shortcut-help-panel-exit 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .shortcut-help-row-exit {
+    animation: shortcut-help-row-exit 0.22s ease forwards;
+  }
+}
+
+@keyframes queue-add-pulse {
+  0% {
+    background-color: transparent;
+  }
+  35% {
+    background-color: color-mix(in oklch, var(--amuse-primary) 24%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes queue-add-burst {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.45);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@keyframes snackbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .queue-add-pulse {
+    animation: queue-add-pulse 0.55s ease-out;
+  }
+
+  .queue-add-burst {
+    animation: queue-add-burst 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .snackbar-enter {
+    animation: snackbar-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 }

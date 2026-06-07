@@ -4,7 +4,7 @@ export type ShortcutDefinition = {
   id: string;
   label: string;
   keys: ShortcutKeyPart[];
-  group: "Playback" | "Navigation" | "Volume" | "Help";
+  group: "Playback" | "Navigation" | "Volume" | "Queue & menus" | "Help";
 };
 
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
@@ -81,9 +81,27 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     group: "Volume",
   },
   {
+    id: "alt-click-queue",
+    label: "Add track or release to queue",
+    keys: [["Alt", "Click"]],
+    group: "Queue & menus",
+  },
+  {
+    id: "alt-context-menu",
+    label: "Browser context menu (override app menu)",
+    keys: [["Alt", "Right-click"]],
+    group: "Queue & menus",
+  },
+  {
     id: "help",
-    label: "Keyboard shortcuts",
+    label: "Open keyboard shortcuts",
     keys: [["Ctrl", "/"]],
+    group: "Help",
+  },
+  {
+    id: "help-esc",
+    label: "Close keyboard shortcuts",
+    keys: ["Esc"],
     group: "Help",
   },
   {
@@ -94,4 +112,10 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   },
 ];
 
-export const SHORTCUT_GROUPS = ["Playback", "Navigation", "Volume", "Help"] as const;
+export const SHORTCUT_GROUPS = [
+  "Playback",
+  "Navigation",
+  "Volume",
+  "Queue & menus",
+  "Help",
+] as const;
