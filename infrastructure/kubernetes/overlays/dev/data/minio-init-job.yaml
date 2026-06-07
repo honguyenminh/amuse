@@ -39,13 +39,18 @@ spec:
                 secretKeyRef:
                   name: amuse-minio
                   key: secretKey
+            - name: MINIO_CORS_ALLOW_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: amuse-cluster-config
+                  key: MINIO_CORS_ALLOW_ORIGIN
           command:
             - /bin/sh
             - -c
             - |
               mc alias set local http://minio:9000 "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
               mc admin config set local api \
-                cors_allow_origin='https://app.skynet-beta.m8.io.vn,https://business.skynet-beta.m8.io.vn' \
+                cors_allow_origin="$MINIO_CORS_ALLOW_ORIGIN" \
                 cors_allow_methods='GET,HEAD,PUT' \
                 cors_allow_headers='Authorization,Content-Type,Range,Origin,Accept,Cache-Control,If-Modified-Since,If-None-Match' \
                 cors_expose_headers='ETag,Accept-Ranges,Content-Length,Content-Range,Content-Type'

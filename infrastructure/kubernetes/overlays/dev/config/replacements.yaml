@@ -1,0 +1,94 @@
+# Hostname and public URL values are sourced from config/cluster.env via amuse-cluster-config.
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.GATEWAY_WILDCARD_HOST
+  targets:
+    - select:
+        kind: Gateway
+        name: amuse-gateway
+      fieldPaths:
+        - spec.listeners.0.hostname
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.API_HOST
+  targets:
+    - select:
+        kind: HTTPRoute
+        name: amuse-api
+      fieldPaths:
+        - spec.hostnames.0
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.APP_HOST
+  targets:
+    - select:
+        kind: HTTPRoute
+        name: amuse-consumer
+      fieldPaths:
+        - spec.hostnames.0
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.BUSINESS_HOST
+  targets:
+    - select:
+        kind: HTTPRoute
+        name: amuse-business
+      fieldPaths:
+        - spec.hostnames.0
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.PUBLIC_API_BASE_URL
+  targets:
+    - select:
+        kind: ConfigMap
+        name: amuse-frontend-env
+      fieldPaths:
+        - data.NEXT_PUBLIC_API_BASE_URL
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.APP_ORIGIN
+  targets:
+    - select:
+        kind: ConfigMap
+        name: amuse-api-env
+      fieldPaths:
+        - data.Cors__AllowedOrigins__0
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.BUSINESS_ORIGIN
+  targets:
+    - select:
+        kind: ConfigMap
+        name: amuse-api-env
+      fieldPaths:
+        - data.Cors__AllowedOrigins__1
+        - data.Tenancy__BusinessPortalBaseUrl
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.MEDIA_PUBLIC_BASE_URL
+  targets:
+    - select:
+        kind: ConfigMap
+        name: amuse-api-env
+      fieldPaths:
+        - data.Media__PublicBaseUrl
+      options:
+        create: true
+    - select:
+        kind: Secret
+        name: amuse-api-secrets
+      fieldPaths:
+        - stringData.Media__PublicBaseUrl
+    - select:
+        kind: Secret
+        name: amuse-worker-transcoder-secrets
+      fieldPaths:
+        - stringData.Media__PublicBaseUrl

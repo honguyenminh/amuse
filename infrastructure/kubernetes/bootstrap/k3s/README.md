@@ -53,18 +53,28 @@ kubectl -n amuse get gateway amuse-gateway
 kubectl -n amuse get httproute
 ```
 
-### 4. DNS
+### 4. DNS and public hosts
 
+Hostnames are **not** hard-coded in patches. Edit one file:
 
-| Host                            | Service     |
-| ------------------------------- | ----------- |
-| `api.skynet-beta.m8.io.vn`      | `amuse-api` |
-| `api.skynet-beta.m8.io.vn/amuse-covers/*` | in-cluster `minio` (proxied; no public MinIO host) |
-| `api.skynet-beta.m8.io.vn/amuse-audio/*`  | in-cluster `minio` (proxied; presigned uploads/GETs) |
-| `app.skynet-beta.m8.io.vn`      | `consumer`  |
-| `business.skynet-beta.m8.io.vn` | `business`  |
+- Default dev overlay: `overlays/dev/config/cluster.env`
+- Named cluster wrapper: `overlays/clusters/<name>/cluster.env`
 
-MinIO runs as a cluster-internal `StatefulSet` only. Set `Media__PublicBaseUrl` to `https://api.skynet-beta.m8.io.vn` (not a dedicated MinIO hostname) so cover URLs and browser presigned uploads use the API gateway bucket paths above.
+Regenerate from a base domain:
+
+```bash
+./overlays/dev/config/generate-cluster-env.sh skynet-beta.m8.io.vn
+```
+
+| Host (example) | Service |
+| --- | --- |
+| `api.<domain>` | `amuse-api` |
+| `api.<domain>/amuse-covers/*` | in-cluster `minio` (proxied; no public MinIO host) |
+| `api.<domain>/amuse-audio/*` | in-cluster `minio` (proxied; presigned uploads/GETs) |
+| `app.<domain>` | `consumer` |
+| `business.<domain>` | `business` |
+
+`GATEWAY_WILDCARD_HOST` in `cluster.env` must match your wildcard TLS cert (e.g. `*.skynet-beta.m8.io.vn`). MinIO stays internal; `MEDIA_PUBLIC_BASE_URL` is set to the API origin automatically.
 
 
 ### 5. GHCR pull secret

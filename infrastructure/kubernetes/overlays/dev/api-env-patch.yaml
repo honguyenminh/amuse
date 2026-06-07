@@ -5,9 +5,6 @@ metadata:
   namespace: amuse
 data:
   ASPNETCORE_ENVIRONMENT: "Development"
-  Cors__AllowedOrigins__0: "https://app.skynet-beta.m8.io.vn"
-  Cors__AllowedOrigins__1: "https://business.skynet-beta.m8.io.vn"
-  Tenancy__BusinessPortalBaseUrl: "https://business.skynet-beta.m8.io.vn"
   Identity__Email__Smtp__Enabled: "true"
   Identity__Email__Smtp__Host: "mailpit"
   Identity__Email__Smtp__Port: "1025"
@@ -15,5 +12,4 @@ data:
   Identity__Email__Smtp__FromAddress: "noreply@amuse.local"
   Identity__Email__Smtp__FromName: "Amuse"
   Media__Endpoint: "http://minio:9000"
-  Media__PublicBaseUrl: "https://api.skynet-beta.m8.io.vn"
   RabbitMq__HostName: "rabbitmq"

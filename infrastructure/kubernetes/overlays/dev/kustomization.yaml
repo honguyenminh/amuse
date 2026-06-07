@@ -10,6 +10,16 @@ resources:
   - data/minio-init-job.yaml
   - secrets.example.yaml
 
+configMapGenerator:
+  - name: amuse-cluster-config
+    envs:
+      - config/cluster.env
+    options:
+      disableNameSuffixHash: true
+
+replacements:
+  - path: config/replacements.yaml
+
 patches:
   - path: gateway-patch.yaml
   - path: tls-patch.yaml

@@ -10,7 +10,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: "*.skynet-beta.m8.io.vn"
+      hostname: "*.example.com"
       allowedRoutes:
         namespaces:
           from: Same
