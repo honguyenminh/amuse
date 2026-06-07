@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using CatalogSlugHelper = Amuse.Modules.Catalog.Features.Common.CatalogSlugHelper;
 
 namespace Amuse.Modules.Catalog.Features.GetReleaseGroupDetail;
 
@@ -47,6 +48,44 @@ internal sealed class GetPublicReleaseGroupDetailHandler(CatalogDbContext db, IM
         if (group is null)
             return Result<GetReleaseGroupDetailResponse>.Failure(CatalogErrors.ReleaseGroupNotFound);
 
+        return await BuildResponseAsync(group, cancellationToken);
+    }
+
+    public async Task<Result<GetReleaseGroupDetailResponse>> HandleBySlugsAsync(
+        string artistSlug,
+        string groupSlug,
+        CancellationToken cancellationToken)
+    {
+        var artistParse = CatalogSlugHelper.TryParseArtistSlug(artistSlug);
+        var groupParse = CatalogSlugHelper.TryParseReleaseSlug(groupSlug);
+        if (!artistParse.IsSuccess || !groupParse.IsSuccess)
+            return Result<GetReleaseGroupDetailResponse>.Failure(CatalogErrors.ReleaseGroupNotFound);
+
+        var artist = await db.Artists
+            .AsNoTracking()
+            .Where(a => a.Slug == artistParse.Value!)
+            .Select(a => new { a.Id })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (artist is null)
+            return Result<GetReleaseGroupDetailResponse>.Failure(CatalogErrors.ReleaseGroupNotFound);
+
+        var group = await db.ReleaseGroups
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                g => g.ArtistId == artist.Id && g.Slug == groupParse.Value!,
+                cancellationToken);
+
+        if (group is null)
+            return Result<GetReleaseGroupDetailResponse>.Failure(CatalogErrors.ReleaseGroupNotFound);
+
+        return await BuildResponseAsync(group, cancellationToken);
+    }
+
+    private async Task<Result<GetReleaseGroupDetailResponse>> BuildResponseAsync(
+        ReleaseGroup group,
+        CancellationToken cancellationToken)
+    {
         var artist = await db.Artists
             .AsNoTracking()
             .Where(a => a.Id == group.ArtistId)
@@ -59,7 +98,7 @@ internal sealed class GetPublicReleaseGroupDetailHandler(CatalogDbContext db, IM
         var releases = await db.Releases
             .AsNoTracking()
             .Where(r =>
-                r.ReleaseGroupId == typedId
+                r.ReleaseGroupId == group.Id
                 && r.LifecycleStatus == ReleaseLifecycleStatus.Published)
             .OrderByDescending(r => r.ReleaseDate)
             .Select(r => new ReleaseEditionSummary(
@@ -99,6 +138,22 @@ public static class GetPublicReleaseGroupDetailEndpoint
             .AllowAnonymous()
             .WithName("GetPublicReleaseGroupDetail")
             .WithSummary("Get a release group and its published editions.")
+            .Produces<GetReleaseGroupDetailResponse>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        endpoints.MapGet("/api/v1/catalog/artists/{artistSlug}/release-groups/{groupSlug}", async (
+                string artistSlug,
+                string groupSlug,
+                GetPublicReleaseGroupDetailHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleBySlugsAsync(artistSlug, groupSlug, cancellationToken);
+                return result.ToResult(Results.Ok);
+            })
+            .AllowAnonymous()
+            .WithName("GetPublicReleaseGroupDetailBySlugs")
+            .WithSummary(
+                "Get a release group and its published editions by artist and group URL slugs. Public; no authentication required.")
             .Produces<GetReleaseGroupDetailResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 

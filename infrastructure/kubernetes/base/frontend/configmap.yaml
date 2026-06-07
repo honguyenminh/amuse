@@ -7,3 +7,4 @@ metadata:
     app.kubernetes.io/part-of: amuse
 data:
   NEXT_PUBLIC_API_BASE_URL: "https://api.example.com"
+  NEXT_PUBLIC_SITE_URL: "https://app.example.com"

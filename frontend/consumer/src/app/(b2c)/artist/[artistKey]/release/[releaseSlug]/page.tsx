@@ -1,20 +1,50 @@
-"use client";
-
 import { ReleasePageView } from "@/components/catalog/ReleasePageView";
-import { getCatalogReleaseBySlugs } from "@/lib/api/catalogClient";
-import { use, useCallback } from "react";
+import { isNotFoundError } from "@/lib/api/errors";
+import { getCachedCatalogReleaseBySlugs } from "@/lib/api/catalogServer";
+import { getCachedCoverArtColorSeed } from "@/lib/theme/colorSeedServer";
+import { releaseMetadata } from "@/lib/seo/metadata";
+import { ThemeSeedStyles } from "@/theme/ThemeSeedStyles";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-export default function ReleaseBySlugPage({
-  params,
-}: {
+export const revalidate = 3600;
+
+type ReleaseBySlugPageProps = {
   params: Promise<{ artistKey: string; releaseSlug: string }>;
-}) {
-  const { artistKey, releaseSlug } = use(params);
-  const loadKey = `${artistKey}/${releaseSlug}`;
-  const load = useCallback(
-    () => getCatalogReleaseBySlugs(artistKey, releaseSlug),
-    [artistKey, releaseSlug],
-  );
+};
 
-  return <ReleasePageView loadKey={loadKey} load={load} />;
+export async function generateMetadata({ params }: ReleaseBySlugPageProps): Promise<Metadata> {
+  const { artistKey, releaseSlug } = await params;
+  try {
+    const release = await getCachedCatalogReleaseBySlugs(artistKey, releaseSlug);
+    return releaseMetadata(release);
+  } catch (error) {
+    if (isNotFoundError(error)) return {};
+    throw error;
+  }
+}
+
+export default async function ReleaseBySlugPage({ params }: ReleaseBySlugPageProps) {
+  const { artistKey, releaseSlug } = await params;
+
+  try {
+    const release = await getCachedCatalogReleaseBySlugs(artistKey, releaseSlug);
+    const colorSeed = release.coverArtUrl
+      ? await getCachedCoverArtColorSeed(release.coverArtUrl)
+      : null;
+    return (
+      <>
+        {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
+        <ReleasePageView
+          artistKey={artistKey}
+          releaseSlug={releaseSlug}
+          initialRelease={release}
+          initialColorSeed={colorSeed}
+        />
+      </>
+    );
+  } catch (error) {
+    if (isNotFoundError(error)) notFound();
+    throw error;
+  }
 }

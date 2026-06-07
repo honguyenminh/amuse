@@ -3,7 +3,8 @@
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { isPublicBrowsePath } from "@/lib/routing/publicBrowsePaths";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 const ONBOARDING_ALLOWLIST = [
@@ -23,7 +24,7 @@ export function B2cGate({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const publicBrowse = isPublicBrowsePath(pathname);
 
   useEffect(() => {
     if (!auth.isReady || !auth.isAuthenticated || !auth.needsListenerOnboarding) {
@@ -43,6 +44,9 @@ export function B2cGate({ children }: { children: ReactNode }) {
   ]);
 
   if (!auth.isReady) {
+    if (publicBrowse) {
+      return children;
+    }
     return (
       <div className="flex h-dvh items-center justify-center bg-background p-8">
         <Text variant="body-large">Loading…</Text>

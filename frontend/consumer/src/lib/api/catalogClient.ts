@@ -5,6 +5,7 @@ import type {
   BrowseHomeResponse,
   GetArtistDetailResponse,
   GetReleaseDetailResponse,
+  GetReleaseGroupDetailResponse,
   TrackStreamInfoResponse,
 } from "./types";
 
@@ -49,6 +50,16 @@ export function getCatalogReleaseBySlugs(
 ): Promise<GetReleaseDetailResponse> {
   return publicFetch<GetReleaseDetailResponse>(
     `/api/v1/catalog/artists/${encodeURIComponent(artistSlug)}/releases/${encodeURIComponent(releaseSlug)}`,
+    { method: "GET" },
+  );
+}
+
+export function getCatalogReleaseGroupBySlugs(
+  artistSlug: string,
+  groupSlug: string,
+): Promise<GetReleaseGroupDetailResponse> {
+  return publicFetch<GetReleaseGroupDetailResponse>(
+    `/api/v1/catalog/artists/${encodeURIComponent(artistSlug)}/release-groups/${encodeURIComponent(groupSlug)}`,
     { method: "GET" },
   );
 }

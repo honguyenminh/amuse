@@ -12,9 +12,12 @@ import { OverflowMenuButton } from "@/components/ui/OverflowMenuButton";
 import { PauseIcon, PlayIcon } from "@/components/ui/PlaybackIcons";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
+import { getCatalogReleaseBySlugs } from "@/lib/api/catalogClient";
 import type { GetReleaseDetailResponse, ReleaseType, TrackResponse } from "@/lib/api/types";
+import type { ColorSeed } from "@/theme/types";
 import {
   catalogArtistPath,
+  catalogReleaseGroupPath,
   catalogReleasePathFromEdition,
 } from "@/lib/catalog/paths";
 import { cn } from "@/lib/cn";
@@ -32,7 +35,6 @@ import {
 import { usePageSeed } from "@/theme/ThemeProvider";
 import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const releaseTypeLabel: Record<ReleaseType, string> = {
@@ -43,20 +45,42 @@ const releaseTypeLabel: Record<ReleaseType, string> = {
 };
 
 type ReleasePageViewProps = {
-  loadKey: string;
-  load: () => Promise<GetReleaseDetailResponse>;
+  artistKey: string;
+  releaseSlug: string;
+  initialRelease?: GetReleaseDetailResponse;
+  initialColorSeed?: ColorSeed | null;
 };
 
-export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
-  const searchParams = useSearchParams();
-  const titleHint = searchParams.get("title") ?? undefined;
-  const [release, setRelease] = useState<GetReleaseDetailResponse | null>(null);
-  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
+export function ReleasePageView({
+  artistKey,
+  releaseSlug,
+  initialRelease,
+  initialColorSeed = null,
+}: ReleasePageViewProps) {
+  const loadKey = `${artistKey}/${releaseSlug}`;
+  const load = useCallback(
+    () => getCatalogReleaseBySlugs(artistKey, releaseSlug),
+    [artistKey, releaseSlug],
+  );
+  const [release, setRelease] = useState<GetReleaseDetailResponse | null>(
+    initialRelease ?? null,
+  );
+  const [resolvedKey, setResolvedKey] = useState<string | null>(
+    initialRelease ? loadKey : null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialRelease && resolvedKey === loadKey) {
+      return;
+    }
+
     let cancelled = false;
     setError(null);
+    if (!initialRelease || resolvedKey !== loadKey) {
+      setRelease(null);
+    }
+
     load()
       .then((response) => {
         if (!cancelled) {
@@ -70,12 +94,12 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [loadKey, load]);
+  }, [loadKey, load, initialRelease, resolvedKey]);
 
   const pending = resolvedKey !== loadKey;
   const { state, currentTrack, playQueue, toggle } = usePlayback();
 
-  const seed = useCoverArtSeed(release?.coverArtUrl);
+  const seed = useCoverArtSeed(release?.coverArtUrl, { initialSeed: initialColorSeed });
   usePageSeed(seed);
 
   const playableTracks = useMemo(
@@ -118,8 +142,7 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
     },
   });
 
-  const chromeTitle =
-    !pending && release ? release.title : (titleHint ?? undefined);
+  const chromeTitle = release?.title;
 
   return (
     <AppShell title={chromeTitle} activePath="/release">
@@ -195,9 +218,26 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
             {release.otherEditions.length > 0 ? (
               <Card>
                 <Text variant="title-large">
-                  {release.releaseGroupTitle
-                    ? `Other editions of ${release.releaseGroupTitle}`
-                    : "Other editions"}
+                  {release.releaseGroupTitle ? (
+                    release.releaseGroupSlug ? (
+                      <>
+                        Other editions of{" "}
+                        <Link
+                          href={catalogReleaseGroupPath(
+                            release.artistSlug,
+                            release.releaseGroupSlug,
+                          )}
+                          className="underline"
+                        >
+                          {release.releaseGroupTitle}
+                        </Link>
+                      </>
+                    ) : (
+                      `Other editions of ${release.releaseGroupTitle}`
+                    )
+                  ) : (
+                    "Other editions"
+                  )}
                 </Text>
                 <ul className="mt-2 flex flex-col divide-y divide-outline/40">
                   {release.otherEditions.map((edition) => (

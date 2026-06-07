@@ -56,6 +56,16 @@
   targets:
     - select:
         kind: ConfigMap
+        name: amuse-frontend-env
+      fieldPaths:
+        - data.NEXT_PUBLIC_SITE_URL
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.APP_ORIGIN
+  targets:
+    - select:
+        kind: ConfigMap
         name: amuse-api-env
       fieldPaths:
         - data.Cors__AllowedOrigins__0
