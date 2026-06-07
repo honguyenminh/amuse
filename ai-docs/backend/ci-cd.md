@@ -47,20 +47,21 @@ Promotion:
 
 Publish runs Trivy (CRITICAL/HIGH) before push. Tags: floating tag (`master`, `staging`, `production`, or `pr-<number>`) + immutable `sha-<7-char>`. PR builds do **not** update the `master` floating tag.
 
-### Deploy (phase 1 — echo stub)
+### Deploy (GitOps via amuse-deploy)
 
-Deploy logs the migrate-then-rollout plan:
+Deploy does **not** commit to the `amuse` repo. After publish, `backend-deploy.yml` bumps image tags in [honguyenminh/amuse-deploy](https://github.com/honguyenminh/amuse-deploy); Argo CD syncs the cluster.
 
-1. Job `amuse-migrate:<tag>` against environment database
-2. Roll `amuse-api`, `amuse-worker-transcoder`, `amuse-worker-scheduler`
+| GitHub Environment | Cluster | Deploy repo path | Default image tag |
+|--------------------|---------|------------------|-------------------|
+| `development` | K3s | `overlays/dev/images-tags/` | `master` or `pr-<n>` |
+| `staging` | AKS | `overlays/stage/images-tags/` | `staging` |
+| `production` | — | not yet defined | `production` |
 
-| GitHub Environment | Database | Default image tag |
-|--------------------|----------|-------------------|
-| `development` | `amuse_development` | `master` (push) or `pr-<number>` (PR preview) |
-| `staging` | `amuse_staging` | `staging` |
-| `production` | `amuse_production` | `production` |
+Manifest structure changes in `infrastructure/kubernetes/` are synced to `amuse-deploy` by `sync-kubernetes-manifests.yml` on merge to `master`.
 
-**Migrations:** API never migrates on startup ([local-development.md](./local-development.md)). Deploy runs the migrate image before rolling app pods.
+Requires `DEPLOY_REPO_TOKEN` on the **amuse** repo — see [DEPLOY_REPO.md](../../infrastructure/kubernetes/DEPLOY_REPO.md).
+
+**Migrations:** Argo CD PreSync Job `amuse-migrate` runs before app rollouts. API never migrates on startup ([local-development.md](./local-development.md)).
 
 ## Local parity
 
@@ -91,8 +92,9 @@ Enable in repository settings:
 - **`master`**: require Backend CI on PRs (direct pushes allowed for fast QA — team choice)
 - **Environments:** `development`, `staging`, `production` (add required reviewers on `production` before real deploys)
 
-## Phase 2
+## Related workflows
 
-- K3s `kubectl`/Helm apply with per-environment `KUBECONFIG` secret
-- GHCR `imagePullSecret` on cluster
-- Real migrate Job + smoke tests after rollout
+| Workflow | File |
+|----------|------|
+| Sync manifests to deploy repo | [`.github/workflows/sync-kubernetes-manifests.yml`](../../.github/workflows/sync-kubernetes-manifests.yml) |
+| Frontend Publish | [`.github/workflows/frontend-publish.yml`](../../.github/workflows/frontend-publish.yml) |

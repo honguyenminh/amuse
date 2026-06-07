@@ -24,7 +24,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deploy-development:
@@ -46,11 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Resolve image tag
         id: params
         run: |
@@ -61,18 +56,31 @@ jobs:
             TAG="master"
           fi
           echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "overlay_path=infrastructure/kubernetes/overlays/dev" >> "$GITHUB_OUTPUT"
+          echo "images_path=overlays/dev/images-tags/kustomization.yaml" >> "$GITHUB_OUTPUT"
 
-      - name: Bump Kustomize image tags (GitOps)
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: honguyenminh/amuse-deploy
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+          path: amuse-deploy
+
+      - name: Bump image tags in amuse-deploy
+        working-directory: amuse-deploy
         run: |
           python3 <<'PY'
           import pathlib, re
-          overlay = pathlib.Path("${{ steps.params.outputs.overlay_path }}")
+          path = pathlib.Path("${{ steps.params.outputs.images_path }}")
           tag = "${{ steps.params.outputs.image_tag }}"
           owner = "${{ github.repository_owner }}"
-          path = overlay / "kustomization.yaml"
           text = path.read_text()
-          for image in ["amuse-api", "amuse-worker-transcoder", "amuse-worker-scheduler", "amuse-migrate", "amuse-consumer", "amuse-business"]:
+          for image in [
+              "amuse-api",
+              "amuse-worker-transcoder",
+              "amuse-worker-scheduler",
+              "amuse-migrate",
+              "amuse-consumer",
+              "amuse-business",
+          ]:
               text = re.sub(
                   rf"(name: ghcr\.io/{re.escape(owner)}/{re.escape(image)}\n\s+newTag: ).*",
                   rf"\g<1>{tag}",
@@ -81,13 +89,14 @@ jobs:
           path.write_text(text)
           PY
 
-      - name: Commit and push GitOps manifest bump
+      - name: Commit and push
+        working-directory: amuse-deploy
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add infrastructure/kubernetes/overlays/dev/kustomization.yaml
+          git add "${{ steps.params.outputs.images_path }}"
           if git diff --staged --quiet; then
-            echo "No manifest changes to commit."
+            echo "No image tag changes to commit."
             exit 0
           fi
           git commit -m "deploy(dev): bump images to ${{ steps.params.outputs.image_tag }}"
@@ -99,10 +108,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Resolve deploy parameters
         id: params
         run: |
@@ -111,7 +116,7 @@ jobs:
             staging)
               TAG="${{ inputs.image_tag }}"
               if [ -z "${TAG}" ]; then TAG="staging"; fi
-              OVERLAY="infrastructure/kubernetes/overlays/stage"
+              IMAGES_PATH="overlays/stage/images-tags/kustomization.yaml"
               ;;
             production)
               echo "Production overlay not yet defined." >&2
@@ -123,20 +128,31 @@ jobs:
               ;;
           esac
           echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "overlay_path=${OVERLAY}" >> "$GITHUB_OUTPUT"
+          echo "images_path=${IMAGES_PATH}" >> "$GITHUB_OUTPUT"
 
-      - name: Bump Kustomize image tags (GitOps)
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: honguyenminh/amuse-deploy
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+          path: amuse-deploy
+
+      - name: Bump image tags in amuse-deploy
+        working-directory: amuse-deploy
         run: |
-          OVERLAY="${{ steps.params.outputs.overlay_path }}"
-          TAG="${{ steps.params.outputs.image_tag }}"
           python3 <<'PY'
           import pathlib, re
-          overlay = pathlib.Path("${{ steps.params.outputs.overlay_path }}")
+          path = pathlib.Path("${{ steps.params.outputs.images_path }}")
           tag = "${{ steps.params.outputs.image_tag }}"
           owner = "${{ github.repository_owner }}"
-          path = overlay / "kustomization.yaml"
           text = path.read_text()
-          for image in ["amuse-api", "amuse-worker-transcoder", "amuse-worker-scheduler", "amuse-migrate", "amuse-consumer", "amuse-business"]:
+          for image in [
+              "amuse-api",
+              "amuse-worker-transcoder",
+              "amuse-worker-scheduler",
+              "amuse-migrate",
+              "amuse-consumer",
+              "amuse-business",
+          ]:
               text = re.sub(
                   rf"(name: ghcr\.io/{re.escape(owner)}/{re.escape(image)}\n\s+newTag: ).*",
                   rf"\g<1>{tag}",
@@ -145,13 +161,14 @@ jobs:
           path.write_text(text)
           PY
 
-      - name: Commit and push GitOps manifest bump
+      - name: Commit and push
+        working-directory: amuse-deploy
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${{ steps.params.outputs.overlay_path }}/kustomization.yaml"
+          git add "${{ steps.params.outputs.images_path }}"
           if git diff --staged --quiet; then
-            echo "No manifest changes to commit."
+            echo "No image tag changes to commit."
             exit 0
           fi
           git commit -m "deploy(${{ inputs.environment }}): bump images to ${{ steps.params.outputs.image_tag }}"

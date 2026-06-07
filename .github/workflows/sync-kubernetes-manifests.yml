@@ -1,0 +1,52 @@
+name: Sync Kubernetes Manifests
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - infrastructure/kubernetes/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync to amuse-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Checkout amuse-deploy
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: honguyenminh/amuse-deploy
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+          path: amuse-deploy
+
+      - name: Rsync manifest structure
+        run: |
+          rsync -av --delete \
+            --exclude 'images-tags/' \
+            --exclude 'secrets.yaml' \
+            infrastructure/kubernetes/base/ \
+            amuse-deploy/base/
+          rsync -av --delete \
+            --exclude 'images-tags/' \
+            --exclude 'secrets.yaml' \
+            infrastructure/kubernetes/overlays/ \
+            amuse-deploy/overlays/
+
+      - name: Commit and push
+        working-directory: amuse-deploy
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add base overlays
+          if git diff --staged --quiet; then
+            echo "No manifest changes to sync."
+            exit 0
+          fi
+          git commit -m "sync: kubernetes manifests from amuse@${GITHUB_SHA:0:7}"
+          git push
