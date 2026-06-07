@@ -12,7 +12,7 @@ namespace Amuse.Modules.Listener.Features.UpdateListenerProfile;
 internal sealed class UpdateListenerProfileHandler(
     EnsureListenerProfileService ensureService,
     ListenerProfileService profileService,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<ListenerProfileResponse>> HandleAsync(
@@ -72,7 +72,7 @@ internal sealed class UpdateListenerProfileHandler(
         await profileService.SaveChangesAsync(cancellationToken);
 
         return Result<ListenerProfileResponse>.Success(
-            ListenerProfileMapper.ToResponse(profile, preference, storage));
+            ListenerProfileMapper.ToResponse(profile, preference, mediaUrls));
     }
 
     private static AccountId? ResolveAccountId(ClaimsPrincipal principal)

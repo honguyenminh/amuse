@@ -30,6 +30,23 @@ public sealed class OrganizationInvite
 
     public bool IsPending => Status == OrganizationInviteStatus.Pending;
 
+    public bool IsExpired(DateTimeOffset now) =>
+        Status == OrganizationInviteStatus.Pending && now >= ExpiresAt;
+
+    public Result EnsurePending(DateTimeOffset now)
+    {
+        if (Status != OrganizationInviteStatus.Pending)
+            return Result.Failure(TenancyErrors.InvalidInviteTransition);
+
+        if (now >= ExpiresAt)
+        {
+            Status = OrganizationInviteStatus.Expired;
+            return Result.Failure(TenancyErrors.InviteExpired);
+        }
+
+        return Result.Success();
+    }
+
     public static Result<(OrganizationInvite Invite, string RawToken)> CreatePending(
         OrganizationId organizationId,
         string email,
@@ -73,6 +90,16 @@ public sealed class OrganizationInvite
     {
         if (Status != OrganizationInviteStatus.Pending)
             return Result.Failure(TenancyErrors.InvalidInviteTransition);
+
+        Status = OrganizationInviteStatus.Revoked;
+        return Result.Success();
+    }
+
+    public Result Decline(DateTimeOffset now)
+    {
+        var pending = EnsurePending(now);
+        if (!pending.IsSuccess)
+            return pending;
 
         Status = OrganizationInviteStatus.Revoked;
         return Result.Success();

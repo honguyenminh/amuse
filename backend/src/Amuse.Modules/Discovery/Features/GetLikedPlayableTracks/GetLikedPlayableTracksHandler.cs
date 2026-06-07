@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Discovery.Features.Shared;
-using Amuse.Modules.Discovery.Persistence;
-using Amuse.Modules.Discovery.Services;
 using Amuse.Modules.Identity.Contracts;
 
 namespace Amuse.Modules.Discovery.Features.GetLikedPlayableTracks;

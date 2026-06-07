@@ -11,7 +11,7 @@ internal static class DiscoveryPlaylistCoverArt
     public static async Task<IReadOnlyDictionary<Guid, string[]>> LoadAsync(
         IEnumerable<Playlist> playlists,
         ICatalogDiscoveryReadModel catalog,
-        IObjectStorage storage,
+        IMediaPublicUrlBuilder mediaUrls,
         CancellationToken cancellationToken)
     {
         var playlistList = playlists.ToList();
@@ -34,7 +34,7 @@ internal static class DiscoveryPlaylistCoverArt
 
         return playlistList.ToDictionary(
             playlist => playlist.Id.Value,
-            playlist => ResolveCoverUrls(playlist, trackRows, releases, storage));
+            playlist => ResolveCoverUrls(playlist, trackRows, releases, mediaUrls));
     }
 
     private static IEnumerable<Guid> OrderedItemTrackIds(Playlist playlist) =>
@@ -47,7 +47,7 @@ internal static class DiscoveryPlaylistCoverArt
         Playlist playlist,
         IReadOnlyDictionary<Guid, CatalogTrackPlayableRow> trackRows,
         IReadOnlyDictionary<Guid, CatalogReleaseSummaryRow> releases,
-        IObjectStorage storage)
+        IMediaPublicUrlBuilder mediaUrls)
     {
         var urls = new List<string>(MaxCovers);
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -63,7 +63,7 @@ internal static class DiscoveryPlaylistCoverArt
             if (!releases.TryGetValue(row.ReleaseId, out var release))
                 continue;
 
-            var url = DiscoveryMapper.CoverArtUrlForPublic(storage, release.CoverArtKey);
+            var url = DiscoveryMapper.CoverArtUrlForPublic(mediaUrls, release.CoverArtKey);
             if (string.IsNullOrEmpty(url) || !seen.Add(url))
                 continue;
 

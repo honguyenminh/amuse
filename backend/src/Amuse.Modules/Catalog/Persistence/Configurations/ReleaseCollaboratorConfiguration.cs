@@ -31,7 +31,7 @@ internal sealed class ReleaseCollaboratorConfiguration : IEntityTypeConfiguratio
 
         builder
             .HasOne<Release>()
-            .WithMany()
+            .WithMany(r => r.Collaborators)
             .HasForeignKey(c => c.ReleaseId)
             .OnDelete(DeleteBehavior.Cascade);
 

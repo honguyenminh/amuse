@@ -42,6 +42,9 @@ public sealed class Release
     private readonly List<Track> _tracks = [];
     public IReadOnlyList<Track> Tracks => _tracks;
 
+    private readonly List<ReleaseCollaborator> _collaborators = [];
+    public IReadOnlyList<ReleaseCollaborator> Collaborators => _collaborators;
+
     private Release()
     {
     }
@@ -328,6 +331,74 @@ public sealed class Release
         _tracks.Remove(track);
         UpdatedAt = now;
         return Result<Track>.Success(track);
+    }
+
+    public Result<Track> UpdateTrack(
+        TrackId trackId,
+        string title,
+        int trackNumber,
+        bool explicitFlag,
+        string? isrc,
+        string? lyrics,
+        string? languageCode,
+        string? versionTitle,
+        string? composerCredits,
+        DateTimeOffset now)
+    {
+        var track = _tracks.FirstOrDefault(t => t.Id == trackId);
+        if (track is null)
+            return Result<Track>.Failure(CatalogErrors.TrackNotFound);
+
+        if (_tracks.Any(t => t.TrackNumber == trackNumber && t.Id != trackId))
+            return Result<Track>.Failure(CatalogErrors.DuplicateTrackNumber);
+
+        var updateResult = track.UpdateMetadata(
+            title,
+            trackNumber,
+            explicitFlag,
+            isrc,
+            lyrics,
+            languageCode,
+            versionTitle,
+            composerCredits);
+
+        if (!updateResult.IsSuccess)
+            return Result<Track>.Failure(updateResult.Error!);
+
+        UpdatedAt = now;
+        return Result<Track>.Success(track);
+    }
+
+    public Result ReplaceCollaborators(IReadOnlyList<ArtistId> collaboratorArtistIds)
+    {
+        var ids = collaboratorArtistIds
+            .Where(id => id.Value != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
+        if (ids.Any(id => id == ArtistId))
+            return Result.Failure(CatalogErrors.InvalidCollaborator);
+
+        _collaborators.Clear();
+
+        var order = 1;
+        foreach (var artistId in ids)
+        {
+            var createResult = ReleaseCollaborator.Create(
+                Id,
+                artistId,
+                ArtistId,
+                ReleaseCollaboratorRole.Featured,
+                order);
+
+            if (!createResult.IsSuccess)
+                return Result.Failure(createResult.Error!);
+
+            _collaborators.Add(createResult.Value!);
+            order++;
+        }
+
+        return Result.Success();
     }
 
     public Result<Track> AddTrack(

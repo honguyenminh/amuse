@@ -1,6 +1,5 @@
 using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Media;
 using Amuse.Modules.Tenancy.Contracts;
 using Amuse.Modules.Tenancy.Features.Shared;
@@ -13,7 +12,7 @@ internal sealed class ListMembersHandler(
     TenancyDbContext dbContext,
     IAccountMemberActivityLookup activityLookup,
     IBusinessPortalProfileLookup portalProfileLookup,
-    IObjectStorage storage)
+    IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<OrganizationMemberListResponse>> HandleAsync(
         Guid organizationId,
@@ -50,7 +49,7 @@ internal sealed class ListMembersHandler(
                 portalProfile?.AvatarAccentSeed,
                 string.IsNullOrEmpty(portalProfile?.AvatarObjectKey)
                     ? null
-                    : BrowseHomeHandler.CoverArtUrlFor(storage, portalProfile.AvatarObjectKey),
+                    : mediaUrls.BuildCoverArtUrl(portalProfile.AvatarObjectKey),
                 snapshot?.JoinedAt,
                 snapshot?.LastLoginAt,
                 snapshot?.LastActiveAt);

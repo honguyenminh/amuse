@@ -15,7 +15,8 @@ internal sealed class AddTrackToPlaylistHandler(
     DiscoveryDbContext db,
     ICatalogDiscoveryReadModel catalog,
     IListenerPersonaReadModel personaReadModel,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
+    PlaylistLoader playlistLoader,
     IClock clock)
 {
     public async Task<Result<AddPlaylistItemResponse>> HandleAsync(
@@ -35,8 +36,8 @@ internal sealed class AddTrackToPlaylistHandler(
         if (!listenerResult.IsSuccess)
             return Result<AddPlaylistItemResponse>.Failure(listenerResult.Error!);
 
-        var playlist = await DiscoveryPlaylistLoader.LoadForMutationAsync(
-            db, PlaylistId.From(playlistId), cancellationToken);
+        var playlist = await playlistLoader.GetForMutationAsync(
+            PlaylistId.From(playlistId), cancellationToken);
         if (playlist is null)
             return Result<AddPlaylistItemResponse>.Failure(DiscoveryErrors.PlaylistNotFound);
 
@@ -61,7 +62,7 @@ internal sealed class AddTrackToPlaylistHandler(
         releaseSummaries.TryGetValue(row?.ReleaseId ?? Guid.Empty, out var release);
 
         var itemDto = row is not null
-            ? DiscoveryMapper.ToItemDto(addResult.Value!, row, storage, release?.CoverArtKey)
+            ? DiscoveryMapper.ToItemDto(addResult.Value!, row, mediaUrls, release?.CoverArtKey)
             : new PlaylistItemDto(
                 addResult.Value!.Id.Value,
                 request.TrackId,

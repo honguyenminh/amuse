@@ -148,6 +148,36 @@ public sealed class PlaylistTests
     }
 
     [Fact]
+    public void EnsureOwnedBy_rejects_non_owner()
+    {
+        var playlist = Playlist.CreateOwned(Owner, "Mine", PlaylistVisibility.Private, Now).Value!;
+
+        var result = playlist.EnsureOwnedBy(Other);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(DiscoveryErrors.PlaylistForbidden.Code, result.Error!.Code);
+    }
+
+    [Fact]
+    public void EnsureDeletable_rejects_liked_collection()
+    {
+        var liked = Playlist.CreateLiked(Owner, Now).Value!;
+
+        var result = liked.EnsureDeletable();
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(DiscoveryErrors.CannotDeleteLikedPlaylist.Code, result.Error!.Code);
+    }
+
+    [Fact]
+    public void EnsureDeletable_allows_user_playlist()
+    {
+        var playlist = Playlist.CreateOwned(Owner, "Mine", PlaylistVisibility.Private, Now).Value!;
+
+        Assert.True(playlist.EnsureDeletable().IsSuccess);
+    }
+
+    [Fact]
     public void PlaylistFollow_rejects_own_playlist_and_private_playlist()
     {
         var own = Playlist.CreateOwned(Owner, "Mine", PlaylistVisibility.Public, Now).Value!;

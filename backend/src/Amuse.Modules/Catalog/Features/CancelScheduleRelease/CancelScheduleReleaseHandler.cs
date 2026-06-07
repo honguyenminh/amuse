@@ -4,16 +4,15 @@ using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.PublishRelease;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
-using Amuse.Modules.Catalog.Services;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
+using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.CancelScheduleRelease;
 
 internal sealed class CancelScheduleReleaseHandler(
     CatalogDbContext db,
-    ReleasePublishingService publishingService,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<ManageReleaseDetailResponse>> HandleAsync(
@@ -29,20 +28,22 @@ internal sealed class CancelScheduleReleaseHandler(
             return Result<ManageReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
 
         var typedId = ReleaseId.From(releaseId);
-        var loadResult = await publishingService.LoadReleaseForOrganizationAsync(
-            typedId,
-            orgResult.Value!,
-            cancellationToken);
+        var release = await db.Releases
+            .Include(r => r.Tracks)
+            .FirstOrDefaultAsync(r => r.Id == typedId, cancellationToken);
 
-        if (!loadResult.IsSuccess)
-            return Result<ManageReleaseDetailResponse>.Failure(loadResult.Error!);
+        if (release is null)
+            return Result<ManageReleaseDetailResponse>.Failure(CatalogErrors.ReleaseNotFound);
 
-        var release = loadResult.Value!;
+        var scopeResult = CatalogScopeGuard.EnsureOrganizationScope(orgResult.Value!, release.OrganizationId);
+        if (!scopeResult.IsSuccess)
+            return Result<ManageReleaseDetailResponse>.Failure(scopeResult.Error!);
+
         var cancelResult = release.CancelSchedule(clock.UtcNow);
         if (!cancelResult.IsSuccess)
             return Result<ManageReleaseDetailResponse>.Failure(cancelResult.Error!);
 
         await db.SaveChangesAsync(cancellationToken);
-        return await PublishReleaseHandler.MapDetailAsync(db, storage, release, cancellationToken);
+        return await PublishReleaseHandler.MapDetailAsync(db, mediaUrls, release, cancellationToken);
     }
 }

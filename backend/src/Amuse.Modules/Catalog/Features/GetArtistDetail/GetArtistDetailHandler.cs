@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.GetArtistDetail;
 
-internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class GetArtistDetailHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<GetArtistDetailResponse>> HandleAsync(
         Guid artistId,
@@ -104,7 +104,7 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage
                 artistSlug.Value,
                 r.ReleaseType,
                 r.ReleaseDate,
-                BrowseHomeHandler.CoverArtUrlFor(storage, r.CoverArtKey)))
+                mediaUrls.BuildCoverArtUrl(r.CoverArtKey)))
             .ToArray();
 
         var response = new GetArtistDetailResponse(
@@ -112,8 +112,8 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IObjectStorage
             artistSlug.Value,
             artistName,
             bio,
-            BrowseHomeHandler.CoverArtUrlFor(storage, avatarKey),
-            BrowseHomeHandler.CoverArtUrlFor(storage, coverKey),
+            mediaUrls.BuildCoverArtUrl(avatarKey),
+            mediaUrls.BuildCoverArtUrl(coverKey),
             releases);
 
         return Result<GetArtistDetailResponse>.Success(response);

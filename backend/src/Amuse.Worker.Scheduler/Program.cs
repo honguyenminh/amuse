@@ -1,5 +1,6 @@
 using Amuse.Domain.Catalog;
 using Amuse.Modules.Catalog;
+using Amuse.Modules.Catalog.Features.PublishRelease;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Services;
 using Amuse.Modules.Common.Time;
@@ -78,7 +79,7 @@ internal sealed partial class ScheduledReleasePublishWorker(
         await using var scope = scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
         var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-        var publishing = scope.ServiceProvider.GetRequiredService<ReleasePublishingService>();
+        var publishing = scope.ServiceProvider.GetRequiredService<PublishReleaseHandler>();
 
         var now = clock.UtcNow;
         var published = 0;

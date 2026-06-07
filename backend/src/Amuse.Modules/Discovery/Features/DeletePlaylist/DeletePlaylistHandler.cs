@@ -9,7 +9,8 @@ namespace Amuse.Modules.Discovery.Features.DeletePlaylist;
 
 internal sealed class DeletePlaylistHandler(
     DiscoveryDbContext db,
-    IListenerPersonaReadModel personaReadModel)
+    IListenerPersonaReadModel personaReadModel,
+    PlaylistLoader playlistLoader)
 {
     public async Task<Result> HandleAsync(
         Guid playlistId,
@@ -24,16 +25,18 @@ internal sealed class DeletePlaylistHandler(
         if (!listenerResult.IsSuccess)
             return Result.Failure(listenerResult.Error!);
 
-        var playlist = await DiscoveryPlaylistLoader.LoadForMutationAsync(
-            db, PlaylistId.From(playlistId), cancellationToken);
+        var playlist = await playlistLoader.GetForMutationAsync(
+            PlaylistId.From(playlistId), cancellationToken);
         if (playlist is null)
             return Result.Failure(DiscoveryErrors.PlaylistNotFound);
 
-        if (playlist.OwnerListenerProfileId != listenerResult.Value!.ListenerProfileId)
-            return Result.Failure(DiscoveryErrors.PlaylistForbidden);
+        var ownershipResult = playlist.EnsureOwnedBy(listenerResult.Value!.ListenerProfileId);
+        if (!ownershipResult.IsSuccess)
+            return Result.Failure(ownershipResult.Error!);
 
-        if (playlist.IsLikedCollection)
-            return Result.Failure(DiscoveryErrors.CannotDeleteLikedPlaylist);
+        var deletableResult = playlist.EnsureDeletable();
+        if (!deletableResult.IsSuccess)
+            return Result.Failure(deletableResult.Error!);
 
         db.Playlists.Remove(playlist);
         await db.SaveChangesAsync(cancellationToken);

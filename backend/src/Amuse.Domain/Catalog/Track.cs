@@ -189,6 +189,33 @@ public sealed class Track
         LifecycleStatus = TrackLifecycleStatus.Published;
     }
 
+    public Result BeginAudioReIngest(string audioMasterKey)
+    {
+        if (string.IsNullOrWhiteSpace(audioMasterKey))
+            return Result.Failure(CatalogErrors.InvalidAudioUploadRequest);
+
+        if (audioMasterKey.Length > MaxKeyLength)
+            return Result.Failure(CatalogErrors.InvalidTrack);
+
+        if (!string.IsNullOrWhiteSpace(AudioStreamKey))
+        {
+            var clearStream = ClearAudioStream();
+            if (!clearStream.IsSuccess)
+                return clearStream;
+
+            var clearLoudness = ClearLoudnessProfile();
+            if (!clearLoudness.IsSuccess)
+                return clearLoudness;
+        }
+
+        SetAudioMaster(audioMasterKey);
+
+        if (LifecycleStatus == TrackLifecycleStatus.Processing)
+            return Result.Success();
+
+        return MarkProcessing();
+    }
+
     public void SetAudioMaster(string audioMasterKey)
     {
         if (string.IsNullOrWhiteSpace(audioMasterKey))

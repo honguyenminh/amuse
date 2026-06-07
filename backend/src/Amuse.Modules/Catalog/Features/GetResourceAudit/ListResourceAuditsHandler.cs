@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Audit.Persistence;
+using Amuse.Modules.Audit;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +21,7 @@ public sealed record CatalogAuditEntryResponse(
 public sealed record CatalogAuditListResponse(
     IReadOnlyList<CatalogAuditEntryResponse> Items);
 
-internal sealed class ListResourceAuditsHandler(CatalogDbContext catalogDb, AuditDbContext auditDb)
+internal sealed class ListResourceAuditsHandler(CatalogDbContext catalogDb, IAuditLogReadModel auditLog)
 {
     public async Task<Result<CatalogAuditListResponse>> HandleAsync(
         string tableName,
@@ -55,11 +55,13 @@ internal sealed class ListResourceAuditsHandler(CatalogDbContext catalogDb, Audi
         if (!scopeResult.IsSuccess)
             return Result<CatalogAuditListResponse>.Failure(scopeResult.Error!);
 
-        var items = await auditDb.AuditEntries
-            .AsNoTracking()
-            .Where(entry => entry.TableName == normalizedTable && entry.TargetId == targetId)
-            .OrderByDescending(entry => entry.ChangedAt)
-            .Take(100)
+        var entries = await auditLog.QueryByTargetAsync(
+            normalizedTable,
+            targetId,
+            take: 100,
+            cancellationToken);
+
+        var items = entries
             .Select(entry => new CatalogAuditEntryResponse(
                 entry.Id,
                 entry.Action,
@@ -69,7 +71,7 @@ internal sealed class ListResourceAuditsHandler(CatalogDbContext catalogDb, Audi
                 entry.AfterJson,
                 entry.ChangedAt,
                 entry.ActorAccountId))
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         return Result<CatalogAuditListResponse>.Success(new CatalogAuditListResponse(items));
     }

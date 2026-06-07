@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
-using Amuse.Modules.Audit.Persistence;
+using Amuse.Modules.Audit;
 using Amuse.Modules.Tenancy.Features.Shared;
 using Amuse.Modules.Tenancy.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +23,7 @@ public sealed record TenancyAuditListResponse(
 
 internal sealed class ListOrganizationAuditsHandler(
     TenancyDbContext tenancyDb,
-    AuditDbContext auditDb)
+    IAuditLogReadModel auditLog)
 {
     public async Task<Result<TenancyAuditListResponse>> HandleAsync(
         Guid organizationId,
@@ -51,13 +51,13 @@ internal sealed class ListOrganizationAuditsHandler(
         if (!isMember)
             return Result<TenancyAuditListResponse>.Failure(TenancyErrors.NotOrganizationMember);
 
-        var items = await auditDb.AuditEntries
-            .AsNoTracking()
-            .Where(entry =>
-                entry.TableName == TenancyAuditTables.Organization
-                && entry.TargetId == organizationId)
-            .OrderByDescending(entry => entry.ChangedAt)
-            .Take(100)
+        var entries = await auditLog.QueryByTargetAsync(
+            TenancyAuditTables.Organization,
+            organizationId,
+            take: 100,
+            cancellationToken);
+
+        var items = entries
             .Select(entry => new TenancyAuditEntryResponse(
                 entry.Id,
                 entry.Action,
@@ -67,7 +67,7 @@ internal sealed class ListOrganizationAuditsHandler(
                 entry.AfterJson,
                 entry.ChangedAt,
                 entry.ActorAccountId))
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         return Result<TenancyAuditListResponse>.Success(new TenancyAuditListResponse(items));
     }

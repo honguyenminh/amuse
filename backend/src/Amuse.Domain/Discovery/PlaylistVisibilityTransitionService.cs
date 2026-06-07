@@ -19,4 +19,14 @@ public static class PlaylistVisibilityTransitionService
         foreach (var fork in forks)
             fork.CutForkOrigin(now);
     }
+
+    public static IReadOnlyList<Playlist> ApplyPrivateTransition(
+        Playlist playlist,
+        IEnumerable<Playlist> candidateForks,
+        DateTimeOffset now)
+    {
+        var forks = GetForkDescendantsToCut(playlist, candidateForks);
+        CutForkOrigins(forks, now);
+        return forks;
+    }
 }

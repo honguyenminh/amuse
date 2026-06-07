@@ -91,14 +91,16 @@ internal sealed class CreateReleaseHandler(CatalogDbContext db, IClock clock, Ca
         var release = createResult.Value!;
         db.Releases.Add(release);
 
-        var collaboratorResult = await ReleaseCollaboratorSync.ReplaceAsync(
+        var collaboratorIdsResult = await ReleaseCollaboratorSync.ResolveArtistIdsAsync(
             db,
-            release.Id,
-            typedArtistId,
             request.CollaboratorArtistIds,
             cancellationToken);
-        if (!collaboratorResult.IsSuccess)
-            return Result<ManageReleaseDetailResponse>.Failure(collaboratorResult.Error!);
+        if (!collaboratorIdsResult.IsSuccess)
+            return Result<ManageReleaseDetailResponse>.Failure(collaboratorIdsResult.Error!);
+
+        var replaceResult = release.ReplaceCollaborators(collaboratorIdsResult.Value!);
+        if (!replaceResult.IsSuccess)
+            return Result<ManageReleaseDetailResponse>.Failure(replaceResult.Error!);
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -110,19 +112,20 @@ internal sealed class CreateReleaseHandler(CatalogDbContext db, IClock clock, Ca
             cancellationToken);
 
         var groupDisplay = await ReleaseGroupLookup.LoadDisplayAsync(db, release.ReleaseGroupId, cancellationToken);
+        var collaborators = await ReleaseCollaboratorSync.LoadAsync(db, release.Id, cancellationToken);
 
         return Result<ManageReleaseDetailResponse>.Success(
             ReleaseMapper.ToDetail(
                 release,
                 artist.Name,
                 null,
-                collaboratorResult.Value!,
+                collaborators,
                 groupDisplay.Title,
                 groupDisplay.Slug));
     }
 }
 
-internal sealed class ListReleasesHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class ListReleasesHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<ManageReleaseListResponse>> HandleAsync(
         ReleaseLifecycleStatus? status,
@@ -184,7 +187,7 @@ internal sealed class ListReleasesHandler(CatalogDbContext db, IObjectStorage st
                 return ReleaseMapper.ToSummary(
                     row.Release,
                     row.ArtistName,
-                    BrowseHomeHandler.CoverArtUrlFor(storage, row.Release.CoverArtKey),
+                    mediaUrls.BuildCoverArtUrl(row.Release.CoverArtKey),
                     groupTitle,
                     groupSlug);
             })
@@ -194,7 +197,7 @@ internal sealed class ListReleasesHandler(CatalogDbContext db, IObjectStorage st
     }
 }
 
-internal sealed class GetReleaseHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class GetReleaseHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<ManageReleaseDetailResponse>> HandleAsync(
         Guid releaseId,
@@ -238,7 +241,7 @@ internal sealed class GetReleaseHandler(CatalogDbContext db, IObjectStorage stor
             ReleaseMapper.ToDetail(
                 release,
                 artistName,
-                BrowseHomeHandler.CoverArtUrlFor(storage, release.CoverArtKey),
+                mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
                 collaborators,
                 groupDisplay.Title,
                 groupDisplay.Slug));
@@ -247,7 +250,7 @@ internal sealed class GetReleaseHandler(CatalogDbContext db, IObjectStorage stor
 
 internal sealed class UpdateReleaseHandler(
     CatalogDbContext db,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock,
     CatalogAuditWriter auditWriter)
 {
@@ -267,6 +270,7 @@ internal sealed class UpdateReleaseHandler(
         var typedId = ReleaseId.From(releaseId);
         var release = await db.Releases
             .Include(r => r.Tracks)
+            .Include(r => r.Collaborators)
             .FirstOrDefaultAsync(r => r.Id == typedId, cancellationToken);
 
         if (release is null)
@@ -329,14 +333,16 @@ internal sealed class UpdateReleaseHandler(
         if (!updateResult.IsSuccess)
             return Result<ManageReleaseDetailResponse>.Failure(updateResult.Error!);
 
-        var collaboratorResult = await ReleaseCollaboratorSync.ReplaceAsync(
+        var collaboratorIdsResult = await ReleaseCollaboratorSync.ResolveArtistIdsAsync(
             db,
-            release.Id,
-            release.ArtistId,
             request.CollaboratorArtistIds,
             cancellationToken);
-        if (!collaboratorResult.IsSuccess)
-            return Result<ManageReleaseDetailResponse>.Failure(collaboratorResult.Error!);
+        if (!collaboratorIdsResult.IsSuccess)
+            return Result<ManageReleaseDetailResponse>.Failure(collaboratorIdsResult.Error!);
+
+        var replaceResult = release.ReplaceCollaborators(collaboratorIdsResult.Value!);
+        if (!replaceResult.IsSuccess)
+            return Result<ManageReleaseDetailResponse>.Failure(replaceResult.Error!);
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -355,13 +361,14 @@ internal sealed class UpdateReleaseHandler(
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
 
         var groupDisplay = await ReleaseGroupLookup.LoadDisplayAsync(db, release.ReleaseGroupId, cancellationToken);
+        var collaborators = await ReleaseCollaboratorSync.LoadAsync(db, release.Id, cancellationToken);
 
         return Result<ManageReleaseDetailResponse>.Success(
             ReleaseMapper.ToDetail(
                 release,
                 artistName,
-                BrowseHomeHandler.CoverArtUrlFor(storage, release.CoverArtKey),
-                collaboratorResult.Value!,
+                mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
+                collaborators,
                 groupDisplay.Title,
                 groupDisplay.Slug));
     }

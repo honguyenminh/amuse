@@ -2,17 +2,16 @@ using System.Security.Claims;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Discovery.Features.Shared;
-using Amuse.Modules.Discovery.Persistence;
 using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Media;
 
 namespace Amuse.Modules.Discovery.Features.ListLibraryLiked;
 
 internal sealed class ListLibraryLikedHandler(
-    DiscoveryDbContext db,
     ICatalogDiscoveryReadModel catalog,
     IListenerPersonaReadModel personaReadModel,
-    IObjectStorage storage)
+    IMediaPublicUrlBuilder mediaUrls,
+    LikedPlaylistLoader likedPlaylistLoader)
 {
     public async Task<Result<LikedTracksResponse>> HandleAsync(
         ClaimsPrincipal principal,
@@ -23,8 +22,7 @@ internal sealed class ListLibraryLikedHandler(
         if (!listenerResult.IsSuccess)
             return Result<LikedTracksResponse>.Failure(listenerResult.Error!);
 
-        var playlist = await LikedPlaylistService.LoadForReadAsync(
-            db,
+        var playlist = await likedPlaylistLoader.GetForReadAsync(
             listenerResult.Value!.ListenerProfileId,
             cancellationToken);
         if (playlist is null || playlist.Items.Count == 0)
@@ -47,7 +45,7 @@ internal sealed class ListLibraryLikedHandler(
                     row.Title,
                     row.DurationMs,
                     row.HasAudio,
-                    DiscoveryMapper.CoverArtUrlForPublic(storage, release?.CoverArtKey),
+                    DiscoveryMapper.CoverArtUrlForPublic(mediaUrls, release?.CoverArtKey),
                     row.ReleaseId,
                     row.ReleaseTitle,
                     row.ArtistName,

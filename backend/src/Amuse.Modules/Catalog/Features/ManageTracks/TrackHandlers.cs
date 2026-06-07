@@ -37,14 +37,11 @@ internal sealed class CreateTrackHandler(CatalogDbContext db, CatalogAuditWriter
             return Result<ManageTrackResponse>.Failure(scopeResult.Error!);
 
         TrackDuration duration;
-        try
-        {
-            duration = TrackDuration.FromMilliseconds(request.DurationMs);
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return Result<ManageTrackResponse>.Failure(CatalogErrors.InvalidTrack);
-        }
+        var durationResult = TrackDuration.TryFromMilliseconds(request.DurationMs);
+        if (!durationResult.IsSuccess)
+            return Result<ManageTrackResponse>.Failure(durationResult.Error!);
+
+        duration = durationResult.Value!;
 
         var addResult = release.AddTrack(
             TrackId.New(),
@@ -76,7 +73,7 @@ internal sealed class CreateTrackHandler(CatalogDbContext db, CatalogAuditWriter
     }
 }
 
-internal sealed class UpdateTrackHandler(CatalogDbContext db, CatalogAuditWriter auditWriter)
+internal sealed class UpdateTrackHandler(CatalogDbContext db, IClock clock, CatalogAuditWriter auditWriter)
 {
     public async Task<Result<ManageTrackResponse>> HandleAsync(
         Guid trackId,
@@ -92,30 +89,25 @@ internal sealed class UpdateTrackHandler(CatalogDbContext db, CatalogAuditWriter
             return Result<ManageTrackResponse>.Failure(CatalogErrors.TrackNotFound);
 
         var typedTrackId = TrackId.From(trackId);
-        var track = await db.Tracks
-            .FirstOrDefaultAsync(t => t.Id == typedTrackId, cancellationToken);
+        var release = await db.Releases
+            .Include(r => r.Tracks)
+            .FirstOrDefaultAsync(
+                r => r.Tracks.Any(t => t.Id == typedTrackId),
+                cancellationToken);
 
-        if (track is null)
+        if (release is null)
             return Result<ManageTrackResponse>.Failure(CatalogErrors.TrackNotFound);
+
+        var track = release.Tracks.First(t => t.Id == typedTrackId);
 
         var scopeResult = CatalogScopeGuard.EnsureOrganizationScope(orgResult.Value!, track.OrganizationId);
         if (!scopeResult.IsSuccess)
             return Result<ManageTrackResponse>.Failure(scopeResult.Error!);
 
-        var duplicateNumber = await db.Tracks
-            .AsNoTracking()
-            .AnyAsync(
-                t => t.ReleaseId == track.ReleaseId
-                     && t.TrackNumber == request.TrackNumber
-                     && t.Id != track.Id,
-                cancellationToken);
-
-        if (duplicateNumber)
-            return Result<ManageTrackResponse>.Failure(CatalogErrors.DuplicateTrackNumber);
-
         var before = CatalogAuditSnapshotMapper.FromTrack(track);
 
-        var updateResult = track.UpdateMetadata(
+        var updateResult = release.UpdateTrack(
+            typedTrackId,
             request.Title,
             request.TrackNumber,
             request.ExplicitFlag,
@@ -123,10 +115,13 @@ internal sealed class UpdateTrackHandler(CatalogDbContext db, CatalogAuditWriter
             request.Lyrics,
             request.LanguageCode,
             request.VersionTitle,
-            request.ComposerCredits);
+            request.ComposerCredits,
+            clock.UtcNow);
 
         if (!updateResult.IsSuccess)
             return Result<ManageTrackResponse>.Failure(updateResult.Error!);
+
+        track = updateResult.Value!;
 
         await db.SaveChangesAsync(cancellationToken);
 

@@ -11,7 +11,7 @@ namespace Amuse.Modules.Tenancy.Features.UpdatePortalProfile;
 
 internal sealed class UpdatePortalProfileHandler(
     BusinessPortalProfileService profileService,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<BusinessPortalProfileResponse>> HandleAsync(
@@ -58,6 +58,6 @@ internal sealed class UpdatePortalProfileHandler(
 
         await profileService.SaveChangesAsync(cancellationToken);
         return Result<BusinessPortalProfileResponse>.Success(
-            GetPortalProfileHandler.ToResponse(profile, storage));
+            GetPortalProfileHandler.ToResponse(profile, mediaUrls));
     }
 }

@@ -1,6 +1,7 @@
 using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Common.Endpoints;
 using Amuse.Modules.Common.Time;
+using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Identity.Auth;
 using Amuse.Modules.Identity.Auth.External;
 using Amuse.Modules.Identity.Email;
@@ -24,6 +25,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 namespace Amuse.Modules.Identity;
 
 public static class IdentityModule
@@ -40,10 +43,16 @@ public static class IdentityModule
         services.Configure<ExternalProviderOptions>(configuration.GetSection(ExternalProviderOptions.SectionName));
         services.Configure<IdentityEmailOptions>(configuration.GetSection(IdentityEmailOptions.SectionName));
 
-        services.AddDbContext<IdentityDbContext>(options =>
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<IdentityDbContext>((sp, options) =>
+        {
             options.UseNpgsql(
                 connectionString,
-                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_identity", "identity")));
+                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_identity", "identity"));
+            options.AddModuleInterceptors(sp);
+        });
 
         // AddIdentityCore (not AddIdentity) avoids registering cookie authentication and
         // overriding the default challenge scheme. JWT bearer (see AddAmuseJwtAuthentication

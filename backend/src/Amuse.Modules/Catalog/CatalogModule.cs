@@ -1,4 +1,3 @@
-using Amuse.Domain.Catalog;
 using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.CancelScheduleRelease;
@@ -26,10 +25,12 @@ using Amuse.Modules.Catalog.Messaging;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Catalog.Services;
+using Amuse.Modules.Common.Persistence;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Amuse.Modules.Catalog;
 
@@ -42,11 +43,15 @@ public static class CatalogModule
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
-        services.AddDbContext<CatalogDbContext>(options =>
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<CatalogDbContext>((sp, options) =>
         {
             CatalogDbContextOptions.Configure(
                 (DbContextOptionsBuilder<CatalogDbContext>)options,
                 connectionString);
+            options.AddModuleInterceptors(sp);
         });
 
         services.AddScoped<ICatalogOrganizationBootstrap, CatalogOrganizationBootstrap>();
@@ -85,7 +90,6 @@ public static class CatalogModule
         services.AddScoped<UpdateTrackHandler>();
         services.AddScoped<DeleteTrackHandler>();
 
-        services.AddScoped<ReleasePublishingService>();
         services.AddScoped<ScheduledReleaseClaimService>();
 
         services.AddScoped<PublishReleaseHandler>();

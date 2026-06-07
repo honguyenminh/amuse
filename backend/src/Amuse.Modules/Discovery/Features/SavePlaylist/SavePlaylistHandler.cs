@@ -13,6 +13,7 @@ internal sealed class SavePlaylistHandler(
     DiscoveryDbContext db,
     IListenerPersonaReadModel personaReadModel,
     PlaylistViewContextBuilder viewContextBuilder,
+    PlaylistLoader playlistLoader,
     IClock clock)
 {
     public async Task<Result> HandleAsync(
@@ -28,8 +29,8 @@ internal sealed class SavePlaylistHandler(
         if (!listenerResult.IsSuccess)
             return Result.Failure(listenerResult.Error!);
 
-        var playlist = await db.Playlists.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == PlaylistId.From(playlistId), cancellationToken);
+        var typedPlaylistId = PlaylistId.From(playlistId);
+        var playlist = await playlistLoader.GetForAuthorizationAsync(typedPlaylistId, cancellationToken);
         if (playlist is null)
             return Result.Failure(DiscoveryErrors.PlaylistNotFound);
 
@@ -37,22 +38,20 @@ internal sealed class SavePlaylistHandler(
             listenerResult.Value!.ListenerProfileId,
             listenerResult.Value.AccountId,
             cancellationToken);
-        if (!playlist.CanBeViewedBy(viewContext))
-            return Result.Failure(DiscoveryErrors.PlaylistForbidden);
 
-        var exists = await db.LibraryEntries.AnyAsync(
-            e => e.ListenerProfileId == listenerResult.Value.ListenerProfileId
-                 && e.Kind == LibraryEntryKind.SavedPlaylist
-                 && e.TargetId == playlistId,
-            cancellationToken);
-        if (exists)
-            return Result.Success();
+        var listenerId = listenerResult.Value.ListenerProfileId;
+        var entries = await db.LibraryEntries
+            .Where(e => e.ListenerProfileId == listenerId)
+            .ToListAsync(cancellationToken);
+        var library = ListenerLibrary.Rehydrate(listenerId, entries);
 
-        var entry = LibraryEntry.CreateSavedPlaylist(
-            listenerResult.Value.ListenerProfileId,
-            PlaylistId.From(playlistId),
-            clock.UtcNow);
-        db.LibraryEntries.Add(entry);
+        var saveResult = library.TrySavePlaylist(playlist, viewContext, clock.UtcNow);
+        if (!saveResult.IsSuccess)
+            return Result.Failure(saveResult.Error!);
+
+        if (saveResult.Value is not null)
+            db.LibraryEntries.Add(saveResult.Value);
+
         await db.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

@@ -75,32 +75,19 @@ internal sealed class CompleteAudioMasterUploadHandler(
         if (!await storage.ObjectExistsAsync(MediaBucket.Audio, request.Key, cancellationToken))
             return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.AudioMasterObjectMissing);
 
-        var inflight = await db.AudioTranscodeJobs.AnyAsync(
-            j => j.TrackId == typedId
-                && (j.Status == AudioTranscodeJobStatus.Queued || j.Status == AudioTranscodeJobStatus.Processing),
-            cancellationToken);
-        if (inflight)
+        if (await TranscodeJobQueries.HasInflightForTrackAsync(db, typedId, cancellationToken))
             return Result<CompleteAudioMasterUploadResponse>.Failure(CatalogErrors.TranscodeAlreadyInProgress);
 
         intent.Consume(now);
 
-        if (!string.IsNullOrWhiteSpace(track.AudioStreamKey))
-        {
-            await CatalogMediaCleanup.DeleteDashPrefixAsync(storage, track.AudioStreamKey, cancellationToken);
+        var previousStreamKey = track.AudioStreamKey;
 
-            var clearStream = track.ClearAudioStream();
-            if (!clearStream.IsSuccess)
-                return Result<CompleteAudioMasterUploadResponse>.Failure(clearStream.Error!);
+        var reIngest = track.BeginAudioReIngest(request.Key);
+        if (!reIngest.IsSuccess)
+            return Result<CompleteAudioMasterUploadResponse>.Failure(reIngest.Error!);
 
-            var clearLoudness = track.ClearLoudnessProfile();
-            if (!clearLoudness.IsSuccess)
-                return Result<CompleteAudioMasterUploadResponse>.Failure(clearLoudness.Error!);
-        }
-
-        track.SetAudioMaster(request.Key);
-        var processing = track.MarkProcessing();
-        if (!processing.IsSuccess)
-            return Result<CompleteAudioMasterUploadResponse>.Failure(processing.Error!);
+        if (!string.IsNullOrWhiteSpace(previousStreamKey))
+            await CatalogMediaCleanup.DeleteDashPrefixAsync(storage, previousStreamKey, cancellationToken);
 
         var derivedId = Guid.CreateVersion7();
         var streamKey = $"dash/{trackId}/{derivedId}/manifest.mpd";

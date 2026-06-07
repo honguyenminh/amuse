@@ -34,19 +34,19 @@ internal sealed class SaveReleaseHandler(
         if (!await catalog.ReleaseExistsAndPublishedAsync(typedReleaseId, cancellationToken))
             return Result.Failure(DiscoveryErrors.InvalidReleaseId);
 
-        var exists = await db.LibraryEntries.AnyAsync(
-            e => e.ListenerProfileId == listenerResult.Value!.ListenerProfileId
-                 && e.Kind == LibraryEntryKind.SavedRelease
-                 && e.TargetId == releaseId,
-            cancellationToken);
-        if (exists)
-            return Result.Success();
+        var listenerId = listenerResult.Value!.ListenerProfileId;
+        var entries = await db.LibraryEntries
+            .Where(e => e.ListenerProfileId == listenerId)
+            .ToListAsync(cancellationToken);
+        var library = ListenerLibrary.Rehydrate(listenerId, entries);
 
-        var entry = LibraryEntry.CreateSavedRelease(
-            listenerResult.Value.ListenerProfileId,
-            releaseId,
-            clock.UtcNow);
-        db.LibraryEntries.Add(entry);
+        var saveResult = library.TrySaveRelease(releaseId, clock.UtcNow);
+        if (!saveResult.IsSuccess)
+            return Result.Failure(saveResult.Error!);
+
+        if (saveResult.Value is not null)
+            db.LibraryEntries.Add(saveResult.Value);
+
         await db.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

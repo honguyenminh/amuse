@@ -41,42 +41,26 @@ internal sealed class AcceptInviteHandler(
         if (accountEmail is null)
             return Result<AcceptInviteResponse>.Failure(TenancyErrors.InviteEmailMismatch);
 
-        var now = clock.UtcNow;
-        var accept = invite.Accept(accountResult.Value!, accountEmail, now);
-        if (!accept.IsSuccess)
-            return Result<AcceptInviteResponse>.Failure(accept.Error!);
-
         var existingMember = await dbContext.OrganizationMembers
             .FirstOrDefaultAsync(
                 m => m.OrganizationId == invite.OrganizationId
                      && m.AccountId == accountResult.Value!,
                 cancellationToken);
 
-        OrganizationMember member;
-        if (existingMember is not null)
-        {
-            var rejoin = existingMember.RejoinFromInvite(
-                invite.PresetRoleLabel,
-                invite.Claims,
-                organization.EvaluateCapabilities());
-            if (!rejoin.IsSuccess)
-                return Result<AcceptInviteResponse>.Failure(rejoin.Error!);
+        var now = clock.UtcNow;
+        var acceptance = OrganizationInviteAcceptance.Apply(
+            invite,
+            organization,
+            accountResult.Value!,
+            accountEmail,
+            existingMember,
+            now);
+        if (!acceptance.IsSuccess)
+            return Result<AcceptInviteResponse>.Failure(acceptance.Error!);
 
-            member = existingMember;
-        }
-        else
-        {
-            var memberResult = OrganizationMember.CreateFromInvite(
-                invite.OrganizationId,
-                accountResult.Value!,
-                invite.PresetRoleLabel,
-                invite.Claims);
-            if (!memberResult.IsSuccess)
-                return Result<AcceptInviteResponse>.Failure(memberResult.Error!);
-
-            member = memberResult.Value!;
+        var member = acceptance.Value!;
+        if (existingMember is null)
             dbContext.OrganizationMembers.Add(member);
-        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

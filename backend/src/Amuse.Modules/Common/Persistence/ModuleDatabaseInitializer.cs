@@ -2,6 +2,7 @@ using Amuse.Modules.Audit.Persistence;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Discovery.Persistence;
 using Amuse.Modules.Identity.Persistence;
+using Amuse.Modules.Ingestion.Persistence;
 using Amuse.Modules.Listener.Persistence;
 using Amuse.Modules.Platform.Persistence;
 using Amuse.Modules.Tenancy.Persistence;
@@ -22,6 +23,7 @@ public static class ModuleDatabaseInitializer
         await MigrateAsync<PlatformDbContext>(serviceProvider, cancellationToken);
         await MigrateAsync<CatalogDbContext>(serviceProvider, cancellationToken);
         await MigrateAsync<DiscoveryDbContext>(serviceProvider, cancellationToken);
+        await MigrateAsync<IngestionDbContext>(serviceProvider, cancellationToken);
         await MigrateAsync<AuditDbContext>(serviceProvider, cancellationToken);
     }
 

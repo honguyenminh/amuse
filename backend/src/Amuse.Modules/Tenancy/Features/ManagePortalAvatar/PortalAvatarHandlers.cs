@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Amuse.Domain.Identity;
 using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
 using Amuse.Modules.Media.Options;
@@ -16,6 +15,7 @@ namespace Amuse.Modules.Tenancy.Features.ManagePortalAvatar;
 internal sealed class PresignPortalAvatarUploadHandler(
     BusinessPortalProfileService profileService,
     IObjectStorage storage,
+    IClock clock,
     IOptions<MediaOptions> mediaOptions)
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -45,7 +45,7 @@ internal sealed class PresignPortalAvatarUploadHandler(
         var ext = ExtensionFromContentType(request.ContentType, request.FileName);
         var key = $"{PortalAvatarStorage.BusinessPrefix(accountResult.Value!)}{Guid.CreateVersion7()}{ext}";
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var expiresAt = DateTimeOffset.UtcNow.Add(ttl);
+        var expiresAt = clock.UtcNow.Add(ttl);
         var url = storage.GetSignedUploadUrl(MediaBucket.Covers, key, ttl, request.ContentType);
 
         return Result<PresignPortalAvatarUploadResponse>.Success(
@@ -71,6 +71,7 @@ internal sealed class PresignPortalAvatarUploadHandler(
 internal sealed class CompletePortalAvatarUploadHandler(
     BusinessPortalProfileService profileService,
     IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<CompletePortalAvatarUploadResponse>> HandleAsync(
@@ -99,7 +100,7 @@ internal sealed class CompletePortalAvatarUploadHandler(
 
         await profileService.SaveChangesAsync(cancellationToken);
 
-        var avatarUrl = BrowseHomeHandler.CoverArtUrlFor(storage, request.Key)!;
+        var avatarUrl = mediaUrls.BuildCoverArtUrl(request.Key)!;
         return Result<CompletePortalAvatarUploadResponse>.Success(
             new CompletePortalAvatarUploadResponse(request.Key, avatarUrl));
     }

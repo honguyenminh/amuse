@@ -103,6 +103,22 @@ public sealed class Playlist
 
     public bool IsLikedCollection => Kind == PlaylistKind.Liked;
 
+    public Result EnsureOwnedBy(ListenerProfileId ownerId)
+    {
+        if (OwnerListenerProfileId != ownerId)
+            return Result.Failure(DiscoveryErrors.PlaylistForbidden);
+
+        return Result.Success();
+    }
+
+    public Result EnsureDeletable()
+    {
+        if (IsLikedCollection)
+            return Result.Failure(DiscoveryErrors.CannotDeleteLikedPlaylist);
+
+        return Result.Success();
+    }
+
     public Result Rename(string title, DateTimeOffset now)
     {
         if (IsLikedCollection)

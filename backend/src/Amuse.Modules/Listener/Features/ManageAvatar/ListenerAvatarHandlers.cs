@@ -14,6 +14,7 @@ namespace Amuse.Modules.Listener.Features.ManageAvatar;
 internal sealed class PresignListenerAvatarUploadHandler(
     EnsureListenerProfileService ensureService,
     IObjectStorage storage,
+    IClock clock,
     IOptions<MediaOptions> mediaOptions)
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -43,7 +44,7 @@ internal sealed class PresignListenerAvatarUploadHandler(
         var ext = ExtensionFromContentType(request.ContentType, request.FileName);
         var key = $"{ProfileAvatarStorage.ListenerPrefix(accountId.Value)}{Guid.CreateVersion7()}{ext}";
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var expiresAt = DateTimeOffset.UtcNow.Add(ttl);
+        var expiresAt = clock.UtcNow.Add(ttl);
         var url = storage.GetSignedUploadUrl(MediaBucket.Covers, key, ttl, request.ContentType);
 
         return Result<PresignListenerAvatarUploadResponse>.Success(
@@ -81,6 +82,7 @@ internal sealed class CompleteListenerAvatarUploadHandler(
     EnsureListenerProfileService ensureService,
     ListenerProfileService profileService,
     IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<CompleteListenerAvatarUploadResponse>> HandleAsync(
@@ -111,7 +113,7 @@ internal sealed class CompleteListenerAvatarUploadHandler(
 
         await profileService.SaveChangesAsync(cancellationToken);
 
-        var avatarUrl = ListenerProfileMapper.AvatarUrlFor(storage, request.Key)!;
+        var avatarUrl = ListenerProfileMapper.AvatarUrlFor(mediaUrls, request.Key)!;
         return Result<CompleteListenerAvatarUploadResponse>.Success(
             new CompleteListenerAvatarUploadResponse(request.Key, avatarUrl));
     }

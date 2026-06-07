@@ -109,7 +109,7 @@ internal sealed class ListReleaseGroupsHandler(CatalogDbContext db)
     }
 }
 
-internal sealed class GetReleaseGroupDetailHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class GetReleaseGroupDetailHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<ManageReleaseGroupDetailResponse>> HandleAsync(
         Guid artistId,
@@ -161,7 +161,7 @@ internal sealed class GetReleaseGroupDetailHandler(CatalogDbContext db, IObjectS
                 r.ReleaseType,
                 r.LifecycleStatus,
                 r.ReleaseDate,
-                BrowseHomeHandler.CoverArtUrlFor(storage, r.CoverArtKey)))
+                mediaUrls.BuildCoverArtUrl(r.CoverArtKey)))
             .ToListAsync(cancellationToken);
 
         return Result<ManageReleaseGroupDetailResponse>.Success(

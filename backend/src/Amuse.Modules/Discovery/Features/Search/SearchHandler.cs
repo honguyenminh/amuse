@@ -15,7 +15,7 @@ internal sealed class SearchHandler(
     ICatalogDiscoveryReadModel catalog,
     IListenerPreferenceReadModel preferenceReadModel,
     IListenerProfilePresentationReadModel presentationReadModel,
-    IObjectStorage storage)
+    IMediaPublicUrlBuilder mediaUrls)
 {
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 50;
@@ -36,11 +36,11 @@ internal sealed class SearchHandler(
         var catalogResult = await catalog.SearchAsync(trimmed, limit, cancellationToken);
 
         var verified = catalogResult.Verified
-            .Select(item => DiscoveryMapper.ToSearchItem(item, storage))
+            .Select(item => DiscoveryMapper.ToSearchItem(item, mediaUrls))
             .ToArray();
 
         var unverified = catalogResult.Unverified
-            .Select(item => DiscoveryMapper.ToSearchItem(item, storage))
+            .Select(item => DiscoveryMapper.ToSearchItem(item, mediaUrls))
             .ToArray();
 
         var pattern = $"%{trimmed}%";
@@ -57,13 +57,13 @@ internal sealed class SearchHandler(
         var owners = await DiscoveryMapper.LoadOwnersAsync(
             publicPlaylists.Select(p => p.OwnerListenerProfileId),
             presentationReadModel,
-            storage,
+            mediaUrls,
             cancellationToken);
 
         var coverArtUrls = await DiscoveryPlaylistCoverArt.LoadAsync(
             publicPlaylists,
             catalog,
-            storage,
+            mediaUrls,
             cancellationToken);
 
         var playlistCards = publicPlaylists

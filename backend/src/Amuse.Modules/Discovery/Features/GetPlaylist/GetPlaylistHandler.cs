@@ -16,7 +16,8 @@ internal sealed class GetPlaylistHandler(
     IListenerPersonaReadModel personaReadModel,
     IListenerProfilePresentationReadModel presentationReadModel,
     PlaylistViewContextBuilder viewContextBuilder,
-    IObjectStorage storage)
+    PlaylistLoader playlistLoader,
+    IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<PlaylistDetailDto>> HandleAsync(
         Guid playlistId,
@@ -26,8 +27,8 @@ internal sealed class GetPlaylistHandler(
         if (playlistId == Guid.Empty)
             return Result<PlaylistDetailDto>.Failure(DiscoveryErrors.PlaylistNotFound);
 
-        var playlist = await DiscoveryPlaylistLoader.LoadForReadAsync(
-            db, PlaylistId.From(playlistId), cancellationToken);
+        var playlist = await playlistLoader.GetForReadAsync(
+            PlaylistId.From(playlistId), cancellationToken);
         if (playlist is null)
             return Result<PlaylistDetailDto>.Failure(DiscoveryErrors.PlaylistNotFound);
 
@@ -61,14 +62,14 @@ internal sealed class GetPlaylistHandler(
             {
                 var row = trackRows[i.TrackId.Value];
                 releaseSummaries.TryGetValue(row.ReleaseId, out var release);
-                return DiscoveryMapper.ToItemDto(i, row, storage, release?.CoverArtKey);
+                return DiscoveryMapper.ToItemDto(i, row, mediaUrls, release?.CoverArtKey);
             })
             .ToArray();
 
         var owners = await DiscoveryMapper.LoadOwnersAsync(
             [playlist.OwnerListenerProfileId],
             presentationReadModel,
-            storage,
+            mediaUrls,
             cancellationToken);
         owners.TryGetValue(playlist.OwnerListenerProfileId.Value, out var owner);
 

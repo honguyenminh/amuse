@@ -48,7 +48,7 @@ internal static partial class CatalogSlugHelper
             return false;
 
         var typedSlug = parseResult.Value!;
-        var query = db.Artists.AsNoTracking().Where(a => a.Slug == typedSlug);
+        var query = db.Artists.IgnoreQueryFilters().AsNoTracking().Where(a => a.Slug == typedSlug);
         if (excludingArtistId is { } artistId)
             query = query.Where(a => a.Id != artistId);
 
@@ -66,6 +66,7 @@ internal static partial class CatalogSlugHelper
 
         var typedSlug = parseResult.Value!;
         var taken = await db.Artists
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .AnyAsync(a => a.Slug == typedSlug, cancellationToken);
 
@@ -98,7 +99,7 @@ internal static partial class CatalogSlugHelper
             return false;
 
         var typedSlug = parseResult.Value!;
-        var query = db.Releases.AsNoTracking()
+        var query = db.Releases.IgnoreQueryFilters().AsNoTracking()
             .Where(r => r.ArtistId == artistId && r.Slug == typedSlug);
         if (excludingReleaseId is { } releaseId)
             query = query.Where(r => r.Id != releaseId);
@@ -118,7 +119,7 @@ internal static partial class CatalogSlugHelper
             return parseResult;
 
         var typedSlug = parseResult.Value!;
-        var query = db.Releases.AsNoTracking()
+        var query = db.Releases.IgnoreQueryFilters().AsNoTracking()
             .Where(r => r.ArtistId == artistId && r.Slug == typedSlug);
         if (excludingReleaseId is { } releaseId)
             query = query.Where(r => r.Id != releaseId);
@@ -289,7 +290,7 @@ internal static partial class CatalogSlugHelper
     {
         var candidate = baseSlug;
         var suffix = 2;
-        while (await db.Artists.AsNoTracking().AnyAsync(a => a.Slug == Slug.From(candidate), cancellationToken))
+        while (await db.Artists.IgnoreQueryFilters().AsNoTracking().AnyAsync(a => a.Slug == Slug.From(candidate), cancellationToken))
         {
             candidate = $"{baseSlug}-{suffix}";
             suffix++;
@@ -311,7 +312,7 @@ internal static partial class CatalogSlugHelper
     {
         var candidate = baseSlug;
         var suffix = 2;
-        while (await db.Releases.AsNoTracking().AnyAsync(
+        while (await db.Releases.IgnoreQueryFilters().AsNoTracking().AnyAsync(
                    r => r.ArtistId == artistId && r.Slug == Slug.From(candidate),
                    cancellationToken))
         {
@@ -335,7 +336,7 @@ internal static partial class CatalogSlugHelper
     {
         var candidate = baseSlug;
         var suffix = 2;
-        while (await db.ReleaseGroups.AsNoTracking().AnyAsync(
+        while (await db.ReleaseGroups.IgnoreQueryFilters().AsNoTracking().AnyAsync(
                    g => g.ArtistId == artistId && g.Slug == Slug.From(candidate),
                    cancellationToken))
         {

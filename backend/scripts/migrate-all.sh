@@ -14,6 +14,7 @@ contexts=(
   PlatformDbContext
   CatalogDbContext
   DiscoveryDbContext
+  IngestionDbContext
   AuditDbContext
 )
 

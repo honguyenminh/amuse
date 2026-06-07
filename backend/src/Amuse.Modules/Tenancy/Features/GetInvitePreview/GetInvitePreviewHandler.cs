@@ -22,7 +22,7 @@ internal sealed class GetInvitePreviewHandler(TenancyDbContext dbContext, IClock
         if (invite is null)
             return Result<InvitePreviewResponse>.Failure(TenancyErrors.InviteNotFound);
 
-        if (invite.Status == OrganizationInviteStatus.Pending && clock.UtcNow >= invite.ExpiresAt)
+        if (invite.IsExpired(clock.UtcNow))
             return Result<InvitePreviewResponse>.Failure(TenancyErrors.InviteExpired);
 
         var organization = await dbContext.Organizations.AsNoTracking()

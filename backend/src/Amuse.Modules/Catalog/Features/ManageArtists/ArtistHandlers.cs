@@ -1,19 +1,18 @@
 using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
-using Amuse.Modules.Tenancy.Persistence;
+using Amuse.Modules.Tenancy.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.ManageArtists;
 
 internal sealed class CreateArtistHandler(
     CatalogDbContext db,
-    TenancyDbContext tenancyDb,
+    ITenancyOrganizationReadModel organizationReadModel,
     IClock clock,
     CatalogAuditWriter auditWriter)
 {
@@ -29,11 +28,8 @@ internal sealed class CreateArtistHandler(
         var organizationId = orgResult.Value!;
         var now = clock.UtcNow;
 
-        var organization = await tenancyDb.Organizations
-            .AsNoTracking()
-            .FirstOrDefaultAsync(o => o.Id == organizationId, cancellationToken);
-
-        if (organization is null)
+        var trustTier = await organizationReadModel.GetTrustTierAsync(organizationId, cancellationToken);
+        if (trustTier is null)
             return Result<ManageArtistSummaryResponse>.Failure(CatalogErrors.Forbidden);
 
         var slugResult = await CatalogSlugHelper.EnsureAvailableArtistSlugAsync(
@@ -43,7 +39,7 @@ internal sealed class CreateArtistHandler(
         if (!slugResult.IsSuccess)
             return Result<ManageArtistSummaryResponse>.Failure(slugResult.Error!);
 
-        var visibilityTier = ArtistVisibilityTierMapper.FromOrganizationTrustTier(organization.TrustTier);
+        var visibilityTier = ArtistVisibilityTierMapper.FromOrganizationTrustTier(trustTier.Value);
 
         var createResult = Artist.Create(
             ArtistId.New(),
@@ -131,7 +127,7 @@ internal sealed class ListArtistsHandler(CatalogDbContext db)
     }
 }
 
-internal sealed class GetArtistHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class GetArtistHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<ManageArtistDetailResponse>> HandleAsync(
         Guid artistId,
@@ -181,7 +177,7 @@ internal sealed class GetArtistHandler(CatalogDbContext db, IObjectStorage stora
                 r.ReleaseType,
                 r.LifecycleStatus,
                 r.ReleaseDate,
-                BrowseHomeHandler.CoverArtUrlFor(storage, r.CoverArtKey)))
+                mediaUrls.BuildCoverArtUrl(r.CoverArtKey)))
             .ToArray();
 
         var tracks = await db.Tracks
@@ -219,8 +215,8 @@ internal sealed class GetArtistHandler(CatalogDbContext db, IObjectStorage stora
                 artist.CountryCode,
                 artist.WebsiteUrl,
                 artist.Aliases,
-                BrowseHomeHandler.CoverArtUrlFor(storage, artist.AvatarKey),
-                BrowseHomeHandler.CoverArtUrlFor(storage, artist.CoverKey),
+                mediaUrls.BuildCoverArtUrl(artist.AvatarKey),
+                mediaUrls.BuildCoverArtUrl(artist.CoverKey),
                 artist.VisibilityTier,
                 artist.CreatedAt,
                 releases,

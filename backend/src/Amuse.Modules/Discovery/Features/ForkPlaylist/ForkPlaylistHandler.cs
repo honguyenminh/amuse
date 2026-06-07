@@ -15,7 +15,8 @@ internal sealed class ForkPlaylistHandler(
     IListenerPersonaReadModel personaReadModel,
     IListenerProfilePresentationReadModel presentationReadModel,
     PlaylistViewContextBuilder viewContextBuilder,
-    IObjectStorage storage,
+    PlaylistLoader playlistLoader,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<PlaylistDetailDto>> HandleAsync(
@@ -31,8 +32,8 @@ internal sealed class ForkPlaylistHandler(
         if (!listenerResult.IsSuccess)
             return Result<PlaylistDetailDto>.Failure(listenerResult.Error!);
 
-        var source = await DiscoveryPlaylistLoader.LoadForReadAsync(
-            db, PlaylistId.From(playlistId), cancellationToken);
+        var source = await playlistLoader.GetForReadAsync(
+            PlaylistId.From(playlistId), cancellationToken);
         if (source is null)
             return Result<PlaylistDetailDto>.Failure(DiscoveryErrors.PlaylistNotFound);
 
@@ -53,7 +54,7 @@ internal sealed class ForkPlaylistHandler(
         var owners = await DiscoveryMapper.LoadOwnersAsync(
             [fork.OwnerListenerProfileId],
             presentationReadModel,
-            storage,
+            mediaUrls,
             cancellationToken);
         owners.TryGetValue(fork.OwnerListenerProfileId.Value, out var owner);
 

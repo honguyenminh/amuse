@@ -5,20 +5,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Discovery.Features.Shared;
 
-internal static class LikedPlaylistService
+internal sealed class LikedPlaylistLoader(DiscoveryDbContext db)
 {
-    public static async Task<Playlist> GetOrCreateForMutationAsync(
-        DiscoveryDbContext db,
+    public async Task<Playlist?> GetForMutationAsync(
         ListenerProfileId listenerId,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        var existing = await db.Playlists
+        CancellationToken cancellationToken) =>
+        await db.Playlists
             .Include(p => p.Items)
             .Include(p => p.ShareGrants)
             .FirstOrDefaultAsync(
                 p => p.OwnerListenerProfileId == listenerId && p.Kind == PlaylistKind.Liked,
                 cancellationToken);
+
+    public async Task<Playlist> GetOrCreateForMutationAsync(
+        ListenerProfileId listenerId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await GetForMutationAsync(listenerId, cancellationToken);
         if (existing is not null)
             return existing;
 
@@ -31,8 +35,7 @@ internal static class LikedPlaylistService
         return created.Value!;
     }
 
-    public static async Task<Playlist?> LoadForReadAsync(
-        DiscoveryDbContext db,
+    public async Task<Playlist?> GetForReadAsync(
         ListenerProfileId listenerId,
         CancellationToken cancellationToken) =>
         await db.Playlists.AsNoTracking()

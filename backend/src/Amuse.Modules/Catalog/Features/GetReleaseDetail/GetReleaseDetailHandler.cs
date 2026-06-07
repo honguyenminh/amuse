@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.GetReleaseDetail;
 
-internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<GetReleaseDetailResponse>> HandleAsync(
         Guid releaseId,
@@ -119,7 +119,7 @@ internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IObjectStorag
                         r.Title,
                         r.ReleaseType,
                         r.ReleaseDate,
-                        BrowseHomeHandler.CoverArtUrlFor(storage, r.CoverArtKey)))
+                        mediaUrls.BuildCoverArtUrl(r.CoverArtKey)))
                     .ToListAsync(cancellationToken);
             }
         }
@@ -142,7 +142,7 @@ internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IObjectStorag
             release.Tags,
             release.LanguageCode,
             release.LabelName,
-            BrowseHomeHandler.CoverArtUrlFor(storage, release.CoverArtKey),
+            mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
             tracks,
             otherEditions);
 

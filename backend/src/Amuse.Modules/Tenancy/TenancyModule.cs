@@ -23,6 +23,7 @@ using Amuse.Modules.Tenancy.Features.TransferOwnership;
 using Amuse.Modules.Tenancy.Features.UpdateMember;
 using Amuse.Modules.Tenancy.Features.UpdateOrganization;
 using Amuse.Modules.Tenancy.Features.UpdatePortalProfile;
+using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Tenancy.Options;
 using Amuse.Modules.Tenancy.Persistence;
 using Amuse.Modules.Tenancy.Services;
@@ -47,12 +48,19 @@ public static class TenancyModule
 
         services.Configure<TenancyOptions>(configuration.GetSection(TenancyOptions.SectionName));
 
-        services.AddDbContext<TenancyDbContext>(options =>
-            TenancyDbContextOptions.Configure(options, connectionString));
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<TenancyDbContext>((sp, options) =>
+        {
+            TenancyDbContextOptions.Configure(options, connectionString);
+            options.AddModuleInterceptors(sp);
+        });
 
         services.TryAddSingleton<IClock, SystemClock>();
 
         services.AddScoped<ITenancyPersonaReadModel, TenancyPersonaReadModel>();
+        services.AddScoped<ITenancyOrganizationReadModel, TenancyOrganizationReadModel>();
         services.AddScoped<IOrganizationLifecycleCommands, OrganizationLifecycleService>();
         services.AddScoped<IBusinessPortalProfileLookup, BusinessPortalProfileLookup>();
         services.AddScoped<IBusinessPortalProfileOnboardingReadModel, BusinessPortalProfileOnboardingReadModel>();

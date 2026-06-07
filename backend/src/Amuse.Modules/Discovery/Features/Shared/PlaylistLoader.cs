@@ -4,10 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Discovery.Features.Shared;
 
-internal static class DiscoveryPlaylistLoader
+internal sealed class PlaylistLoader(DiscoveryDbContext db)
 {
-    public static async Task<Playlist?> LoadForMutationAsync(
-        DiscoveryDbContext db,
+    public async Task<Playlist?> GetForMutationAsync(
         PlaylistId playlistId,
         CancellationToken cancellationToken) =>
         await db.Playlists
@@ -15,8 +14,14 @@ internal static class DiscoveryPlaylistLoader
             .Include(p => p.ShareGrants)
             .FirstOrDefaultAsync(p => p.Id == playlistId, cancellationToken);
 
-    public static async Task<Playlist?> LoadForReadAsync(
-        DiscoveryDbContext db,
+    public async Task<Playlist?> GetForAuthorizationAsync(
+        PlaylistId playlistId,
+        CancellationToken cancellationToken) =>
+        await db.Playlists.AsNoTracking()
+            .Include(p => p.ShareGrants)
+            .FirstOrDefaultAsync(p => p.Id == playlistId, cancellationToken);
+
+    public async Task<Playlist?> GetForReadAsync(
         PlaylistId playlistId,
         CancellationToken cancellationToken) =>
         await db.Playlists.AsNoTracking()

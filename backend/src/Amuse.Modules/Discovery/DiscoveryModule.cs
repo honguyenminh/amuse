@@ -25,13 +25,14 @@ using Amuse.Modules.Discovery.Features.UnlikeTrack;
 using Amuse.Modules.Discovery.Features.UnsavePlaylist;
 using Amuse.Modules.Discovery.Features.UnsaveRelease;
 using Amuse.Modules.Discovery.Features.UpdatePlaylist;
+using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Discovery.Persistence;
-using Amuse.Modules.Discovery.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Amuse.Modules.Discovery;
 
@@ -44,14 +45,20 @@ public static class DiscoveryModule
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
-        services.AddDbContext<DiscoveryDbContext>(options =>
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<DiscoveryDbContext>((sp, options) =>
         {
             DiscoveryDbContextOptions.Configure(
                 (DbContextOptionsBuilder<DiscoveryDbContext>)options,
                 connectionString);
+            options.AddModuleInterceptors(sp);
         });
 
         services.AddScoped<PlaylistViewContextBuilder>();
+        services.AddScoped<PlaylistLoader>();
+        services.AddScoped<LikedPlaylistLoader>();
         services.AddScoped<PlayableCollectionResolver>();
 
         services.AddScoped<CreatePlaylistHandler>();

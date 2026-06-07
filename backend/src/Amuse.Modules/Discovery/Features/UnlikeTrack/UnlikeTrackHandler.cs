@@ -12,6 +12,7 @@ namespace Amuse.Modules.Discovery.Features.UnlikeTrack;
 internal sealed class UnlikeTrackHandler(
     DiscoveryDbContext db,
     IListenerPersonaReadModel personaReadModel,
+    LikedPlaylistLoader likedPlaylistLoader,
     IClock clock)
 {
     public async Task<Result> HandleAsync(
@@ -27,11 +28,11 @@ internal sealed class UnlikeTrackHandler(
         if (!listenerResult.IsSuccess)
             return Result.Failure(listenerResult.Error!);
 
-        var playlist = await LikedPlaylistService.GetOrCreateForMutationAsync(
-            db,
+        var playlist = await likedPlaylistLoader.GetForMutationAsync(
             listenerResult.Value!.ListenerProfileId,
-            clock.UtcNow,
             cancellationToken);
+        if (playlist is null)
+            return Result.Failure(DiscoveryErrors.LikedTrackNotFound);
 
         var removeResult = playlist.RemoveTrackByTrackId(TrackId.From(trackId), clock.UtcNow);
         if (!removeResult.IsSuccess)

@@ -25,16 +25,19 @@ internal sealed class UnsavePlaylistHandler(
         if (!listenerResult.IsSuccess)
             return Result.Failure(listenerResult.Error!);
 
-        var entry = await db.LibraryEntries.FirstOrDefaultAsync(
-            e => e.ListenerProfileId == listenerResult.Value!.ListenerProfileId
-                 && e.Kind == LibraryEntryKind.SavedPlaylist
-                 && e.TargetId == playlistId,
-            cancellationToken);
+        var listenerId = listenerResult.Value!.ListenerProfileId;
+        var entries = await db.LibraryEntries
+            .Where(e => e.ListenerProfileId == listenerId)
+            .ToListAsync(cancellationToken);
+        var library = ListenerLibrary.Rehydrate(listenerId, entries);
 
-        if (entry is null)
-            return Result.Success();
+        var unsaveResult = library.TryUnsavePlaylist(PlaylistId.From(playlistId));
+        if (!unsaveResult.IsSuccess)
+            return Result.Failure(unsaveResult.Error!);
 
-        db.LibraryEntries.Remove(entry);
+        if (unsaveResult.Value!.Count > 0)
+            db.LibraryEntries.RemoveRange(unsaveResult.Value);
+
         await db.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

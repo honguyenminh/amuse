@@ -1,3 +1,4 @@
+using Amuse.Modules.Common.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +22,6 @@ public sealed class CatalogDbContextFactory : IDesignTimeDbContextFactory<Catalo
 
         var optionsBuilder = new DbContextOptionsBuilder<CatalogDbContext>();
         CatalogDbContextOptions.Configure(optionsBuilder, connectionString);
-        return new CatalogDbContext(optionsBuilder.Options);
+        return new CatalogDbContext(optionsBuilder.Options, NullOrgScopeAccessor.Instance);
     }
 }

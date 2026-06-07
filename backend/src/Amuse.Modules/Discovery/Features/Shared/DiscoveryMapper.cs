@@ -2,7 +2,6 @@ using Amuse.Domain.Catalog;
 using Amuse.Domain.Discovery;
 using Amuse.Domain.Listener;
 using Amuse.Modules.Catalog.Contracts;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Listener.Contracts;
 using Amuse.Modules.Media;
 
@@ -13,7 +12,7 @@ internal static class DiscoveryMapper
     public static async Task<IReadOnlyDictionary<Guid, PlaylistOwnerDto>> LoadOwnersAsync(
         IEnumerable<ListenerProfileId> ownerIds,
         IListenerProfilePresentationReadModel presentationReadModel,
-        IObjectStorage storage,
+        IMediaPublicUrlBuilder mediaUrls,
         CancellationToken cancellationToken)
     {
         var ids = ownerIds.Distinct().ToArray();
@@ -26,7 +25,7 @@ internal static class DiscoveryMapper
             kvp => new PlaylistOwnerDto(
                 kvp.Key,
                 kvp.Value.DisplayName,
-                AvatarUrlFor(storage, kvp.Value.AvatarObjectKey)));
+                AvatarUrlFor(mediaUrls, kvp.Value.AvatarObjectKey)));
     }
 
     public static PlaylistSummaryDto ToSummary(
@@ -90,7 +89,7 @@ internal static class DiscoveryMapper
     public static PlaylistItemDto ToItemDto(
         PlaylistItem item,
         CatalogTrackPlayableRow row,
-        IObjectStorage storage,
+        IMediaPublicUrlBuilder mediaUrls,
         string? coverArtKey)
     {
         return new PlaylistItemDto(
@@ -100,13 +99,13 @@ internal static class DiscoveryMapper
             row.Title,
             row.DurationMs,
             row.HasAudio,
-            CoverArtUrlFor(storage, coverArtKey),
+            CoverArtUrlFor(mediaUrls, coverArtKey),
             row.ReleaseId,
             row.ReleaseTitle,
             row.ArtistName);
     }
 
-    public static SearchItemDto ToSearchItem(CatalogSearchItem item, IObjectStorage storage) =>
+    public static SearchItemDto ToSearchItem(CatalogSearchItem item, IMediaPublicUrlBuilder mediaUrls) =>
         new(
             item.Kind.ToString().ToLowerInvariant(),
             item.Id,
@@ -116,7 +115,7 @@ internal static class DiscoveryMapper
             item.ReleaseSlug,
             item.ArtistId,
             item.ReleaseId,
-            CoverArtUrlFor(storage, item.CoverArtKey),
+            CoverArtUrlFor(mediaUrls, item.CoverArtKey),
             item.IsVerified);
 
     public static PublicPlaylistSearchCardDto ToPublicPlaylistSearchCard(
@@ -134,7 +133,7 @@ internal static class DiscoveryMapper
 
     public static PlayableTrackDto ToPlayableTrack(
         CatalogTrackPlayableRow row,
-        IObjectStorage storage,
+        IMediaPublicUrlBuilder mediaUrls,
         string? coverArtKey) =>
         new(
             row.TrackId,
@@ -142,7 +141,7 @@ internal static class DiscoveryMapper
             row.TrackNumber,
             row.DurationMs,
             row.HasAudio,
-            CoverArtUrlFor(storage, coverArtKey),
+            CoverArtUrlFor(mediaUrls, coverArtKey),
             row.ReleaseId,
             row.ReleaseTitle,
             row.ArtistName,
@@ -152,14 +151,14 @@ internal static class DiscoveryMapper
     public static LikedTrackRowDto ToLikedTrack(
         LikedTrack liked,
         CatalogTrackPlayableRow row,
-        IObjectStorage storage,
+        IMediaPublicUrlBuilder mediaUrls,
         string? coverArtKey) =>
         new(
             row.TrackId,
             row.Title,
             row.DurationMs,
             row.HasAudio,
-            CoverArtUrlFor(storage, coverArtKey),
+            CoverArtUrlFor(mediaUrls, coverArtKey),
             row.ReleaseId,
             row.ReleaseTitle,
             row.ArtistName,
@@ -168,24 +167,22 @@ internal static class DiscoveryMapper
     public static SavedReleaseRowDto ToSavedRelease(
         LibraryEntry entry,
         CatalogReleaseSummaryRow row,
-        IObjectStorage storage) =>
+        IMediaPublicUrlBuilder mediaUrls) =>
         new(
             row.ReleaseId,
             row.Title,
             row.ArtistName,
             row.ArtistSlug,
             row.ReleaseSlug,
-            CoverArtUrlFor(storage, row.CoverArtKey),
+            CoverArtUrlFor(mediaUrls, row.CoverArtKey),
             entry.SavedAt);
 
-    private static string? AvatarUrlFor(IObjectStorage storage, string? objectKey) =>
-        string.IsNullOrEmpty(objectKey)
-            ? null
-            : BrowseHomeHandler.CoverArtUrlFor(storage, objectKey);
+    private static string? AvatarUrlFor(IMediaPublicUrlBuilder mediaUrls, string? objectKey) =>
+        mediaUrls.BuildCoverArtUrl(objectKey);
 
-    private static string? CoverArtUrlFor(IObjectStorage storage, string? key) =>
-        CoverArtUrlForPublic(storage, key);
+    private static string? CoverArtUrlFor(IMediaPublicUrlBuilder mediaUrls, string? key) =>
+        CoverArtUrlForPublic(mediaUrls, key);
 
-    internal static string? CoverArtUrlForPublic(IObjectStorage storage, string? key) =>
-        string.IsNullOrEmpty(key) ? null : BrowseHomeHandler.CoverArtUrlFor(storage, key);
+    internal static string? CoverArtUrlForPublic(IMediaPublicUrlBuilder mediaUrls, string? key) =>
+        mediaUrls.BuildCoverArtUrl(key);
 }

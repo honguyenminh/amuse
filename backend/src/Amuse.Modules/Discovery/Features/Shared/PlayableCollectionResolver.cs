@@ -3,26 +3,22 @@ using Amuse.Domain.Discovery;
 using Amuse.Domain.Listener;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Contracts;
-using Amuse.Modules.Discovery.Features.Shared;
-using Amuse.Modules.Discovery.Persistence;
 using Amuse.Modules.Media;
-using Microsoft.EntityFrameworkCore;
 
-namespace Amuse.Modules.Discovery.Services;
+namespace Amuse.Modules.Discovery.Features.Shared;
 
 internal sealed class PlayableCollectionResolver(
-    DiscoveryDbContext db,
+    PlaylistLoader playlistLoader,
+    LikedPlaylistLoader likedPlaylistLoader,
     ICatalogDiscoveryReadModel catalog,
-    IObjectStorage storage)
+    IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<PlayableTracksResponse>> ResolvePlaylistTracksAsync(
         PlaylistId playlistId,
         PlaylistViewContext viewContext,
         CancellationToken cancellationToken)
     {
-        var playlist = await db.Playlists.AsNoTracking()
-            .Include(p => p.Items)
-            .FirstOrDefaultAsync(p => p.Id == playlistId, cancellationToken);
+        var playlist = await playlistLoader.GetForReadAsync(playlistId, cancellationToken);
 
         if (playlist is null)
             return Result<PlayableTracksResponse>.Failure(DiscoveryErrors.PlaylistNotFound);
@@ -48,7 +44,7 @@ internal sealed class PlayableCollectionResolver(
             {
                 var row = rows[id];
                 releaseSummaries.TryGetValue(row.ReleaseId, out var release);
-                return DiscoveryMapper.ToPlayableTrack(row, storage, release?.CoverArtKey);
+                return DiscoveryMapper.ToPlayableTrack(row, mediaUrls, release?.CoverArtKey);
             })
             .ToArray();
 
@@ -59,7 +55,7 @@ internal sealed class PlayableCollectionResolver(
         ListenerProfileId listenerId,
         CancellationToken cancellationToken)
     {
-        var playlist = await LikedPlaylistService.LoadForReadAsync(db, listenerId, cancellationToken);
+        var playlist = await likedPlaylistLoader.GetForReadAsync(listenerId, cancellationToken);
         if (playlist is null)
             return Result<PlayableTracksResponse>.Success(new PlayableTracksResponse([]));
 
@@ -85,7 +81,7 @@ internal sealed class PlayableCollectionResolver(
         releaseSummaries.TryGetValue(releaseId, out var summary);
 
         var tracks = rows
-            .Select(row => DiscoveryMapper.ToPlayableTrack(row, storage, summary?.CoverArtKey))
+            .Select(row => DiscoveryMapper.ToPlayableTrack(row, mediaUrls, summary?.CoverArtKey))
             .ToArray();
 
         return Result<PlayableTracksResponse>.Success(new PlayableTracksResponse(tracks));

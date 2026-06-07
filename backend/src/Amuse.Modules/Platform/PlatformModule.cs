@@ -1,4 +1,5 @@
 using Amuse.Modules.Identity.Contracts;
+using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Platform.Contracts;
 using Amuse.Modules.Platform.Features.ApproveOrganization;
 using Amuse.Modules.Platform.Features.ForceTransferOwnership;
@@ -15,6 +16,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Amuse.Modules.Platform;
 
@@ -29,10 +31,16 @@ public static class PlatformModule
 
         services.Configure<PlatformRootOptions>(configuration.GetSection(PlatformRootOptions.SectionName));
 
-        services.AddDbContext<PlatformDbContext>(options =>
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<PlatformDbContext>((sp, options) =>
+        {
             options.UseNpgsql(
                 connectionString,
-                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_platform", "platform")));
+                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_platform", "platform"));
+            options.AddModuleInterceptors(sp);
+        });
 
         services.AddScoped<IPlatformPersonaReadModel, PlatformPersonaReadModel>();
         services.AddScoped<IPlatformOperatorLookup, PlatformOperatorLookup>();

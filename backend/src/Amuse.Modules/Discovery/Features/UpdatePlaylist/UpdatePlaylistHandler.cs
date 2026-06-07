@@ -15,7 +15,8 @@ internal sealed class UpdatePlaylistHandler(
     DiscoveryDbContext db,
     IListenerPersonaReadModel personaReadModel,
     IListenerProfilePresentationReadModel presentationReadModel,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
+    PlaylistLoader playlistLoader,
     IClock clock)
 {
     public async Task<Result<PlaylistDetailDto>> HandleAsync(
@@ -32,13 +33,14 @@ internal sealed class UpdatePlaylistHandler(
         if (!listenerResult.IsSuccess)
             return Result<PlaylistDetailDto>.Failure(listenerResult.Error!);
 
-        var playlist = await DiscoveryPlaylistLoader.LoadForMutationAsync(
-            db, PlaylistId.From(playlistId), cancellationToken);
+        var playlist = await playlistLoader.GetForMutationAsync(
+            PlaylistId.From(playlistId), cancellationToken);
         if (playlist is null)
             return Result<PlaylistDetailDto>.Failure(DiscoveryErrors.PlaylistNotFound);
 
-        if (playlist.OwnerListenerProfileId != listenerResult.Value!.ListenerProfileId)
-            return Result<PlaylistDetailDto>.Failure(DiscoveryErrors.PlaylistForbidden);
+        var ownershipResult = playlist.EnsureOwnedBy(listenerResult.Value!.ListenerProfileId);
+        if (!ownershipResult.IsSuccess)
+            return Result<PlaylistDetailDto>.Failure(ownershipResult.Error!);
 
         var now = clock.UtcNow;
 
@@ -73,8 +75,7 @@ internal sealed class UpdatePlaylistHandler(
                 var forks = await db.Playlists
                     .Where(p => p.ForkedFromPlaylistId == playlist.Id)
                     .ToListAsync(cancellationToken);
-                var toCut = PlaylistVisibilityTransitionService.GetForkDescendantsToCut(playlist, forks);
-                PlaylistVisibilityTransitionService.CutForkOrigins(toCut, now);
+                PlaylistVisibilityTransitionService.ApplyPrivateTransition(playlist, forks, now);
 
                 var follows = await db.PlaylistFollows
                     .Where(f => f.PlaylistId == playlist.Id)
@@ -88,7 +89,7 @@ internal sealed class UpdatePlaylistHandler(
         var owners = await DiscoveryMapper.LoadOwnersAsync(
             [playlist.OwnerListenerProfileId],
             presentationReadModel,
-            storage,
+            mediaUrls,
             cancellationToken);
         owners.TryGetValue(playlist.OwnerListenerProfileId.Value, out var owner);
 

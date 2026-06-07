@@ -1,3 +1,5 @@
+using Amuse.Domain.SharedKernel;
+
 namespace Amuse.Domain.Catalog;
 
 /// <summary>
@@ -8,6 +10,14 @@ public readonly record struct TrackDuration
     public int Milliseconds { get; }
 
     private TrackDuration(int milliseconds) => Milliseconds = milliseconds;
+
+    public static Result<TrackDuration> TryFromMilliseconds(int milliseconds)
+    {
+        if (milliseconds <= 0 || milliseconds > TrackDurationLimits.MaxMilliseconds)
+            return Result<TrackDuration>.Failure(CatalogErrors.InvalidTrack);
+
+        return Result<TrackDuration>.Success(new TrackDuration(milliseconds));
+    }
 
     public static TrackDuration FromMilliseconds(int milliseconds)
     {

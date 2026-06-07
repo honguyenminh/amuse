@@ -14,6 +14,7 @@ internal sealed class LikeTrackHandler(
     DiscoveryDbContext db,
     ICatalogDiscoveryReadModel catalog,
     IListenerPersonaReadModel personaReadModel,
+    LikedPlaylistLoader likedPlaylistLoader,
     IClock clock)
 {
     public async Task<Result> HandleAsync(
@@ -34,8 +35,7 @@ internal sealed class LikeTrackHandler(
             return Result.Failure(DiscoveryErrors.InvalidTrackId);
 
         var now = clock.UtcNow;
-        var playlist = await LikedPlaylistService.GetOrCreateForMutationAsync(
-            db,
+        var playlist = await likedPlaylistLoader.GetOrCreateForMutationAsync(
             listenerResult.Value!.ListenerProfileId,
             now,
             cancellationToken);

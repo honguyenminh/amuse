@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.ManageReleases;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
@@ -13,7 +12,7 @@ namespace Amuse.Modules.Catalog.Features.HideRelease;
 
 internal sealed class HideReleaseHandler(
     CatalogDbContext db,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<ManageReleaseDetailResponse>> HandleAsync(
@@ -63,7 +62,7 @@ internal sealed class HideReleaseHandler(
             ReleaseMapper.ToDetail(
                 release,
                 artistName,
-                BrowseHomeHandler.CoverArtUrlFor(storage, release.CoverArtKey),
+                mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
                 collaborators,
                 groupDisplay.Title,
                 groupDisplay.Slug));

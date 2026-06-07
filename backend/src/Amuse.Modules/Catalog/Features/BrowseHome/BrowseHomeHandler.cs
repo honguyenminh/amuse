@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.BrowseHome;
 
-internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage storage)
+internal sealed class BrowseHomeHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     private const int RecentReleaseCount = 8;
     private const int FeaturedArtistCount = 6;
@@ -47,7 +47,7 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage stor
                 row.ArtistSlug,
                 row.ReleaseType,
                 row.ReleaseDate,
-                CoverArtUrlFor(storage, row.CoverArtKey)))
+                mediaUrls.BuildCoverArtUrl(row.CoverArtKey)))
             .ToArray();
 
         var featuredArtistRows = await db.Artists
@@ -71,8 +71,8 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage stor
                 a.Id.Value,
                 a.Slug.Value,
                 a.Name,
-                CoverArtUrlFor(storage, a.AvatarKey),
-                CoverArtUrlFor(storage, a.CoverKey)))
+                mediaUrls.BuildCoverArtUrl(a.AvatarKey),
+                mediaUrls.BuildCoverArtUrl(a.CoverKey)))
             .ToArray();
 
         return Result<BrowseHomeResponse>.Success(new BrowseHomeResponse(
@@ -80,8 +80,6 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IObjectStorage stor
             featuredArtists));
     }
 
-    internal static string? CoverArtUrlFor(IObjectStorage storage, string? key) =>
-        string.IsNullOrEmpty(key) ? null : storage.GetPublicUrl(MediaBucket.Covers, key);
 }
 
 public sealed record BrowseHomeResponse(

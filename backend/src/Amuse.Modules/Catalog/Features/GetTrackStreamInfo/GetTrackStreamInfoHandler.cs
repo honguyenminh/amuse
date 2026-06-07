@@ -1,6 +1,7 @@
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -9,6 +10,7 @@ namespace Amuse.Modules.Catalog.Features.GetTrackStreamInfo;
 
 internal sealed class GetTrackStreamInfoHandler(
     CatalogDbContext db,
+    IClock clock,
     IOptions<MediaOptions> mediaOptions)
 {
     public async Task<Result<TrackStreamInfoResponse>> HandleAsync(
@@ -43,7 +45,7 @@ internal sealed class GetTrackStreamInfoHandler(
             return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.TrackStreamNotReady);
 
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var expiresAt = DateTimeOffset.UtcNow.Add(ttl);
+        var expiresAt = clock.UtcNow.Add(ttl);
 
         var chosenKey = track.AudioStreamKey;
         var contentType = ContentTypeForKey(chosenKey);

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.Shared;
@@ -26,8 +25,6 @@ internal sealed class RetryTrackTranscodeHandler(
     IClock clock,
     IOptions<TranscodeJobRecoveryOptions> recoveryOptions)
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.General);
-
     public async Task<Result<RetryTrackTranscodeResponse>> HandleAsync(
         Guid trackId,
         ClaimsPrincipal principal,
@@ -53,24 +50,16 @@ internal sealed class RetryTrackTranscodeHandler(
             return Result<RetryTrackTranscodeResponse>.Failure(CatalogErrors.TrackHasNoAudio);
 
         var now = clock.UtcNow;
-        var staleCutoff = now - recoveryOptions.Value.StaleProcessingTimeout;
+        var staleTimeout = recoveryOptions.Value.StaleProcessingTimeout;
 
-        var existingInflight = await db.AudioTranscodeJobs
-            .Where(j => j.TrackId == typedTrackId
-                && (j.Status == AudioTranscodeJobStatus.Queued || j.Status == AudioTranscodeJobStatus.Processing))
-            .OrderByDescending(j => j.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        var existingInflight = await TranscodeJobQueries.GetLatestInflightForTrackAsync(
+            db,
+            typedTrackId,
+            cancellationToken);
 
-        if (existingInflight is not null)
+        switch (TranscodeRetryPolicy.EvaluateInflight(existingInflight?.ToSnapshot(), now, staleTimeout))
         {
-            if (existingInflight.Status == AudioTranscodeJobStatus.Processing
-                && existingInflight.UpdatedAt < staleCutoff)
-            {
-                existingInflight.MarkFailed("Timed out", now);
-                await db.SaveChangesAsync(cancellationToken);
-            }
-            else
-            {
+            case TranscodeRetryPolicy.InflightDecision.Reuse when existingInflight is not null:
                 if (existingInflight.Status == AudioTranscodeJobStatus.Queued)
                     await EnsureOutboxDispatchAsync(existingInflight, now, cancellationToken);
 
@@ -83,32 +72,21 @@ internal sealed class RetryTrackTranscodeHandler(
                         existingInflight.Status,
                         existingInflight.AttemptCount,
                         true));
-            }
+
+            case TranscodeRetryPolicy.InflightDecision.MarkStaleAndContinue when existingInflight is not null:
+                existingInflight.MarkFailed(TranscodeRetryPolicy.StaleFailureReason, now);
+                await db.SaveChangesAsync(cancellationToken);
+                break;
         }
 
-        var latestJob = await db.AudioTranscodeJobs
-            .Where(j => j.TrackId == typedTrackId)
-            .OrderByDescending(j => j.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (latestJob is null)
-            return Result<RetryTrackTranscodeResponse>.Failure(CatalogErrors.NoTranscodeJobToRetry);
+        var latestJob = await TranscodeJobQueries.GetLatestForTrackAsync(
+            db,
+            typedTrackId,
+            cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(track.AudioStreamKey) || latestJob.Status == AudioTranscodeJobStatus.Succeeded)
-            return Result<RetryTrackTranscodeResponse>.Failure(CatalogErrors.TrackStreamAlreadyReady);
-
-        if (latestJob.Status != AudioTranscodeJobStatus.Failed)
-            return Result<RetryTrackTranscodeResponse>.Failure(CatalogErrors.TranscodeRetryNotAllowed);
-
-        if (track.LifecycleStatus is TrackLifecycleStatus.Draft or TrackLifecycleStatus.Ready)
-        {
-            var processingResult = track.MarkProcessing();
-            if (!processingResult.IsSuccess)
-                return Result<RetryTrackTranscodeResponse>.Failure(processingResult.Error!);
-        }
-        else if (track.LifecycleStatus != TrackLifecycleStatus.Processing)
-        {
-            return Result<RetryTrackTranscodeResponse>.Failure(CatalogErrors.TranscodeRetryNotAllowed);
-        }
+        var eligibility = TranscodeRetryPolicy.EvaluateRetryEligibility(track, latestJob?.ToSnapshot());
+        if (!eligibility.IsSuccess)
+            return Result<RetryTrackTranscodeResponse>.Failure(eligibility.Error!);
 
         var streamKey = $"dash/{trackId}/{Guid.CreateVersion7()}/manifest.mpd";
         var job = AudioTranscodeJob.Enqueue(track.Id, track.AudioMasterKey, streamKey, now);

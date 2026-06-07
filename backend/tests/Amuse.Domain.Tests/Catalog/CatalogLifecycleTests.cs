@@ -351,8 +351,19 @@ public sealed class CatalogLifecycleTests
     [Fact]
     public void TrackDuration_rejects_duration_above_max()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            TrackDuration.FromMilliseconds(TrackDurationLimits.MaxMilliseconds + 1));
+        var result = TrackDuration.TryFromMilliseconds(TrackDurationLimits.MaxMilliseconds + 1);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(CatalogErrors.InvalidTrack, result.Error);
+    }
+
+    [Fact]
+    public void TrackDuration_rejects_non_positive_duration()
+    {
+        var result = TrackDuration.TryFromMilliseconds(0);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(CatalogErrors.InvalidTrack, result.Error);
     }
 
     [Fact]

@@ -46,6 +46,8 @@ public static class MediaModule
             return new S3ObjectStorage(internalClient, presignClient, options);
         });
 
+        services.AddSingleton<IMediaPublicUrlBuilder, MediaPublicUrlBuilder>();
+
         return services;
     }
 }

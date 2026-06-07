@@ -1,7 +1,8 @@
+using Amuse.Domain.Catalog;
+using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Common.Time;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -41,12 +42,10 @@ public sealed partial class TranscodeJobStaleSweeper(
         var now = clock.UtcNow;
         var cutoff = now - options.Value.StaleProcessingTimeout;
 
-        var stale = await db.AudioTranscodeJobs
-            .Where(j => j.Status == AudioTranscodeJobStatus.Processing && j.UpdatedAt < cutoff)
-            .ToListAsync(cancellationToken);
+        var stale = await TranscodeJobQueries.GetStaleProcessingJobsAsync(db, cutoff, cancellationToken);
 
         foreach (var job in stale)
-            job.MarkFailed("Timed out", now);
+            job.MarkFailed(TranscodeRetryPolicy.StaleFailureReason, now);
 
         if (stale.Count > 0)
         {

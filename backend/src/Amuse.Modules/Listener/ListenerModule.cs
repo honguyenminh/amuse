@@ -1,4 +1,5 @@
 using Amuse.Modules.Identity.Contracts;
+using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Listener.Contracts;
 using Amuse.Modules.Listener.Features.EnsureListenerProfile;
 using Amuse.Modules.Listener.Features.GetListenerProfile;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Amuse.Modules.Listener;
 
@@ -23,10 +25,16 @@ public static class ListenerModule
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
-        services.AddDbContext<ListenerDbContext>(options =>
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<ListenerDbContext>((sp, options) =>
+        {
             options.UseNpgsql(
                 connectionString,
-                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_listener", "listener")));
+                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_listener", "listener"));
+            options.AddModuleInterceptors(sp);
+        });
 
         services.AddScoped<IListenerPersonaReadModel, ListenerPersonaReadModel>();
         services.AddScoped<IListenerOnboardingStatusReadModel, ListenerOnboardingStatusReadModel>();

@@ -16,7 +16,7 @@ internal sealed class ListLibraryPlaylistsHandler(
     ICatalogDiscoveryReadModel catalog,
     IListenerPersonaReadModel personaReadModel,
     IListenerProfilePresentationReadModel presentationReadModel,
-    IObjectStorage storage)
+    IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<PlaylistListResponse>> HandleAsync(
         ClaimsPrincipal principal,
@@ -83,13 +83,13 @@ internal sealed class ListLibraryPlaylistsHandler(
         var owners = await DiscoveryMapper.LoadOwnersAsync(
             allPlaylists.Select(p => p.OwnerListenerProfileId),
             presentationReadModel,
-            storage,
+            mediaUrls,
             cancellationToken);
 
         var coverArtUrls = await DiscoveryPlaylistCoverArt.LoadAsync(
             allPlaylists,
             catalog,
-            storage,
+            mediaUrls,
             cancellationToken);
 
         var summaries = allPlaylists

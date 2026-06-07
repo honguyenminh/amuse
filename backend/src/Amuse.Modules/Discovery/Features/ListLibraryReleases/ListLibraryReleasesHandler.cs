@@ -14,7 +14,7 @@ internal sealed class ListLibraryReleasesHandler(
     DiscoveryDbContext db,
     ICatalogDiscoveryReadModel catalog,
     IListenerPersonaReadModel personaReadModel,
-    IObjectStorage storage)
+    IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<SavedReleasesResponse>> HandleAsync(
         ClaimsPrincipal principal,
@@ -40,7 +40,7 @@ internal sealed class ListLibraryReleasesHandler(
 
         var releases = entries
             .Where(e => summaries.ContainsKey(e.TargetId))
-            .Select(e => DiscoveryMapper.ToSavedRelease(e, summaries[e.TargetId], storage))
+            .Select(e => DiscoveryMapper.ToSavedRelease(e, summaries[e.TargetId], mediaUrls))
             .ToArray();
 
         return Result<SavedReleasesResponse>.Success(new SavedReleasesResponse(releases));

@@ -1,7 +1,9 @@
 using Amuse.Modules.Audit.Persistence;
+using Amuse.Modules.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Amuse.Modules.Audit;
 
@@ -14,12 +16,19 @@ public static class AuditModule
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
-        services.AddDbContext<AuditDbContext>(options =>
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<AuditDbContext>((sp, options) =>
+        {
             options.UseNpgsql(
                 connectionString,
-                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_audit", "audit")));
+                npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory_audit", "audit"));
+            options.AddModuleInterceptors(sp);
+        });
 
         services.AddScoped<IAuditWriter, AuditWriter>();
+        services.AddScoped<IAuditLogReadModel, AuditLogReadModel>();
         return services;
     }
 }

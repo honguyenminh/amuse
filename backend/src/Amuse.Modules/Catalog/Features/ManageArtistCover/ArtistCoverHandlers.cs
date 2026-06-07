@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
 using Amuse.Modules.Media.Options;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +14,7 @@ namespace Amuse.Modules.Catalog.Features.ManageArtistCover;
 internal sealed class PresignArtistCoverUploadHandler(
     CatalogDbContext db,
     IObjectStorage storage,
+    IClock clock,
     IOptions<MediaOptions> mediaOptions)
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -58,7 +59,7 @@ internal sealed class PresignArtistCoverUploadHandler(
         var key = $"artists/{artistId}/{Guid.CreateVersion7()}{ext}";
 
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var expiresAt = DateTimeOffset.UtcNow.Add(ttl);
+        var expiresAt = clock.UtcNow.Add(ttl);
         var url = storage.GetSignedUploadUrl(MediaBucket.Covers, key, ttl, request.ContentType);
 
         return Result<PresignArtistCoverUploadResponse>.Success(
@@ -84,6 +85,7 @@ internal sealed class PresignArtistCoverUploadHandler(
 internal sealed class CompleteArtistCoverUploadHandler(
     CatalogDbContext db,
     IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     CatalogAuditWriter auditWriter)
 {
     public async Task<Result<CompleteArtistCoverUploadResponse>> HandleAsync(
@@ -132,7 +134,7 @@ internal sealed class CompleteArtistCoverUploadHandler(
             CatalogAccountAccessor.TryGetAccountId(principal),
             cancellationToken);
 
-        var coverUrl = BrowseHomeHandler.CoverArtUrlFor(storage, request.Key);
+        var coverUrl = mediaUrls.BuildCoverArtUrl(request.Key);
         return Result<CompleteArtistCoverUploadResponse>.Success(
             new CompleteArtistCoverUploadResponse(artistId, request.Key, coverUrl));
     }

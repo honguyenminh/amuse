@@ -1,6 +1,7 @@
 using Amuse.Domain.Catalog;
 using Amuse.Modules.Catalog.Messaging;
 using Amuse.Modules.Catalog.Processing;
+using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,8 +9,14 @@ namespace Amuse.Modules.Catalog.Persistence;
 
 public sealed class CatalogDbContext : ModuleDbContextBase
 {
-    public CatalogDbContext(DbContextOptions<CatalogDbContext> options) : base(options)
+    private readonly IOrgScopeAccessor _orgScopeAccessor;
+
+    public CatalogDbContext(
+        DbContextOptions<CatalogDbContext> options,
+        IOrgScopeAccessor orgScopeAccessor)
+        : base(options)
     {
+        _orgScopeAccessor = orgScopeAccessor;
     }
 
     public DbSet<Artist> Artists => Set<Artist>();
@@ -38,5 +45,30 @@ public sealed class CatalogDbContext : ModuleDbContextBase
         modelBuilder.ApplyConfigurationsFromNamespace(
             typeof(CatalogDbContext),
             "Amuse.Modules.Catalog.Persistence.Configurations");
+
+        ApplyTenantQueryFilters(modelBuilder);
+    }
+
+    private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Release>()
+            .HasQueryFilter(release =>
+                _orgScopeAccessor.CurrentOrganizationId == null
+                || release.OrganizationId == _orgScopeAccessor.CurrentOrganizationId);
+
+        modelBuilder.Entity<ReleaseGroup>()
+            .HasQueryFilter(group =>
+                _orgScopeAccessor.CurrentOrganizationId == null
+                || group.OrganizationId == _orgScopeAccessor.CurrentOrganizationId);
+
+        modelBuilder.Entity<Track>()
+            .HasQueryFilter(track =>
+                _orgScopeAccessor.CurrentOrganizationId == null
+                || track.OrganizationId == _orgScopeAccessor.CurrentOrganizationId);
+
+        modelBuilder.Entity<Artist>()
+            .HasQueryFilter(artist =>
+                _orgScopeAccessor.CurrentOrganizationId == null
+                || artist.ManagingOrganizationId == _orgScopeAccessor.CurrentOrganizationId);
     }
 }

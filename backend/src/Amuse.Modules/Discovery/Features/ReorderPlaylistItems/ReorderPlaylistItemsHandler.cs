@@ -11,6 +11,7 @@ namespace Amuse.Modules.Discovery.Features.ReorderPlaylistItems;
 internal sealed class ReorderPlaylistItemsHandler(
     DiscoveryDbContext db,
     IListenerPersonaReadModel personaReadModel,
+    PlaylistLoader playlistLoader,
     IClock clock)
 {
     public async Task<Result> HandleAsync(
@@ -30,8 +31,8 @@ internal sealed class ReorderPlaylistItemsHandler(
         if (!listenerResult.IsSuccess)
             return Result.Failure(listenerResult.Error!);
 
-        var playlist = await DiscoveryPlaylistLoader.LoadForMutationAsync(
-            db, PlaylistId.From(playlistId), cancellationToken);
+        var playlist = await playlistLoader.GetForMutationAsync(
+            PlaylistId.From(playlistId), cancellationToken);
         if (playlist is null)
             return Result.Failure(DiscoveryErrors.PlaylistNotFound);
 

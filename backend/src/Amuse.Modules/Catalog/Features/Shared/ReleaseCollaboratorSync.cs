@@ -7,10 +7,8 @@ namespace Amuse.Modules.Catalog.Features.Shared;
 
 internal static class ReleaseCollaboratorSync
 {
-    internal static async Task<Result<IReadOnlyList<ManageReleaseCollaboratorResponse>>> ReplaceAsync(
+    internal static async Task<Result<IReadOnlyList<ArtistId>>> ResolveArtistIdsAsync(
         CatalogDbContext db,
-        ReleaseId releaseId,
-        ArtistId primaryArtistId,
         IReadOnlyList<Guid>? collaboratorArtistIds,
         CancellationToken cancellationToken)
     {
@@ -19,57 +17,18 @@ internal static class ReleaseCollaboratorSync
             .Distinct()
             .ToArray();
 
-        if (ids.Any(id => id == primaryArtistId.Value))
-            return Result<IReadOnlyList<ManageReleaseCollaboratorResponse>>.Failure(
-                CatalogErrors.InvalidCollaborator);
-
-        var existing = await db.ReleaseCollaborators
-            .Where(c => c.ReleaseId == releaseId)
-            .ToListAsync(cancellationToken);
-
-        db.ReleaseCollaborators.RemoveRange(existing);
-
         if (ids.Length == 0)
-            return Result<IReadOnlyList<ManageReleaseCollaboratorResponse>>.Success([]);
+            return Result<IReadOnlyList<ArtistId>>.Success([]);
 
         var typedIds = ids.Select(ArtistId.From).ToArray();
-        var artists = await db.Artists
+        var count = await db.Artists
             .AsNoTracking()
-            .Where(a => typedIds.Contains(a.Id))
-            .Select(a => new { a.Id, a.Name })
-            .ToListAsync(cancellationToken);
+            .CountAsync(a => typedIds.Contains(a.Id), cancellationToken);
 
-        if (artists.Count != typedIds.Length)
-            return Result<IReadOnlyList<ManageReleaseCollaboratorResponse>>.Failure(
-                CatalogErrors.ArtistNotFound);
+        if (count != typedIds.Length)
+            return Result<IReadOnlyList<ArtistId>>.Failure(CatalogErrors.ArtistNotFound);
 
-        var order = 1;
-        var responses = new List<ManageReleaseCollaboratorResponse>(ids.Length);
-        foreach (var artistId in ids)
-        {
-            var typedArtistId = ArtistId.From(artistId);
-            var createResult = ReleaseCollaborator.Create(
-                releaseId,
-                typedArtistId,
-                primaryArtistId,
-                ReleaseCollaboratorRole.Featured,
-                order);
-
-            if (!createResult.IsSuccess)
-                return Result<IReadOnlyList<ManageReleaseCollaboratorResponse>>.Failure(
-                    createResult.Error!);
-
-            db.ReleaseCollaborators.Add(createResult.Value!);
-            var name = artists.First(a => a.Id == typedArtistId).Name;
-            responses.Add(new ManageReleaseCollaboratorResponse(
-                typedArtistId.Value,
-                name,
-                ReleaseCollaboratorRole.Featured,
-                order));
-            order++;
-        }
-
-        return Result<IReadOnlyList<ManageReleaseCollaboratorResponse>>.Success(responses);
+        return Result<IReadOnlyList<ArtistId>>.Success(typedIds);
     }
 
     internal static async Task<IReadOnlyList<ManageReleaseCollaboratorResponse>> LoadAsync(

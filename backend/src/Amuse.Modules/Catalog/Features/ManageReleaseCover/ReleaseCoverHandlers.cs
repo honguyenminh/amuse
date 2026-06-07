@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Common.Time;
@@ -15,6 +14,7 @@ namespace Amuse.Modules.Catalog.Features.ManageReleaseCover;
 internal sealed class PresignReleaseCoverUploadHandler(
     CatalogDbContext db,
     IObjectStorage storage,
+    IClock clock,
     IOptions<MediaOptions> mediaOptions)
 {
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -59,7 +59,7 @@ internal sealed class PresignReleaseCoverUploadHandler(
         var key = $"releases/{releaseId}/{Guid.CreateVersion7()}{ext}";
 
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
-        var expiresAt = DateTimeOffset.UtcNow.Add(ttl);
+        var expiresAt = clock.UtcNow.Add(ttl);
         var url = storage.GetSignedUploadUrl(MediaBucket.Covers, key, ttl, request.ContentType);
 
         return Result<PresignReleaseCoverUploadResponse>.Success(
@@ -85,6 +85,7 @@ internal sealed class PresignReleaseCoverUploadHandler(
 internal sealed class CompleteReleaseCoverUploadHandler(
     CatalogDbContext db,
     IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock,
     CatalogAuditWriter auditWriter)
 {
@@ -131,7 +132,7 @@ internal sealed class CompleteReleaseCoverUploadHandler(
             CatalogAccountAccessor.TryGetAccountId(principal),
             cancellationToken);
 
-        var coverUrl = BrowseHomeHandler.CoverArtUrlFor(storage, request.Key);
+        var coverUrl = mediaUrls.BuildCoverArtUrl(request.Key);
         return Result<CompleteReleaseCoverUploadResponse>.Success(
             new CompleteReleaseCoverUploadResponse(releaseId, request.Key, coverUrl));
     }

@@ -1,5 +1,4 @@
 using Amuse.Domain.Listener;
-using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Media;
 
 namespace Amuse.Modules.Listener.Features.Shared;
@@ -30,7 +29,7 @@ internal static class ListenerProfileMapper
     public static ListenerProfileResponse ToResponse(
         ListenerProfile profile,
         ListenerPreference? preference,
-        IObjectStorage? storage = null)
+        IMediaPublicUrlBuilder? mediaUrls = null)
     {
         var updatedAt = preference?.UpdatedAt ?? profile.UpdatedAt;
         if (preference?.UpdatedAt > updatedAt)
@@ -40,14 +39,12 @@ internal static class ListenerProfileMapper
             profile.Id.Value,
             profile.DisplayName,
             profile.AvatarAccentSeed,
-            AvatarUrlFor(storage, profile.AvatarObjectKey),
+            AvatarUrlFor(mediaUrls, profile.AvatarObjectKey),
             preference?.AllowUnverifiedArtists,
             ListenerOnboarding.IsComplete(profile, preference),
             updatedAt);
     }
 
-    internal static string? AvatarUrlFor(IObjectStorage? storage, string? objectKey) =>
-        storage is null || string.IsNullOrEmpty(objectKey)
-            ? null
-            : BrowseHomeHandler.CoverArtUrlFor(storage, objectKey);
+    internal static string? AvatarUrlFor(IMediaPublicUrlBuilder? mediaUrls, string? objectKey) =>
+        mediaUrls?.BuildCoverArtUrl(objectKey);
 }

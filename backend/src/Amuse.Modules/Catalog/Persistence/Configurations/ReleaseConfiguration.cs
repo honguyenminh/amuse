@@ -131,5 +131,10 @@ internal sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
             .Metadata
             .FindNavigation(nameof(Release.Tracks))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
+
+        builder
+            .Metadata
+            .FindNavigation(nameof(Release.Collaborators))!
+            .SetPropertyAccessMode(PropertyAccessMode.Field);
     }
 }

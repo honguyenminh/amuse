@@ -42,15 +42,15 @@ internal sealed class DeclineInviteHandler(
             return Result.Failure(TenancyErrors.InviteEmailMismatch);
 
         var now = clock.UtcNow;
-        if (invite.Status == OrganizationInviteStatus.Pending && now >= invite.ExpiresAt)
+        var pending = invite.EnsurePending(now);
+        if (!pending.IsSuccess)
         {
-            var expire = invite.MarkExpired(now);
-            if (expire.IsSuccess)
+            if (invite.Status == OrganizationInviteStatus.Expired)
                 await dbContext.SaveChangesAsync(cancellationToken);
-            return Result.Failure(TenancyErrors.InviteExpired);
+            return pending;
         }
 
-        var decline = invite.Revoke(now);
+        var decline = invite.Decline(now);
         if (!decline.IsSuccess)
             return decline;
 

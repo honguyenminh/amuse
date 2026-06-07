@@ -14,7 +14,7 @@ internal sealed class CreatePlaylistHandler(
     DiscoveryDbContext db,
     IListenerPersonaReadModel personaReadModel,
     IListenerProfilePresentationReadModel presentationReadModel,
-    IObjectStorage storage,
+    IMediaPublicUrlBuilder mediaUrls,
     IClock clock)
 {
     public async Task<Result<PlaylistDetailDto>> HandleAsync(
@@ -54,7 +54,7 @@ internal sealed class CreatePlaylistHandler(
         var owners = await DiscoveryMapper.LoadOwnersAsync(
             [playlist.OwnerListenerProfileId],
             presentationReadModel,
-            storage,
+            mediaUrls,
             cancellationToken);
         owners.TryGetValue(playlist.OwnerListenerProfileId.Value, out var owner);
 
