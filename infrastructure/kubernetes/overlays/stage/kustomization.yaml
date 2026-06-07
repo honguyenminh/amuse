@@ -9,6 +9,7 @@ resources:
   - external-secrets/amuse-worker-scheduler-external-secret.yaml
   - external-secrets/amuse-migrate-external-secret.yaml
   - external-secrets/amuse-rabbitmq-external-secret.yaml
+  - external-secrets/amuse-redis-external-secret.yaml
 
 patches:
   - path: gateway-patch.yaml

@@ -11,6 +11,7 @@ namespace Amuse.Modules.Identity.Features.RevokeToken;
 
 internal sealed class RevokeTokenHandler(
     IdentityDbContext dbContext,
+    IJwtBlacklistStore jwtBlacklistStore,
     IAuditWriter auditWriter,
     IClock clock)
 {
@@ -36,17 +37,7 @@ internal sealed class RevokeTokenHandler(
         }
 
         if (AccessTokenClaims.TryReadJtiAndExpiry(authorizationHeader, out var jti, out var expiresAt))
-        {
-            var alreadyListed = await dbContext.TokenBlacklistEntries
-                .AnyAsync(e => e.Jti == TokenJti.From(jti), cancellationToken);
-
-            if (!alreadyListed)
-            {
-                dbContext.TokenBlacklistEntries.Add(
-                    TokenBlacklistEntry.Create(TokenJti.From(jti), expiresAt, "revoke"));
-                changed = true;
-            }
-        }
+            await jwtBlacklistStore.RevokeAsync(jti, expiresAt, cancellationToken);
 
         if (changed)
             await dbContext.SaveChangesAsync(cancellationToken);

@@ -2,10 +2,12 @@
 
 ## Unit tests
 
-| Project | Scope |
-|---------|--------|
-| [`Amuse.Domain.Tests`](../../backend/tests/Amuse.Domain.Tests/) | Domain VOs, aggregates, `PersonaContext`, etc. |
-| [`Amuse.Modules.Identity.Tests`](../../backend/tests/Amuse.Modules.Identity.Tests/) | `TokenIssuer`, `IssueIdentitySession`, `RevokeTokenHandler` (blacklist), in-memory `IdentityDbContext` |
+
+| Project                                                                             | Scope                                                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `[Amuse.Domain.Tests](../../backend/tests/Amuse.Domain.Tests/)`                     | Domain VOs, aggregates, `PersonaContext`, etc.                                                         |
+| `[Amuse.Modules.Identity.Tests](../../backend/tests/Amuse.Modules.Identity.Tests/)` | `TokenIssuer`, `IssueIdentitySession`, `RevokeTokenHandler` (blacklist), in-memory `IdentityDbContext` |
+
 
 Run:
 
@@ -19,12 +21,12 @@ dotnet test tests/Amuse.Domain.Tests
 
 ## Integration tests
 
-Project: [`Amuse.Api.IntegrationTests`](../../backend/tests/Amuse.Api.IntegrationTests/)
+Project: `[Amuse.Api.IntegrationTests](../../backend/tests/Amuse.Api.IntegrationTests/)`
 
 ### Requirements
 
-- **Docker** running (Testcontainers starts `postgres:16` per collection fixture).
-- First run downloads the Postgres image.
+- **Docker** running (Testcontainers starts `postgres:16` and `redis:8.8-alpine` per collection fixture).
+- First run downloads the Postgres and Redis images.
 
 ### Fixture
 
@@ -32,18 +34,20 @@ Project: [`Amuse.Api.IntegrationTests`](../../backend/tests/Amuse.Api.Integratio
 - Config: `appsettings.Testing.json` (mirrors dev JWT + Platform root seed).
 - Collection: `[Collection(AmuseApiCollection.Name)]`.
 
-`Program` is exposed via [`Program.Integration.cs`](../../backend/src/Amuse.Api/Program.Integration.cs) (`public partial class Program`).
+`Program` is exposed via `[Program.Integration.cs](../../backend/src/Amuse.Api/Program.Integration.cs)` (`public partial class Program`).
 
 ### Scenarios covered (`IdentityAuthFlowTests`)
 
-| Test | Asserts |
-|------|---------|
-| `LoginPassword_mobile_returns_tokens` | Access + refresh in body |
-| `GetCurrentAccount_with_access_token_succeeds` | `GET /me` 200 |
-| `ListPersonas_includes_platform` | Platform persona listed |
-| `Refresh_issues_new_access_token` | New access JWT after refresh |
-| `Revoke_blacklists_access_and_invalidates_refresh` | 401 `identity.token_revoked`; refresh fails |
-| `LoginPassword_web_uses_refresh_cookie` | Cookie-based refresh without body refresh token |
+
+| Test                                               | Asserts                                         |
+| -------------------------------------------------- | ----------------------------------------------- |
+| `LoginPassword_mobile_returns_tokens`              | Access + refresh in body                        |
+| `GetCurrentAccount_with_access_token_succeeds`     | `GET /me` 200                                   |
+| `ListPersonas_includes_platform`                   | Platform persona listed                         |
+| `Refresh_issues_new_access_token`                  | New access JWT after refresh                    |
+| `Revoke_blacklists_access_and_invalidates_refresh` | 401 `identity.token_revoked`; refresh fails     |
+| `LoginPassword_web_uses_refresh_cookie`            | Cookie-based refresh without body refresh token |
+
 
 Run:
 
@@ -66,10 +70,12 @@ Integration tests exercise the same HTTP contract documented in [local-developme
 
 ### Catalog + playback contract (`CatalogEndpointsTests`)
 
-| Test | Asserts |
-|------|---------|
+
+| Test                                                        | Asserts                                                                                                                                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Stream_info_returns_track_stream_not_ready_until_ingested` | Authenticated `GET .../stream-info` returns **400** `catalog.track_stream_not_ready` when no worker has set `audio_stream_key` (DASH-only; no master signed URL). |
-| `Stream_info_requires_authentication` | Anonymous `stream-info` → **401** |
-| `Stream_info_unknown_track_returns_problem` | Missing track → problem response |
+| `Stream_info_requires_authentication`                       | Anonymous `stream-info` → **401**                                                                                                                                 |
+| `Stream_info_unknown_track_returns_problem`                 | Missing track → problem response                                                                                                                                  |
+
 
 Browse endpoints (`home`, artist, release) remain anonymous-friendly.

@@ -17,6 +17,9 @@ WORKDIR "/src/Amuse.Worker.Scheduler"
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages,sharing=locked \
     --mount=type=cache,id=nuget-http,target=/root/.local/share/NuGet/http-cache,sharing=locked \
     dotnet publish "./Amuse.Worker.Scheduler.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN if [ "$INCLUDE_DEV_APPSETTINGS" = "true" ]; then \
+      cp appsettings.Development.json /app/publish/appsettings.Development.json; \
+    fi
 
 FROM base AS final
 ENV DOTNET_ENVIRONMENT=Production

@@ -18,5 +18,7 @@ data:
   RabbitMq__PrefetchCount: "1"
   Jwt__Issuer: "amuse"
   Jwt__Audience: "amuse-api"
+  Redis__BlacklistKeyPrefix: "amuse:identity:blacklist:"
+  Redis__RevokedChannel: "amuse:identity:token-revoked"
   CatalogScheduler__PollIntervalSeconds: "60"
   CatalogScheduler__BatchSize: "50"

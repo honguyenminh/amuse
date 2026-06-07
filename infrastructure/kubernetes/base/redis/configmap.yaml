@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: amuse-redis-config
+  namespace: amuse
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/part-of: amuse
+data:
+  redis.conf: |
+    appendonly yes
+    appendfsync everysec
+    save 900 1
+    save 300 10
+    save 60 10000
+    maxmemory 128mb
+    maxmemory-policy volatile-lru

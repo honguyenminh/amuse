@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.PostgreSql;
+using Testcontainers.Redis;
 
 namespace Amuse.Api.IntegrationTests;
 
@@ -27,10 +28,15 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
         .WithPassword("postgres")
         .Build();
 
+    private readonly RedisContainer _redis = new RedisBuilder()
+        .WithImage("redis:8.8-alpine")
+        .Build();
+
     private readonly InMemoryObjectStorage _objectStorage = new();
     private readonly CaptureEmailSender _captureEmailSender = new();
 
     private string? _connectionString;
+    private string? _redisConnectionString;
 
     public InMemoryObjectStorage ObjectStorage => _objectStorage;
 
@@ -38,8 +44,9 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
 
     public async Task InitializeAsync()
     {
-        await _postgres.StartAsync();
+        await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync());
         _connectionString = _postgres.GetConnectionString();
+        _redisConnectionString = $"{_redis.GetConnectionString()},abortConnect=false";
         AssertIsolatedDatabase(_connectionString);
 
         await ModuleDatabaseInitializer.MigrateAllAsync(Services);
@@ -59,6 +66,7 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
     public override async ValueTask DisposeAsync()
     {
         await _postgres.DisposeAsync();
+        await _redis.DisposeAsync();
         await base.DisposeAsync();
     }
 
@@ -70,6 +78,12 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
         {
             throw new InvalidOperationException(
                 "Integration test host cannot start before PostgreSQL Testcontainer is running.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_redisConnectionString))
+        {
+            throw new InvalidOperationException(
+                "Integration test host cannot start before Redis Testcontainer is running.");
         }
 
         AssertIsolatedDatabase(_connectionString);
@@ -88,12 +102,19 @@ public sealed class AmuseApiFixture : WebApplicationFactory<Program>, IAsyncLife
                 "Connection string must be set before the test host is configured.");
         }
 
+        if (string.IsNullOrWhiteSpace(_redisConnectionString))
+        {
+            throw new InvalidOperationException(
+                "Redis connection string must be set before the test host is configured.");
+        }
+
         AssertIsolatedDatabase(_connectionString);
 
         var testingSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.Testing.json");
         var overrides = new Dictionary<string, string?>
         {
             ["ConnectionStrings:DefaultConnection"] = _connectionString,
+            ["Redis:ConnectionString"] = _redisConnectionString,
         };
 
         // Minimal hosting reads configuration during Program startup; provide overrides

@@ -16,7 +16,6 @@ public sealed class IdentityDbContext
 
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
-    public DbSet<TokenBlacklistEntry> TokenBlacklistEntries => Set<TokenBlacklistEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

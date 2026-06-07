@@ -100,6 +100,7 @@ public static class IdentityModule
         if (string.IsNullOrWhiteSpace(jwt.SigningKey))
             throw new InvalidOperationException("Jwt:SigningKey must be configured.");
 
+        services.AddRedisJwtBlacklist(configuration);
         services.AddAmuseJwtAuthentication(jwt);
         return services;
     }

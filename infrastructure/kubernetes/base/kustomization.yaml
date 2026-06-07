@@ -23,6 +23,9 @@ resources:
   - migrate/job.yaml
   - rabbitmq/statefulset.yaml
   - rabbitmq/service.yaml
+  - redis/configmap.yaml
+  - redis/statefulset.yaml
+  - redis/service.yaml
   - frontend/configmap.yaml
   - consumer/deployment.yaml
   - consumer/service.yaml

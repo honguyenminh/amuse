@@ -2,6 +2,7 @@ using Amuse.Domain.Identity;
 using Amuse.Modules.Audit;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Identity.Auth;
+using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Identity.Features.RevokeToken;
 using Amuse.Modules.Identity.Options;
 using Amuse.Modules.Identity.Persistence;
@@ -15,7 +16,7 @@ namespace Amuse.Modules.Identity.Tests;
 public sealed class RevokeTokenHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_blacklists_access_token_jti_from_authorization_header()
+    public async Task HandleAsync_revokes_access_token_jti_from_authorization_header()
     {
         await using var db = CreateIdentityDb();
         var clock = new FixedClock(DateTimeOffset.UtcNow);
@@ -33,17 +34,18 @@ public sealed class RevokeTokenHandlerTests
 
         var access = issuer.CreateAccessToken(
             account.Id,
-            new Amuse.Modules.Identity.Contracts.PersonaAccessContext("platform", null, null, null, []),
+            new PersonaAccessContext("platform", null, null, null, []),
             clock.UtcNow);
 
         var authorization = $"Bearer {access}";
         Assert.True(AccessTokenClaims.TryReadJtiAndExpiry(authorization, out var jti, out var expiresAt));
 
-        var handler = new RevokeTokenHandler(db, Substitute.For<IAuditWriter>(), clock);
+        var blacklist = Substitute.For<IJwtBlacklistStore>();
+        var handler = new RevokeTokenHandler(db, blacklist, Substitute.For<IAuditWriter>(), clock);
         var result = await handler.HandleAsync(null, authorization, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.True(await JwtBlacklistChecker.IsAccessTokenRevokedAsync(db, clock, jti, CancellationToken.None));
+        await blacklist.Received(1).RevokeAsync(jti, expiresAt, CancellationToken.None);
         Assert.True(expiresAt > clock.UtcNow);
     }
 

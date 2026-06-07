@@ -8,7 +8,12 @@ metadata:
 spec:
   listeners:
     - name: https
+      protocol: HTTPS
+      port: 443
       hostname: "*.skynet-beta.m8.io.vn"
+      allowedRoutes:
+        namespaces:
+          from: Same
       tls:
         mode: Terminate
         certificateRefs:

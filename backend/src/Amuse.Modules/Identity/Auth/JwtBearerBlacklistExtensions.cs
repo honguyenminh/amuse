@@ -3,7 +3,6 @@ using System.Text.Json;
 using Amuse.Domain.Identity;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Identity.Options;
-using Amuse.Modules.Identity.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -39,28 +38,23 @@ internal static class JwtBearerBlacklistExtensions
 
                 options.Events = new JwtBearerEvents
                 {
-                    OnTokenValidated = async context =>
+                    OnTokenValidated = context =>
                     {
                         var jti = context.Principal?.FindFirst("jti")?.Value;
                         if (string.IsNullOrWhiteSpace(jti))
-                            return;
+                            return Task.CompletedTask;
 
-                        await using var scope = context.HttpContext.RequestServices.CreateAsyncScope();
-                        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-                        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+                        var blacklist = context.HttpContext.RequestServices.GetRequiredService<IJwtBlacklistStore>();
+                        var clock = context.HttpContext.RequestServices.GetRequiredService<IClock>();
 
-                        if (await JwtBlacklistChecker.IsAccessTokenRevokedAsync(
-                                dbContext,
-                                clock,
-                                jti,
-                                context.HttpContext.RequestAborted))
-                        {
-                            context.Fail(JwtBlacklistChecker.RevokedFailureMessage);
-                        }
+                        if (blacklist.IsRevoked(jti, clock.UtcNow))
+                            context.Fail(IJwtBlacklistStore.RevokedFailureMessage);
+
+                        return Task.CompletedTask;
                     },
                     OnChallenge = async context =>
                     {
-                        if (context.AuthenticateFailure?.Message != JwtBlacklistChecker.RevokedFailureMessage)
+                        if (context.AuthenticateFailure?.Message != IJwtBlacklistStore.RevokedFailureMessage)
                             return;
 
                         context.HandleResponse();

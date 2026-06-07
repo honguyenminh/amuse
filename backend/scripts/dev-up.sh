@@ -21,6 +21,7 @@ echo "Stack is starting. Useful URLs:"
 echo "  API (OpenAPI):  http://localhost:5000/openapi/v1.json"
 echo "  MinIO console:  http://localhost:9001  (amuse / amuse_dev_secret)"
 echo "  RabbitMQ UI:    http://localhost:15672 (amuse / amuse_dev_secret)"
+echo "  Redis:          localhost:6379         (password amuse_dev_secret)"
 echo "  Mailpit:        http://localhost:8025  (SMTP localhost:1025)"
 echo
 echo "Follow logs:  $COMPOSE logs -f amuse.api amuse.worker.transcoder"

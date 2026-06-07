@@ -52,6 +52,20 @@
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:8.8-alpine
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "amuse_dev_secret"]
+    volumes:
+      - redis-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a amuse_dev_secret ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # One-shot init: ensures the public covers bucket and the private audio bucket
   # exist with the correct anonymous-read policy on covers. Idempotent.
   minio-init:
@@ -89,6 +103,8 @@
     image: amuse.api
     build:
       context: src
+      args:
+        BUILD_CONFIGURATION: Debug
       dockerfile: Amuse.Api/Dockerfile
     restart: unless-stopped
     depends_on:
@@ -97,6 +113,8 @@
       minio-init:
         condition: service_completed_successfully
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -121,6 +139,7 @@
       RabbitMq__Password: amuse_dev_secret
       RabbitMq__QueueName: amuse.transcode.jobs
       RabbitMq__PrefetchCount: "1"
+      Redis__ConnectionString: "redis:6379,password=amuse_dev_secret,abortConnect=false"
       Identity__Email__Smtp__Enabled: "true"
       Identity__Email__Smtp__Host: mailpit
       Identity__Email__Smtp__Port: "1025"
@@ -134,10 +153,12 @@
     image: amuse.worker.transcoder
     build:
       context: src
+      args:
+        BUILD_CONFIGURATION: Debug
       dockerfile: Amuse.Worker.Transcoder/Dockerfile
     restart: unless-stopped
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=amuse_development;Username=postgres;Password=postgres
       Media__Endpoint: http://minio:9000
       Media__PublicBaseUrl: http://localhost:9000
@@ -167,10 +188,12 @@
     image: amuse.worker.scheduler
     build:
       context: src
+      args:
+        BUILD_CONFIGURATION: Debug
       dockerfile: Amuse.Worker.Scheduler/Dockerfile
     restart: unless-stopped
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=amuse_development;Username=postgres;Password=postgres
       CatalogScheduler__PollIntervalSeconds: "60"
       CatalogScheduler__BatchSize: "50"
@@ -183,3 +206,4 @@
 volumes:
   minio-data:
   postgres-data:
+  redis-data:

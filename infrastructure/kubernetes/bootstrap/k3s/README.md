@@ -123,6 +123,8 @@ argocd app sync amuse-dev --force   # or your Application name
 
 If the Gateway never appears, check Argo **Sync** errors (invalid `certificateRefs`, missing Gateway API CRDs, wrong `gatewayClassName`).
 
+**`spec.listeners[0].port/protocol: Required value`** — Kustomize replaces the whole listener when overlay patches only set `hostname`/`tls` (Gateway API has no strategic-merge schema). Listener patches must include `protocol`, `port`, and `allowedRoutes`. Verify with `kubectl kustomize overlays/dev | rg -A20 'kind: Gateway'`.
+
 ### Manual migration (break-glass)
 
 ```bash
