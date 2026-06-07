@@ -24,11 +24,12 @@ type TopBarProps = {
  */
 export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
   const auth = useAuth();
+  const controlHeightClass = "h-10";
 
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex items-center gap-3 border-b-2 border-outline bg-surface/90 py-2 backdrop-blur",
+        "sticky top-0 z-30 flex items-center gap-3 border-b-2 border-outline bg-surface/90 py-3 backdrop-blur",
         shellContentPaddingClass,
       )}
     >
@@ -57,7 +58,8 @@ export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
       <Link
         href="/search"
         className={cn(
-          "hidden items-center gap-2 rounded-full border-2 border-outline bg-background px-3 py-1.5 text-on-surface-variant hover:bg-surface-variant md:flex",
+          "hidden items-center gap-2 rounded-full border-2 border-outline bg-background px-3 text-on-surface-variant hover:bg-surface-variant md:inline-flex",
+          controlHeightClass,
         )}
         aria-label="Search"
       >
@@ -85,7 +87,10 @@ export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
       ) : (
         <Link
           href="/login"
-          className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-outline bg-primary-container px-3 py-1.5 text-label-medium text-on-primary-container hover:opacity-90"
+          className={cn(
+            "inline-flex shrink-0 items-center rounded-full border-2 border-outline bg-primary-container px-4 text-label-medium text-on-primary-container hover:opacity-90",
+            controlHeightClass,
+          )}
         >
           Log in
         </Link>
