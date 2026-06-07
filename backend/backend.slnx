@@ -22,5 +22,5 @@
   <Project Path="src/Amuse.Domain/Amuse.Domain.csproj" />
   <Project Path="src/Amuse.Modules/Amuse.Modules.csproj" />
   <Project Path="src/Amuse.Worker.Transcoder/Amuse.Worker.Transcoder.csproj" />
-  <Project Path="src\Amuse.Contracts\Amuse.Contracts.csproj" />
+  <Project Path="src/Amuse.Contracts/Amuse.Contracts.csproj" />
 </Solution>
