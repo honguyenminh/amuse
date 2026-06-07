@@ -3,6 +3,8 @@
 import { useQueueAddBurst } from "@/components/ui/QueueAddBurstProvider";
 import { useSnackbar } from "@/components/ui/SnackbarProvider";
 import { getCatalogRelease } from "@/lib/api/catalogClient";
+import { getPlaylistPlayableTracks } from "@/lib/api/discoveryClient";
+import { fromPlayableTrackDto } from "@/lib/playback/toPlaybackTrack";
 import { useCallback, useState } from "react";
 import { usePlayback } from "./PlaybackContext";
 import { countNewQueueTracks, queueAddSnackbarMessage } from "./queueAddFeedback";
@@ -115,6 +117,47 @@ export function useReleasePlayableClick(options: {
       showSnackbar,
       triggerFeedback,
     ],
+  );
+
+  return { onClick, queueAddPulsing };
+}
+
+export function usePlaylistPlayableClick(options: {
+  playlistId: string;
+  playlistTitle: string;
+}) {
+  const { showSnackbar } = useSnackbar();
+  const { queueAddPulsing, triggerFeedback } = useQueueAddPulse();
+  const { addToQueue, state } = usePlayback();
+
+  const addTracks = useCallback(
+    (tracks: PlaybackTrack[]) => {
+      if (tracks.length === 0) {
+        showSnackbar("No playable tracks");
+        return;
+      }
+      const newTracks = countNewQueueTracks(tracks, state.queue);
+      showSnackbar(
+        queueAddSnackbarMessage(newTracks, { releaseTitle: options.playlistTitle }),
+      );
+      if (newTracks.length > 0) addToQueue(tracks);
+    },
+    [addToQueue, options.playlistTitle, showSnackbar, state.queue],
+  );
+
+  const onClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (!event.altKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      triggerFeedback(event.clientX, event.clientY);
+      void getPlaylistPlayableTracks(options.playlistId)
+        .then((response) =>
+          addTracks(response.tracks.map((track) => fromPlayableTrackDto(track))),
+        )
+        .catch(() => showSnackbar("Could not add to queue"));
+    },
+    [addTracks, options.playlistId, showSnackbar, triggerFeedback],
   );
 
   return { onClick, queueAddPulsing };

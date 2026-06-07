@@ -4,7 +4,9 @@ import { PlaylistCoverArt } from "@/components/discovery/PlaylistCoverArt";
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
 import type { PlaylistSummaryDto } from "@/lib/api/types";
+import { cn } from "@/lib/cn";
 import { playlistPath } from "@/lib/discovery/paths";
+import { usePlaylistPlayableClick } from "@/lib/playback/useAltClickAddToQueue";
 import Link from "next/link";
 
 type PlaylistCardProps = {
@@ -22,10 +24,18 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
         ? `Saved · ${ownerLabel}`
         : ownerLabel;
   const subtitle = `${trackLabel} · ${relationLabel}`;
+  const { onClick, queueAddPulsing } = usePlaylistPlayableClick({
+    playlistId: playlist.id,
+    playlistTitle: playlist.title,
+  });
 
   return (
-    <Link href={playlistPath(playlist.id)} className="group block">
-      <Card>
+    <Link
+      href={playlistPath(playlist.id)}
+      className="group block"
+      onClick={onClick}
+    >
+      <Card className={cn("relative", queueAddPulsing && "queue-add-pulse")}>
         <div className="flex flex-col gap-2">
           <PlaylistCoverArt coverArtUrls={playlist.coverArtUrls} variant="tile" />
           <Text variant="title-medium" className="truncate">

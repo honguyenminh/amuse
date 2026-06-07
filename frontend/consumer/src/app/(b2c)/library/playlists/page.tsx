@@ -4,6 +4,7 @@ import { PlaylistCard } from "@/components/discovery/PlaylistCard";
 import { PlaylistFiltersDialog } from "@/components/discovery/PlaylistFiltersDialog";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { LibraryCardGrid, LibraryCardGridItem } from "@/components/ui/LibraryCardGrid";
 import { PlaylistFormDialog } from "@/components/ui/PlaylistFormDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
@@ -161,11 +162,13 @@ export default function LibraryPlaylistsPage() {
       />
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <LibraryCardGrid>
           {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="aspect-square w-full rounded-md" />
+            <LibraryCardGridItem key={i}>
+              <Skeleton className="aspect-square w-full rounded-md" />
+            </LibraryCardGridItem>
           ))}
-        </div>
+        </LibraryCardGrid>
       ) : null}
 
       {error ? (
@@ -193,11 +196,13 @@ export default function LibraryPlaylistsPage() {
       ) : null}
 
       {!loading && filteredPlaylists.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <LibraryCardGrid>
           {filteredPlaylists.map((playlist) => (
-            <PlaylistCard key={playlist.id} playlist={playlist} />
+            <LibraryCardGridItem key={playlist.id}>
+              <PlaylistCard playlist={playlist} />
+            </LibraryCardGridItem>
           ))}
-        </div>
+        </LibraryCardGrid>
       ) : null}
     </section>
   );

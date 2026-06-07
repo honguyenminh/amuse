@@ -1,13 +1,23 @@
 "use client";
 
+import { ReleaseTile } from "@/components/playback/ReleaseTile";
 import { Card } from "@/components/ui/Card";
+import { LibraryCardGrid, LibraryCardGridItem } from "@/components/ui/LibraryCardGrid";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { listLibraryReleases } from "@/lib/api/discoveryClient";
 import type { SavedReleaseRowDto } from "@/lib/api/types";
-import { catalogReleasePath } from "@/lib/catalog/paths";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+
+function toReleaseTileModel(release: SavedReleaseRowDto) {
+  return {
+    id: release.releaseId,
+    slug: release.releaseSlug,
+    title: release.title,
+    artistSlug: release.artistSlug,
+    coverArtUrl: release.coverArtUrl,
+  };
+}
 
 export default function LibraryAlbumsPage() {
   const [releases, setReleases] = useState<SavedReleaseRowDto[]>([]);
@@ -37,11 +47,13 @@ export default function LibraryAlbumsPage() {
       <Text variant="title-large">Saved albums</Text>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <LibraryCardGrid>
           {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="aspect-square w-full rounded-md" />
+            <LibraryCardGridItem key={i}>
+              <Skeleton className="aspect-square w-full rounded-md" />
+            </LibraryCardGridItem>
           ))}
-        </div>
+        </LibraryCardGrid>
       ) : null}
 
       {error ? (
@@ -59,36 +71,16 @@ export default function LibraryAlbumsPage() {
       ) : null}
 
       {!loading && releases.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <LibraryCardGrid>
           {releases.map((release) => (
-            <Link
-              key={release.releaseId}
-              href={catalogReleasePath(release.artistSlug, release.releaseSlug)}
-              className="group block"
-            >
-              <Card>
-                <div className="flex flex-col gap-2">
-                  {release.coverArtUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={release.coverArtUrl}
-                      alt={release.title}
-                      className="aspect-square w-full rounded-md object-cover"
-                    />
-                  ) : (
-                    <div className="aspect-square w-full rounded-md bg-surface-container-high" />
-                  )}
-                  <Text variant="title-medium" className="truncate">
-                    {release.title}
-                  </Text>
-                  <Text variant="label-medium" className="truncate text-on-surface-variant">
-                    {release.artistName}
-                  </Text>
-                </div>
-              </Card>
-            </Link>
+            <LibraryCardGridItem key={release.releaseId}>
+              <ReleaseTile
+                release={toReleaseTileModel(release)}
+                subtitle={release.artistName}
+              />
+            </LibraryCardGridItem>
           ))}
-        </div>
+        </LibraryCardGrid>
       ) : null}
     </section>
   );

@@ -3,14 +3,21 @@
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
-import type { ReleaseSummary } from "@/lib/api/types";
-import { catalogReleasePathFromSummary } from "@/lib/catalog/paths";
+import { catalogReleasePath } from "@/lib/catalog/paths";
 import { useReleasePlayableClick } from "@/lib/playback/useAltClickAddToQueue";
 import { useReleaseContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import Link from "next/link";
 
+export type ReleaseTileModel = {
+  id: string;
+  slug: string;
+  title: string;
+  artistSlug: string;
+  coverArtUrl: string | null;
+};
+
 type ReleaseTileProps = {
-  release: ReleaseSummary;
+  release: ReleaseTileModel;
   subtitle: string;
 };
 
@@ -23,7 +30,7 @@ export function ReleaseTile({ release, subtitle }: ReleaseTileProps) {
 
   return (
     <Link
-      href={catalogReleasePathFromSummary(release)}
+      href={catalogReleasePath(release.artistSlug, release.slug)}
       className="group block"
       onClick={onClick}
       onContextMenu={onContextMenu}
