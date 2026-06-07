@@ -1,0 +1,23 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: amuse-gateway
+  namespace: amuse
+  labels:
+    app.kubernetes.io/part-of: amuse
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.example.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: amuse-tls
+            namespace: amuse
+      allowedRoutes:
+        namespaces:
+          from: Same

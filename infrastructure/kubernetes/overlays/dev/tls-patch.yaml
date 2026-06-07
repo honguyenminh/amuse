@@ -1,0 +1,18 @@
+# References the wildcard cert already issued by cert-manager in kube-system.
+# Requires reference-grant-wildcard-tls.yaml applied once (see bootstrap/k3s/README.md).
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: amuse-gateway
+  namespace: amuse
+spec:
+  listeners:
+    - name: https
+      hostname: "*.skynet-beta.m8.io.vn"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: wildcard-tls-secret
+            namespace: kube-system

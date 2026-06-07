@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: amuse
+
+labels:
+  - pairs:
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/part-of: amuse
+    includeSelectors: false
+
+# Namespace is created by Argo CD sync option CreateNamespace=true (not a synced resource).
+resources:
+  - serviceaccounts.yaml
+  - config/common-env.yaml
+  - api/configmap.yaml
+  - api/deployment.yaml
+  - api/service.yaml
+  - worker-transcoder/configmap.yaml
+  - worker-transcoder/deployment.yaml
+  - worker-scheduler/configmap.yaml
+  - worker-scheduler/deployment.yaml
+  - migrate/job.yaml
+  - rabbitmq/statefulset.yaml
+  - rabbitmq/service.yaml
+  - frontend/configmap.yaml
+  - consumer/deployment.yaml
+  - consumer/service.yaml
+  - business/deployment.yaml
+  - business/service.yaml
+  - gateway/gateway.yaml
+  - gateway/httproutes.yaml

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: amuse-api-env
+  namespace: amuse
+  labels:
+    app.kubernetes.io/part-of: amuse
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  Cors__AllowedOrigins__0: "https://app.example.com"
+  Cors__AllowedOrigins__1: "https://business.example.com"
+  Tenancy__BusinessPortalBaseUrl: "https://business.example.com"
+  Identity__Email__Smtp__Enabled: "false"

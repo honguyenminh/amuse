@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: amuse-api-env
+  namespace: amuse
+data:
+  ASPNETCORE_ENVIRONMENT: "Staging"
+  Cors__AllowedOrigins__0: "https://app.staging.amuse.local"
+  Cors__AllowedOrigins__1: "https://business.staging.amuse.local"
+  Tenancy__BusinessPortalBaseUrl: "https://business.staging.amuse.local"
+  Identity__Email__Smtp__Enabled: "true"
+  Media__ForcePathStyle: "true"
+  RabbitMq__HostName: "rabbitmq"

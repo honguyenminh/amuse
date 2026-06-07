@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amuse-worker-scheduler
+  namespace: amuse
+  labels:
+    app.kubernetes.io/name: amuse-worker-scheduler
+    app.kubernetes.io/part-of: amuse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: amuse-worker-scheduler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amuse-worker-scheduler
+        app.kubernetes.io/part-of: amuse
+    spec:
+      serviceAccountName: amuse-worker-scheduler
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: worker
+          image: ghcr.io/honguyenminh/amuse-worker-scheduler:master
+          envFrom:
+            - configMapRef:
+                name: amuse-common-env
+            - configMapRef:
+                name: amuse-worker-scheduler-env
+            - secretRef:
+                name: amuse-worker-scheduler-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

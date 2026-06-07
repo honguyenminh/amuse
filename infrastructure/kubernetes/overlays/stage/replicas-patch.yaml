@@ -1,0 +1,7 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amuse-api
+  namespace: amuse
+spec:
+  replicas: 2

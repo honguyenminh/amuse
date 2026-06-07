@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: amuse-migrate
+  namespace: amuse
+  labels:
+    app.kubernetes.io/name: amuse-migrate
+    app.kubernetes.io/part-of: amuse
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amuse-migrate
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: migrate
+          image: ghcr.io/honguyenminh/amuse-migrate:master
+          envFrom:
+            - secretRef:
+                name: amuse-migrate-secrets

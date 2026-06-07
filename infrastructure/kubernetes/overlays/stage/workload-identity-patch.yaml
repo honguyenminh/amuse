@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: amuse-api
+  namespace: amuse
+  annotations:
+    azure.workload.identity/client-id: "${AMUSE_WORKLOAD_IDENTITY_CLIENT_ID}"
+  labels:
+    azure.workload.identity/use: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: amuse-worker-transcoder
+  namespace: amuse
+  annotations:
+    azure.workload.identity/client-id: "${AMUSE_WORKLOAD_IDENTITY_CLIENT_ID}"
+  labels:
+    azure.workload.identity/use: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: amuse-worker-scheduler
+  namespace: amuse
+  annotations:
+    azure.workload.identity/client-id: "${AMUSE_WORKLOAD_IDENTITY_CLIENT_ID}"
+  labels:
+    azure.workload.identity/use: "true"

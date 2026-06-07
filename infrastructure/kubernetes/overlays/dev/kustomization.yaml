@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - data/postgres.yaml
+  - data/postgres-service.yaml
+  - data/minio.yaml
+  - data/minio-service.yaml
+  - data/minio-init-job.yaml
+  - secrets.example.yaml
+
+patches:
+  - path: gateway-patch.yaml
+  - path: tls-patch.yaml
+  - path: hosts-patch.yaml
+  - path: api-env-patch.yaml
+  - path: workload-identity-patch.yaml
+
+components:
+  - images-tags

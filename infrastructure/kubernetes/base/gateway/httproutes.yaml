@@ -1,0 +1,65 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: amuse-api
+  namespace: amuse
+  labels:
+    app.kubernetes.io/part-of: amuse
+spec:
+  parentRefs:
+    - name: amuse-gateway
+      sectionName: https
+  hostnames:
+    - api.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: amuse-api
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: amuse-consumer
+  namespace: amuse
+  labels:
+    app.kubernetes.io/part-of: amuse
+spec:
+  parentRefs:
+    - name: amuse-gateway
+      sectionName: https
+  hostnames:
+    - app.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: consumer
+          port: 3000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: amuse-business
+  namespace: amuse
+  labels:
+    app.kubernetes.io/part-of: amuse
+spec:
+  parentRefs:
+    - name: amuse-gateway
+      sectionName: https
+  hostnames:
+    - business.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: business
+          port: 3001

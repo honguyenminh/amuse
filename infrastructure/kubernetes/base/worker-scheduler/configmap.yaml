@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: amuse-worker-scheduler-env
+  namespace: amuse
+  labels:
+    app.kubernetes.io/part-of: amuse
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"

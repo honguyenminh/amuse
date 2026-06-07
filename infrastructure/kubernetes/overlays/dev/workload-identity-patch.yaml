@@ -1,0 +1,6 @@
+# Dev K3s does not use Azure Workload Identity; labels are no-ops here.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: amuse-api
+  namespace: amuse

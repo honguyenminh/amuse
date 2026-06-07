@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - external-secrets/cluster-secret-store.yaml
+  - external-secrets/amuse-api-external-secret.yaml
+  - external-secrets/amuse-worker-transcoder-external-secret.yaml
+  - external-secrets/amuse-worker-scheduler-external-secret.yaml
+  - external-secrets/amuse-migrate-external-secret.yaml
+  - external-secrets/amuse-rabbitmq-external-secret.yaml
+
+patches:
+  - path: gateway-patch.yaml
+  - path: hosts-patch.yaml
+  - path: api-env-patch.yaml
+  - path: workload-identity-patch.yaml
+  - path: replicas-patch.yaml
+
+components:
+  - images-tags

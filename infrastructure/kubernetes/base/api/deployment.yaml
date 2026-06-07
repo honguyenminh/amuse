@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amuse-api
+  namespace: amuse
+  labels:
+    app.kubernetes.io/name: amuse-api
+    app.kubernetes.io/part-of: amuse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: amuse-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: amuse-api
+        app.kubernetes.io/part-of: amuse
+    spec:
+      serviceAccountName: amuse-api
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: api
+          image: ghcr.io/honguyenminh/amuse-api:master
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: amuse-common-env
+            - configMapRef:
+                name: amuse-api-env
+            - secretRef:
+                name: amuse-api-secrets
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
