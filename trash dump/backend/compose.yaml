@@ -1,7 +1,0 @@
-﻿services:
-  amuse.api:
-    image: amuse.api
-    build:
-      context: .
-      dockerfile: Dockerfile
-
