@@ -1,6 +1,6 @@
 using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Common.Endpoints;
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Tenancy.Features.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

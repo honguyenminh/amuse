@@ -1,4 +1,4 @@
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Tenancy.Features.Common;
 using FluentValidation;
 
 namespace Amuse.Modules.Tenancy.Features.TransferOwnership;

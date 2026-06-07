@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Contracts;
-using Amuse.Modules.Discovery.Features.Shared;
+using Amuse.Modules.Discovery.Features.Common;
 using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Media;
 

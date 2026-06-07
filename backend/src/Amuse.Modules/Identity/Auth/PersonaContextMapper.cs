@@ -1,6 +1,6 @@
 using Amuse.Domain.Identity;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Identity.Features.Shared;
+using Amuse.Modules.Identity.Features.Common;
 
 namespace Amuse.Modules.Identity.Auth;
 

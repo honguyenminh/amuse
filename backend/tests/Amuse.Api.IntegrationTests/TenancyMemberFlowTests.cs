@@ -4,8 +4,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Amuse.Domain.Tenancy;
-using Amuse.Modules.Identity.Features.Shared;
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Identity.Features.Common;
+using Amuse.Modules.Tenancy.Features.Common;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace Amuse.Api.IntegrationTests;

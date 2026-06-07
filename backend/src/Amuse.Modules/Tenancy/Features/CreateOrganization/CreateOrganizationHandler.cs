@@ -8,7 +8,7 @@ using Amuse.Modules.Audit.Persistence;
 using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Platform.Contracts;
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Tenancy.Features.Common;
 using Amuse.Modules.Tenancy.Persistence;
 
 namespace Amuse.Modules.Tenancy.Features.CreateOrganization;

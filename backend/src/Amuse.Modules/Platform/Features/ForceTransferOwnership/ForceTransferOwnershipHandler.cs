@@ -4,9 +4,9 @@ using Amuse.Domain.Tenancy;
 using Amuse.Modules.Audit;
 using Amuse.Modules.Audit.Persistence;
 using Amuse.Modules.Common.Time;
-using Amuse.Modules.Platform.Features.Shared;
+using Amuse.Modules.Platform.Features.Common;
 using Amuse.Modules.Tenancy.Contracts;
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Tenancy.Features.Common;
 
 namespace Amuse.Modules.Platform.Features.ForceTransferOwnership;
 

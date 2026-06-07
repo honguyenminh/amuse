@@ -1,4 +1,5 @@
 using Amuse.Modules.Catalog.Features.Shared;
+using CatalogSlugHelper = Amuse.Modules.Catalog.Features.Common.CatalogSlugHelper;
 
 namespace Amuse.Modules.Catalog.Tests;
 

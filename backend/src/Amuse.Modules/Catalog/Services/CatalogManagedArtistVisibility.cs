@@ -1,5 +1,6 @@
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Contracts;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Microsoft.EntityFrameworkCore;

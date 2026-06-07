@@ -3,7 +3,7 @@ using Amuse.Domain.Identity;
 using Amuse.Domain.Listener;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Common.Time;
-using Amuse.Modules.Listener.Features.Shared;
+using Amuse.Modules.Listener.Features.Common;
 using Amuse.Modules.Listener.Services;
 using Amuse.Modules.Media;
 

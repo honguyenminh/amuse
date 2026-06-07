@@ -4,9 +4,10 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.Tenancy;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.Shared;
-using Amuse.Modules.Identity.Features.Shared;
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Identity.Features.Common;
+using Amuse.Modules.Tenancy.Features.Common;
 
 namespace Amuse.Api.IntegrationTests;
 

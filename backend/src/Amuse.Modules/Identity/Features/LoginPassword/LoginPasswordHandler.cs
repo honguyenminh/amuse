@@ -3,7 +3,7 @@ using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Identity.Auth;
 using Amuse.Modules.Identity.Contracts;
-using Amuse.Modules.Identity.Features.Shared;
+using Amuse.Modules.Identity.Features.Common;
 using Amuse.Modules.Identity.Options;
 using Amuse.Modules.Identity.Persistence;
 using Microsoft.AspNetCore.Identity;

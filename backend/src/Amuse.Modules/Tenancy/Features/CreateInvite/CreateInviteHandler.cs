@@ -4,7 +4,7 @@ using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Tenancy.Contracts;
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Tenancy.Features.Common;
 using Amuse.Modules.Tenancy.Options;
 using Amuse.Modules.Tenancy.Persistence;
 using Microsoft.EntityFrameworkCore;

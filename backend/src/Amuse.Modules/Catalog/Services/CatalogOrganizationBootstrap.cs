@@ -2,9 +2,11 @@ using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Contracts;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Microsoft.EntityFrameworkCore;
+using CatalogSlugHelper = Amuse.Modules.Catalog.Features.Common.CatalogSlugHelper;
 
 namespace Amuse.Modules.Catalog.Services;
 

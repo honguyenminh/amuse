@@ -1,3 +1,4 @@
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Common.Authorization;
 using Amuse.Modules.Common.Endpoints;

@@ -6,7 +6,7 @@ using Amuse.Domain.Catalog;
 using Amuse.Domain.Discovery;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Discovery.Persistence;
-using Amuse.Modules.Identity.Features.Shared;
+using Amuse.Modules.Identity.Features.Common;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

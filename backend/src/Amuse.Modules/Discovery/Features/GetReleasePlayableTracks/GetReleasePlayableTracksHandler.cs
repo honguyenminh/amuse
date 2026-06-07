@@ -1,5 +1,6 @@
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Discovery.Features.Shared;
+using Amuse.Modules.Discovery.Features.Common;
+
 namespace Amuse.Modules.Discovery.Features.GetReleasePlayableTracks;
 
 internal sealed class GetReleasePlayableTracksHandler(PlayableCollectionResolver resolver)

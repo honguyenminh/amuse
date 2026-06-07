@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Media;
-using Amuse.Modules.Tenancy.Features.Shared;
+using Amuse.Modules.Tenancy.Features.Common;
 using Amuse.Modules.Tenancy.Services;
 
 namespace Amuse.Modules.Tenancy.Features.GetPortalProfile;

@@ -1,4 +1,4 @@
-using Amuse.Modules.Discovery.Features.Shared;
+using Amuse.Modules.Discovery.Features.Common;
 using FluentValidation;
 
 namespace Amuse.Modules.Discovery.Features.AddTrackToPlaylist;

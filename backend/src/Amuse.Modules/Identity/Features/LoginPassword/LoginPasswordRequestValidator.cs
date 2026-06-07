@@ -1,4 +1,4 @@
-using Amuse.Modules.Identity.Features.Shared;
+using Amuse.Modules.Identity.Features.Common;
 using FluentValidation;
 
 namespace Amuse.Modules.Identity.Features.LoginPassword;

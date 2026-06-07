@@ -4,7 +4,7 @@ using Amuse.Domain.Discovery;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Contracts;
 using Amuse.Modules.Common.Time;
-using Amuse.Modules.Discovery.Features.Shared;
+using Amuse.Modules.Discovery.Features.Common;
 using Amuse.Modules.Discovery.Persistence;
 using Amuse.Modules.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;

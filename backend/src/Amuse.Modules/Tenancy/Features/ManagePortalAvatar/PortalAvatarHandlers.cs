@@ -5,8 +5,8 @@ using Amuse.Domain.Tenancy;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
 using Amuse.Modules.Media.Options;
+using Amuse.Modules.Tenancy.Features.Common;
 using Amuse.Modules.Tenancy.Features.GetPortalProfile;
-using Amuse.Modules.Tenancy.Features.Shared;
 using Amuse.Modules.Tenancy.Services;
 using Microsoft.Extensions.Options;
 

@@ -2,11 +2,13 @@ using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.BrowseHome;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.Shared;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
 using Microsoft.EntityFrameworkCore;
+using CatalogSlugHelper = Amuse.Modules.Catalog.Features.Common.CatalogSlugHelper;
 
 namespace Amuse.Modules.Catalog.Features.ManageReleases;
 

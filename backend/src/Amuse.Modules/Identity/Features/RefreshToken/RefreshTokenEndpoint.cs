@@ -1,5 +1,6 @@
 using Amuse.Modules.Common.Endpoints;
 using Amuse.Modules.Identity.Auth;
+using Amuse.Modules.Identity.Features.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -34,7 +35,7 @@ public static class RefreshTokenEndpoint
             .WithSummary(
                 "Mint a new access token for the given persona context using the refresh session. " +
                 "Use when the access token expires or when switching org/listener/platform persona.")
-            .Produces<Features.Shared.AuthTokenResponse>()
+            .Produces<AuthTokenResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesValidationProblem();
 

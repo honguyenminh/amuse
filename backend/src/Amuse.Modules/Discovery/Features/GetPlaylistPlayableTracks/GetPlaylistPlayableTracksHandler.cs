@@ -1,7 +1,8 @@
 using System.Security.Claims;
 using Amuse.Domain.Discovery;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Discovery.Features.Shared;
+using Amuse.Modules.Discovery.Features.Common;
+
 namespace Amuse.Modules.Discovery.Features.GetPlaylistPlayableTracks;
 
 internal sealed class GetPlaylistPlayableTracksHandler(
