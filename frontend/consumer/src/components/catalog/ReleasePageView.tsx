@@ -129,6 +129,7 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Button
                       type="button"
+                      variant="primary"
                       onClick={isPlayingThisRelease ? toggle : playAll}
                       disabled={playableTracks.length === 0}
                     >

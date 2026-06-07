@@ -13,9 +13,15 @@ type PlaylistCardProps = {
 
 export function PlaylistCard({ playlist }: PlaylistCardProps) {
   const ownerLabel = playlist.owner?.displayName ?? "Unknown listener";
-  const subtitle = playlist.isOwned
-    ? `${playlist.trackCount} track${playlist.trackCount === 1 ? "" : "s"} · Yours`
-    : `${playlist.trackCount} track${playlist.trackCount === 1 ? "" : "s"} · ${ownerLabel}`;
+  const trackLabel = `${playlist.trackCount} track${playlist.trackCount === 1 ? "" : "s"}`;
+  const relationLabel = playlist.isOwned
+    ? "Yours"
+    : playlist.isFollowed
+      ? `Following · ${ownerLabel}`
+      : playlist.isSaved
+        ? `Saved · ${ownerLabel}`
+        : ownerLabel;
+  const subtitle = `${trackLabel} · ${relationLabel}`;
 
   return (
     <Link href={playlistPath(playlist.id)} className="group block">

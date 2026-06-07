@@ -18,7 +18,7 @@ Must use pnpm for frontend actions.
 
 # .NET C#
 
-Adhere to DDD-style patterns, like rich domain models, only valid state (if a state is invalid, it shouldn't be able to exist/instatiate into a domain model), etc.
+Adhere to VSA but follow DDD-style patterns, like rich domain models, only valid state (if a state is invalid, it shouldn't be able to exist/instatiate into a domain model), etc. Note this VERY EXPLICITLY in the plans, etc. As LLM models have a tendency to ignore this guidance and do very crude VSA where it calls to dbset in the api handler directly, bypassing the domain layer.
 
 Always use DomainErrors reporting and result types, do not use exceptions for expected conditions. Always make domain error in the common domain and use that, not a local string to allow for centralized error messages/code.
 

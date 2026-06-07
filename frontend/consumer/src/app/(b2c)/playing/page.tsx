@@ -9,14 +9,19 @@ import {
   PauseIcon,
   PlayIcon,
   PrevIcon,
-  RepeatIcon,
   ShuffleIcon,
 } from "@/components/ui/PlaybackIcons";
+import { RepeatModeIcon } from "@/components/ui/RepeatModeIcon";
 import { Slider } from "@/components/ui/Slider";
 import { Text } from "@/components/ui/Text";
 import { catalogArtistPath, catalogReleasePath } from "@/lib/catalog/paths";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
+import {
+  nextRepeatMode,
+  repeatButtonVariant,
+  repeatModeLabel,
+} from "@/lib/playback/repeatMode";
 import { mainScrollPaddingClass, shellContentPaddingClass } from "@/lib/ui/pageLayout";
 import {
   usePlayback,
@@ -30,6 +35,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTrackContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import type { PlaybackTrack } from "@/lib/playback/types";
+import { useKeyboardShortcuts } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { useEffect, useMemo } from "react";
 
 export default function PlayingPage() {
@@ -47,6 +53,7 @@ export default function PlayingPage() {
   } = usePlayback();
   const smoothMs = usePlaybackPosition();
   const bufferedMs = usePlaybackBufferedEnd();
+  const { helpOpen } = useKeyboardShortcuts();
 
   // Theme: this view IS the playing seed, so route the cover into pageSeed for
   // identical resolution to the rest of the app (page > playing > default).
@@ -57,6 +64,16 @@ export default function PlayingPage() {
     if (!currentTrack) router.replace("/home");
   }, [currentTrack, router]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || helpOpen) return;
+      event.preventDefault();
+      router.back();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [helpOpen, router]);
+
   if (!currentTrack) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background p-6">
@@ -65,8 +82,7 @@ export default function PlayingPage() {
     );
   }
 
-  const nextRepeat: typeof state.repeat =
-    state.repeat === "off" ? "queue" : state.repeat === "queue" ? "one" : "off";
+  const nextRepeat = nextRepeatMode(state.repeat);
   const max = Math.max(state.durationMs, 1);
   const { displayMs, sliderProps } = useScrubPosition(smoothMs, max, {
     beginScrub,
@@ -189,11 +205,11 @@ export default function PlayingPage() {
               <NextIcon />
             </IconButton>
             <IconButton
-              label={`Repeat ${state.repeat}`}
-              variant={state.repeat !== "off" ? "tonal" : "ghost"}
+              label={repeatModeLabel(state.repeat)}
+              variant={repeatButtonVariant(state.repeat)}
               onClick={() => setRepeat(nextRepeat)}
             >
-              <RepeatIcon />
+              <RepeatModeIcon mode={state.repeat} />
             </IconButton>
           </div>
           </div>

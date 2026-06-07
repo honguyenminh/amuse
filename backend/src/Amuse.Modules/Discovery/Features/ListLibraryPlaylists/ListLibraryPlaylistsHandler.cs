@@ -52,7 +52,25 @@ internal sealed class ListLibraryPlaylistsHandler(
                 .ToListAsync(cancellationToken)
             : [];
 
-        var allPlaylists = owned.Concat(savedPlaylists)
+        var followedIds = await db.PlaylistFollows.AsNoTracking()
+            .Where(f => f.ListenerProfileId == listenerId)
+            .Select(f => f.PlaylistId.Value)
+            .ToListAsync(cancellationToken);
+
+        var includedIds = ownedIds.Union(savedIds).ToHashSet();
+        var followedOnlyIds = followedIds
+            .Where(id => !includedIds.Contains(id))
+            .ToArray();
+
+        var followedPlaylistIds = followedOnlyIds.Select(PlaylistId.From).ToArray();
+        var followedPlaylists = followedPlaylistIds.Length > 0
+            ? await db.Playlists.AsNoTracking()
+                .Include(p => p.Items)
+                .Where(p => followedPlaylistIds.Contains(p.Id))
+                .ToListAsync(cancellationToken)
+            : [];
+
+        var allPlaylists = owned.Concat(savedPlaylists).Concat(followedPlaylists)
             .OrderByDescending(p => p.UpdatedAt)
             .ToList();
 

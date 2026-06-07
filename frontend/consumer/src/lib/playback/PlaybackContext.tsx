@@ -31,7 +31,11 @@ import {
   readAudioDurationMs,
   readAudioPositionMs,
 } from "./audioPosition";
-import { attachDashToAudio, type ActiveRenditionInfo } from "./dashPlayer";
+import {
+  attachDashToAudio,
+  teardownDashAudio,
+  type ActiveRenditionInfo,
+} from "./dashPlayer";
 import { loadPlaybackSettings, savePlaybackSettings } from "./playbackSettings";
 import { getNetworkHints, readNavigatorConnection } from "./networkHints";
 import {
@@ -42,6 +46,7 @@ import { computeNormalizationGain } from "./normalizationGain";
 import { selectRendition } from "./selectRendition";
 import { createPlaybackOutput, type PlaybackOutput } from "./playbackOutput";
 import { playbackReducer } from "./reducer";
+import { useMediaSession } from "./useMediaSession";
 import {
   initialPlaybackState,
   type PlaybackState,
@@ -68,6 +73,9 @@ type PlaybackContextValue = {
   beginScrub: () => void;
   endScrub: (positionMs: number) => void;
   setVolume: (volume: number) => void;
+  nudgeVolume: (delta: number) => void;
+  toggleMute: () => void;
+  stop: () => void;
   setRepeat: (mode: RepeatMode) => void;
   toggleShuffle: () => void;
   addToQueue: (tracks: PlaybackTrack[]) => void;
@@ -96,6 +104,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const outputRef = useRef<PlaybackOutput | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dashSessionRef = useRef<Awaited<ReturnType<typeof attachDashToAudio>> | null>(null);
+  const trackLoadGenerationRef = useRef(0);
+  const trackLoadChainRef = useRef(Promise.resolve());
   const lastLoadedTrackIdRef = useRef<string | null>(null);
   const streamRenditionsRef = useRef<TrackStreamRenditionDto[]>([]);
   const [streamRenditions, setStreamRenditions] = useState<TrackStreamRenditionDto[]>([]);
@@ -109,17 +119,21 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const lastStreamLoudnessRef = useRef<TrackStreamLoudness | null>(null);
   const isPlayingRef = useRef(false);
   const isScrubbingRef = useRef(false);
+  const volumeBeforeMuteRef = useRef(0.85);
   const { setPlayingSeed, setPaused } = useTheme();
   const router = useRouter();
 
   const currentTrack =
     state.currentIndex >= 0 ? (state.queue[state.currentIndex] ?? null) : null;
-  const resetDashSession = useCallback(() => {
-    dashSessionRef.current?.destroy();
+  const resetDashSession = useCallback(async () => {
     dashSessionRef.current = null;
     streamRenditionsRef.current = [];
     setStreamRenditions([]);
     setActiveRendition(null);
+    const audio = audioRef.current;
+    if (audio) {
+      await teardownDashAudio(audio);
+    }
   }, []);
 
   const applyNormalizationGain = useCallback((loudness: TrackStreamLoudness | null) => {
@@ -175,7 +189,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (outputRef.current) return;
-    const output = createPlaybackOutput();
+    const output = createPlaybackOutput({ disableWebAudio: true });
     outputRef.current = output;
     audioRef.current = output.audio;
     const audio = output.audio;
@@ -202,6 +216,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     outputRef.current?.setVolume(state.volume);
+  }, [state.volume]);
+
+  useEffect(() => {
+    if (state.volume > 0) volumeBeforeMuteRef.current = state.volume;
   }, [state.volume]);
 
   useEffect(() => {
@@ -295,15 +313,25 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
     if (!currentTrack) {
-      resetDashSession();
-      outputRef.current?.pauseImmediate();
-      audio.removeAttribute("src");
+      trackLoadGenerationRef.current += 1;
+      trackLoadChainRef.current = trackLoadChainRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          await resetDashSession();
+          outputRef.current?.pauseImmediate();
+          audio.removeAttribute("src");
+        });
       lastLoadedTrackIdRef.current = null;
       return;
     }
+
     if (lastLoadedTrackIdRef.current === currentTrack.id) return;
-    lastLoadedTrackIdRef.current = currentTrack.id;
+
+    const trackId = currentTrack.id;
+    const generation = (trackLoadGenerationRef.current += 1);
+    lastLoadedTrackIdRef.current = trackId;
     lastStreamLoudnessRef.current = null;
     lastAutoSwitchAtRef.current = 0;
     lastStallHandledAtRef.current = 0;
@@ -311,74 +339,83 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     autoUpgradeBlockedUntilRef.current = 0;
     seekGraceUntilRef.current = 0;
 
-    let cancelled = false;
-    void (async () => {
-      try {
-        const info = await getTrackStreamInfo(currentTrack.id);
-        if (cancelled || lastLoadedTrackIdRef.current !== currentTrack.id) return;
-        resetDashSession();
-        outputRef.current?.pauseImmediate();
+    const isStaleLoad = () => trackLoadGenerationRef.current !== generation;
 
-        const playbackUrl = resolveApiUrl(info.url);
-        const isDash =
-          info.contentType === "application/dash+xml" ||
-          playbackUrl.toLowerCase().endsWith(".mpd");
+    trackLoadChainRef.current = trackLoadChainRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        if (isStaleLoad()) return;
 
-        streamRenditionsRef.current = info.renditions ?? [];
-        setStreamRenditions(info.renditions ?? []);
-        applyNormalizationGain(info.loudness);
+        try {
+          const info = await getTrackStreamInfo(trackId);
+          if (isStaleLoad()) return;
 
-        if (isDash) {
-          const settings = loadPlaybackSettings();
-          const chosen = selectRendition(info.renditions ?? [], settings, getNetworkHints());
-          const dashSession = await attachDashToAudio(
-            audio,
-            playbackUrl,
-            getAccessToken,
-            chosen,
-          );
-          if (cancelled || lastLoadedTrackIdRef.current !== currentTrack.id) {
-            dashSession.destroy();
-            return;
+          dashSessionRef.current = null;
+          outputRef.current?.pauseImmediate();
+
+          const playbackUrl = resolveApiUrl(info.url);
+          const isDash =
+            info.contentType === "application/dash+xml" ||
+            playbackUrl.toLowerCase().endsWith(".mpd");
+
+          streamRenditionsRef.current = info.renditions ?? [];
+          setStreamRenditions(info.renditions ?? []);
+          applyNormalizationGain(info.loudness);
+
+          if (isDash) {
+            if (isStaleLoad()) return;
+
+            const settings = loadPlaybackSettings();
+            const chosen = selectRendition(info.renditions ?? [], settings, getNetworkHints());
+            const dashSession = await attachDashToAudio(
+              audio,
+              playbackUrl,
+              getAccessToken,
+              chosen,
+            );
+            if (isStaleLoad()) {
+              await dashSession.destroy();
+              return;
+            }
+            dashSessionRef.current = dashSession;
+            dashSession.onActiveRenditionChange(setActiveRendition);
+            dashSession.onBufferStall(() => {
+              handlePlaybackStall();
+            });
+          } else {
+            if (isStaleLoad()) return;
+            await teardownDashAudio(audio);
+            audio.crossOrigin = "anonymous";
+            audio.src = playbackUrl;
           }
-          dashSessionRef.current = dashSession;
-          dashSession.onActiveRenditionChange(setActiveRendition);
-          dashSession.onBufferStall(() => {
-            handlePlaybackStall();
-          });
-        } else {
-          audio.crossOrigin = "anonymous";
-          audio.src = playbackUrl;
-        }
 
-        audio.currentTime = 0;
-        if (isPlayingRef.current) {
-          await outputRef.current?.playSmooth();
-        }
-      } catch (error) {
-        dispatch({ type: "pause" });
-        if (
-          error instanceof ApiError &&
-          (error.status === 401 || error.code === "auth.not_authenticated")
-        ) {
-          dispatch({ type: "clear" });
-          lastLoadedTrackIdRef.current = null;
-          const next = encodeURIComponent(
-            typeof window !== "undefined" ? window.location.pathname : "/home",
-          );
-          router.push(`/login?next=${next}`);
-        }
-      }
-    })();
+          if (isStaleLoad()) return;
 
-    return () => {
-      cancelled = true;
-    };
+          audio.currentTime = 0;
+          if (isPlayingRef.current) {
+            await outputRef.current?.playSmooth();
+          }
+        } catch (error) {
+          if (isStaleLoad()) return;
+          dispatch({ type: "pause" });
+          if (
+            error instanceof ApiError &&
+            (error.status === 401 || error.code === "auth.not_authenticated")
+          ) {
+            dispatch({ type: "clear" });
+            lastLoadedTrackIdRef.current = null;
+            const next = encodeURIComponent(
+              typeof window !== "undefined" ? window.location.pathname : "/home",
+            );
+            router.push(`/login?next=${next}`);
+          }
+        }
+      });
   }, [currentTrack?.id, router, resetDashSession, handlePlaybackStall, applyNormalizationGain]);
 
   useEffect(
     () => () => {
-      resetDashSession();
+      void resetDashSession();
     },
     [resetDashSession],
   );
@@ -541,6 +578,38 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     (volume: number) => dispatch({ type: "setVolume", volume }),
     [],
   );
+
+  const persistVolume = useCallback((volume: number) => {
+    savePlaybackSettings({ volume });
+  }, []);
+
+  const nudgeVolume = useCallback(
+    (delta: number) => {
+      const next = Math.max(0, Math.min(1, state.volume + delta));
+      if (next > 0) volumeBeforeMuteRef.current = next;
+      dispatch({ type: "setVolume", volume: next });
+      persistVolume(next);
+    },
+    [state.volume, persistVolume],
+  );
+
+  const toggleMute = useCallback(() => {
+    if (state.volume === 0) {
+      const restored = volumeBeforeMuteRef.current || 0.85;
+      dispatch({ type: "setVolume", volume: restored });
+      persistVolume(restored);
+      return;
+    }
+    volumeBeforeMuteRef.current = state.volume;
+    dispatch({ type: "setVolume", volume: 0 });
+    persistVolume(0);
+  }, [state.volume, persistVolume]);
+
+  const stop = useCallback(() => {
+    syncPositionFromAudio();
+    isPlayingRef.current = false;
+    dispatch({ type: "pause" });
+  }, [syncPositionFromAudio]);
   const setRepeat = useCallback(
     (mode: RepeatMode) => dispatch({ type: "setRepeat", mode }),
     [],
@@ -585,6 +654,14 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     dashSessionRef.current?.setRendition(rendition);
   }, []);
 
+  useMediaSession(currentTrack, state, {
+    play,
+    pause,
+    next,
+    previous,
+    seek,
+  });
+
   const value = useMemo<PlaybackContextValue>(
     () => ({
       state,
@@ -600,6 +677,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       beginScrub,
       endScrub,
       setVolume,
+      nudgeVolume,
+      toggleMute,
+      stop,
       setRepeat,
       toggleShuffle,
       addToQueue,
@@ -622,6 +702,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       beginScrub,
       endScrub,
       setVolume,
+      nudgeVolume,
+      toggleMute,
+      stop,
       setRepeat,
       toggleShuffle,
       addToQueue,

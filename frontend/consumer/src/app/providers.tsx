@@ -1,6 +1,8 @@
 "use client";
 
+import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardShortcuts";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import { KeyboardShortcutsProvider } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { PlaybackProvider } from "@/lib/playback/PlaybackContext";
 import { PlaybackContextMenuProvider } from "@/lib/playback/PlaybackContextMenuProvider";
 import { ThemeProvider } from "@/theme/ThemeProvider";
@@ -11,7 +13,12 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <AuthProvider>
         <PlaybackProvider>
-          <PlaybackContextMenuProvider>{children}</PlaybackContextMenuProvider>
+          <KeyboardShortcutsProvider>
+            <PlaybackContextMenuProvider>
+              <GlobalKeyboardShortcuts />
+              {children}
+            </PlaybackContextMenuProvider>
+          </KeyboardShortcutsProvider>
         </PlaybackProvider>
       </AuthProvider>
     </ThemeProvider>

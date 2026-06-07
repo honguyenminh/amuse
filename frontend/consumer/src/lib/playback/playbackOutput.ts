@@ -21,6 +21,15 @@ export type PlaybackOutput = {
   pauseImmediate: () => void;
 };
 
+export type PlaybackOutputOptions = {
+  /**
+   * Keep the element off Web Audio so dash.js can swap manifests via attachSource.
+   * createMediaElementSource() captures the element permanently; dash then throws
+   * NotSupportedError on track skip even though playback recovers.
+   */
+  disableWebAudio?: boolean;
+};
+
 /**
  * Playback output with optional Web Audio gain ramping.
  *
@@ -29,7 +38,8 @@ export type PlaybackOutput = {
  * signal before `pause()`. Falls back to element `volume` ramps when Web Audio
  * is unavailable.
  */
-export function createPlaybackOutput(): PlaybackOutput {
+export function createPlaybackOutput(options: PlaybackOutputOptions = {}): PlaybackOutput {
+  const disableWebAudio = options.disableWebAudio ?? false;
   const audio = new Audio();
   audio.preload = "metadata";
   audio.crossOrigin = "anonymous";
@@ -53,6 +63,7 @@ export function createPlaybackOutput(): PlaybackOutput {
   audio.volume = fallbackElementVolume();
 
   function tryWire(): boolean {
+    if (disableWebAudio) return false;
     if (webAudio) return true;
     try {
       context = new AudioContext();

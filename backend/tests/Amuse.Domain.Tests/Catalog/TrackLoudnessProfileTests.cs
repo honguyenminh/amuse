@@ -46,6 +46,20 @@ public sealed class TrackLoudnessProfileTests
     }
 
     [Fact]
+    public void FromAnalysis_accepts_positive_true_peak_from_clipped_master()
+    {
+        var profile = TrackLoudnessProfile.FromAnalysis(
+            integratedLufs: -14.0,
+            truePeakDbtp: 2.5,
+            loudnessRangeLu: 5.0,
+            thresholdLufs: -24.0,
+            analyzedAt: AnalyzedAt);
+
+        Assert.Equal(2.5, profile.TruePeakDbtp, precision: 2);
+        Assert.Equal(-3.5, profile.LinearGainLu, precision: 2);
+    }
+
+    [Fact]
     public void ComputeSafeLinearGainLu_matches_ffmpeg_linear_condition()
     {
         var gain = TrackLoudnessProfile.ComputeSafeLinearGainLu(

@@ -68,7 +68,8 @@ export function ShuffleIcon({ className }: IconProps) {
   );
 }
 
-export function RepeatIcon({ className }: IconProps) {
+/** Repeat entire queue when a track ends. */
+export function RepeatQueueIcon({ className }: IconProps) {
   return (
     <svg {...baseProps} className={className} aria-hidden>
       <polyline points="17 1 21 5 17 9" />
@@ -78,3 +79,25 @@ export function RepeatIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Repeat the current track when it ends. */
+export function RepeatOneIcon({ className }: IconProps) {
+  return (
+    <svg {...baseProps} className={className} aria-hidden>
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+      <path
+        d="M12 8.5v8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** @deprecated Use RepeatQueueIcon */
+export const RepeatIcon = RepeatQueueIcon;

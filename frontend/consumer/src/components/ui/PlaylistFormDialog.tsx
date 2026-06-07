@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
 import { useEffect, useId, useRef, useState } from "react";
 
-export const MAX_PLAYLIST_DESCRIPTION_LENGTH = 2000;
+export const MAX_PLAYLIST_DESCRIPTION_LENGTH = 100;
 
 type PlaylistFormDialogProps = {
   open: boolean;
@@ -100,12 +100,17 @@ export function PlaylistFormDialog({
           />
         </label>
         <label htmlFor={descriptionInputId} className="mt-3 block">
-          <Text variant="label-medium">Description (optional)</Text>
+          <div className="flex items-baseline justify-between gap-2">
+            <Text variant="label-medium">Description (optional)</Text>
+            <Text variant="label-small" className="text-on-surface-variant">
+              {description.length}/{MAX_PLAYLIST_DESCRIPTION_LENGTH}
+            </Text>
+          </div>
           <textarea
             id={descriptionInputId}
             value={description}
             maxLength={MAX_PLAYLIST_DESCRIPTION_LENGTH}
-            rows={4}
+            rows={3}
             disabled={confirmDisabled}
             placeholder="What's this playlist about?"
             className="mt-1 w-full resize-y rounded-md border-2 border-outline bg-background px-3 py-2 text-body-medium text-on-surface"

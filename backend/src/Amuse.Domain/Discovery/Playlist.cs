@@ -6,7 +6,7 @@ namespace Amuse.Domain.Discovery;
 
 public sealed class Playlist
 {
-    public const int MaxDescriptionLength = 2000;
+    public const int MaxDescriptionLength = 100;
     public const string LikedCollectionTitle = "Liked";
 
     public PlaylistId Id { get; private set; }

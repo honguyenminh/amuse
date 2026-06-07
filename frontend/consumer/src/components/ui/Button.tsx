@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "filled" | "outlined" | "text";
+type ButtonVariant = "filled" | "primary" | "outlined" | "text";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -11,6 +11,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 const variantClass: Record<ButtonVariant, string> = {
   filled:
     "bg-primary-container text-on-primary-container border-2 border-outline hover:opacity-90",
+  primary:
+    "bg-primary text-on-primary border-2 border-on-background hover:opacity-90",
   outlined:
     "bg-transparent text-primary border-2 border-outline hover:bg-surface-variant",
   text: "bg-transparent text-primary border-2 border-transparent hover:bg-surface-variant",

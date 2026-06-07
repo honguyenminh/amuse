@@ -328,6 +328,7 @@ export function PlaylistDetailView({
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       type="button"
+                      variant="primary"
                       onClick={isPlayingThisPlaylist && state.isPlaying ? toggle : playAll}
                       disabled={playbackTracks.length === 0}
                     >

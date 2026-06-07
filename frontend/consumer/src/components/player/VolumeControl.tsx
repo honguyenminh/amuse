@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/Slider";
 import { usePlayback } from "@/lib/playback/PlaybackContext";
 import { savePlaybackSettings } from "@/lib/playback/playbackSettings";
 import { cn } from "@/lib/cn";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 
 function VolumeIcon({ muted, level }: { muted: boolean; level: number }) {
   if (muted || level === 0) {
@@ -36,9 +36,8 @@ type VolumeControlProps = {
 };
 
 export function VolumeControl({ variant = "full", className }: VolumeControlProps) {
-  const { state, setVolume } = usePlayback();
-  const volumeBeforeMuteRef = useRef(state.volume > 0 ? state.volume : 0.85);
-  const [muted, setMuted] = useState(state.volume === 0);
+  const { state, setVolume, toggleMute } = usePlayback();
+  const muted = state.volume === 0;
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persistVolume = useCallback((volume: number) => {
@@ -51,31 +50,15 @@ export function VolumeControl({ variant = "full", className }: VolumeControlProp
   const onVolumeChange = useCallback(
     (value: number) => {
       const v = value / 100;
-      if (v > 0) {
-        setMuted(false);
-        volumeBeforeMuteRef.current = v;
-      } else {
-        setMuted(true);
-      }
       setVolume(v);
       persistVolume(v);
     },
     [setVolume, persistVolume],
   );
 
-  const toggleMute = useCallback(() => {
-    if (muted || state.volume === 0) {
-      const restored = volumeBeforeMuteRef.current || 0.85;
-      setMuted(false);
-      setVolume(restored);
-      persistVolume(restored);
-    } else {
-      volumeBeforeMuteRef.current = state.volume;
-      setMuted(true);
-      setVolume(0);
-      persistVolume(0);
-    }
-  }, [muted, state.volume, setVolume, persistVolume]);
+  const onToggleMute = useCallback(() => {
+    toggleMute();
+  }, [toggleMute]);
 
   const sliderWidth = variant === "compact" ? "w-20" : "w-28";
 
@@ -85,7 +68,7 @@ export function VolumeControl({ variant = "full", className }: VolumeControlProp
         label={muted ? "Unmute" : "Mute"}
         variant="ghost"
         size="sm"
-        onClick={toggleMute}
+        onClick={onToggleMute}
       >
         <VolumeIcon muted={muted || state.volume === 0} level={state.volume} />
       </IconButton>

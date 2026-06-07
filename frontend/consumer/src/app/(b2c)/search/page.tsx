@@ -9,13 +9,22 @@ import { Text } from "@/components/ui/Text";
 import { searchDiscovery } from "@/lib/api/discoveryClient";
 import type { SearchResponse } from "@/lib/api/types";
 import { searchPath } from "@/lib/discovery/paths";
+import { useKeyboardShortcuts } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const query = searchParams.get("q")?.trim() ?? "";
+  const shouldFocus = searchParams.get("focus") === "1";
+  const { registerSearchInput } = useKeyboardShortcuts();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const bindSearchInput = (element: HTMLInputElement | null) => {
+    searchInputRef.current = element;
+    registerSearchInput(element);
+  };
 
   const [input, setInput] = useState(query);
   const [data, setData] = useState<SearchResponse | null>(null);
@@ -25,6 +34,16 @@ export default function SearchPage() {
   useEffect(() => {
     setInput(query);
   }, [query]);
+
+  useEffect(() => {
+    if (!shouldFocus) return;
+    const frame = requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+      router.replace(searchPath(query || undefined));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [shouldFocus, query, router]);
 
   useEffect(() => {
     if (!query) {
@@ -63,6 +82,7 @@ export default function SearchPage() {
       <PageContent gap="6">
         <form onSubmit={onSubmit} className="flex gap-2">
           <input
+            ref={bindSearchInput}
             type="search"
             value={input}
             onChange={(e) => setInput(e.target.value)}

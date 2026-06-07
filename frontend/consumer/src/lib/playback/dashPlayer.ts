@@ -55,7 +55,8 @@ type DashPlayerInstance = {
     interceptor: (request: { url: string; headers?: Record<string, string> }) => Promise<unknown>,
   ) => void;
   initialize: (audio: HTMLAudioElement, url: string, autoPlay: boolean) => void;
-  reset: () => void;
+  attachSource: (url: string | null, startTime?: number) => void;
+  destroy: () => void;
   seek?: (time: number) => void;
   updateSettings?: (settings: object) => void;
   getActiveStream?: () => DashActiveStream | null;
@@ -72,7 +73,7 @@ type DashPlayerInstance = {
 };
 
 type DashSession = {
-  destroy: () => void;
+  destroy: () => Promise<void>;
   seek: (positionSec: number) => void;
   setRendition: (rendition: TrackStreamRenditionDto) => void;
   getThroughputKbps: () => number | undefined;
@@ -80,6 +81,211 @@ type DashSession = {
   onActiveRenditionChange: (listener: (info: ActiveRenditionInfo | null) => void) => () => void;
   onBufferStall: (listener: () => void) => () => void;
 };
+
+type AudioBinding = {
+  queue: Promise<void>;
+  player: DashPlayerInstance | null;
+  initialized: boolean;
+  configured: boolean;
+  activeSessionId: number;
+  nextSessionId: number;
+  removeListeners: (() => void) | null;
+};
+
+const bindings = new WeakMap<HTMLAudioElement, AudioBinding>();
+
+function getBinding(audio: HTMLAudioElement): AudioBinding {
+  let binding = bindings.get(audio);
+  if (!binding) {
+    binding = {
+      queue: Promise.resolve(),
+      player: null,
+      initialized: false,
+      configured: false,
+      activeSessionId: 0,
+      nextSessionId: 0,
+      removeListeners: null,
+    };
+    bindings.set(audio, binding);
+  }
+  return binding;
+}
+
+function enqueue(audio: HTMLAudioElement, op: () => Promise<void>): Promise<void> {
+  const binding = getBinding(audio);
+  const run = binding.queue.catch(() => undefined).then(async () => {
+    try {
+      await op();
+    } catch {
+      // dash.js teardown/swap races must not surface to the UI
+    }
+  });
+  binding.queue = run.catch(() => undefined);
+  return run;
+}
+
+async function yieldToMediaElement(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+function configureDashPlayer(player: DashPlayerInstance, getToken: () => string | null): void {
+  player.updateSettings?.({
+    streaming: {
+      abr: {
+        autoSwitchBitrate: { audio: false },
+      },
+      buffer: bufferRetentionSettings(undefined),
+      gaps: {
+        jumpGaps: true,
+        jumpLargeGaps: false,
+        smallGapLimit: 1.5,
+        threshold: 0.3,
+        enableSeekFix: false,
+      },
+    },
+  });
+
+  player.addRequestInterceptor((request) => {
+    const headers = (request.headers ??= {}) as Record<string, string>;
+    const token = getToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    headers["X-Amuse-Client"] = WEB_CLIENT_HEADER;
+
+    if (request.url.startsWith("/api/")) {
+      request.url = resolveApiUrl(request.url);
+    }
+
+    return Promise.resolve(request);
+  });
+}
+
+function safeInitialize(
+  player: DashPlayerInstance,
+  audio: HTMLAudioElement,
+  manifestUrl: string,
+): boolean {
+  try {
+    player.initialize(audio, manifestUrl, false);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** dash.js destroy() calls reset() which touches the media element — defer off the hot path. */
+function schedulePlayerDestroy(player: DashPlayerInstance): void {
+  setTimeout(() => {
+    try {
+      player.destroy();
+    } catch {
+      // NotSupportedError is common on Web Audio–routed elements; playback already moved on.
+    }
+  }, 0);
+}
+
+async function ensureDashPlayer(
+  getToken: () => string | null,
+  binding: AudioBinding,
+): Promise<DashPlayerInstance> {
+  if (binding.player) {
+    return binding.player;
+  }
+
+  const dashjs = await import("dashjs");
+  const player = dashjs.MediaPlayer().create() as unknown as DashPlayerInstance;
+  configureDashPlayer(player, getToken);
+  binding.player = player;
+  binding.configured = true;
+  binding.initialized = false;
+  return player;
+}
+
+/**
+ * dash.js documents track changes as attachSource(newUrl) on the same player.
+ * reset/destroy during skip is what triggers "Operation is not supported" here.
+ */
+function safeAttachSource(player: DashPlayerInstance, manifestUrl: string): void {
+  try {
+    player.attachSource(manifestUrl);
+    return;
+  } catch {
+    // Fall through to soft reset.
+  }
+
+  try {
+    player.attachSource(null);
+  } catch {
+    // ignore
+  }
+
+  try {
+    player.attachSource(manifestUrl);
+  } catch {
+    // Swallowed by enqueue — attachDashToAudio may fail without surfacing DOM errors.
+  }
+}
+
+async function loadManifest(
+  audio: HTMLAudioElement,
+  manifestUrl: string,
+  getToken: () => string | null,
+  binding: AudioBinding,
+): Promise<DashPlayerInstance> {
+  let player = await ensureDashPlayer(getToken, binding);
+
+  try {
+    audio.pause();
+  } catch {
+    // ignore
+  }
+
+  if (!binding.initialized) {
+    if (!safeInitialize(player, audio, manifestUrl)) {
+      await yieldToMediaElement();
+      if (!safeInitialize(player, audio, manifestUrl)) {
+        schedulePlayerDestroy(player);
+        binding.player = null;
+        binding.configured = false;
+        await yieldToMediaElement();
+        player = await ensureDashPlayer(getToken, binding);
+        if (!safeInitialize(player, audio, manifestUrl)) {
+          throw new Error("dash.js failed to initialize");
+        }
+      }
+    }
+    binding.initialized = true;
+    return player;
+  }
+
+  safeAttachSource(player, manifestUrl);
+  return player;
+}
+
+/** Fully tears down any dash.js player bound to this audio element. */
+export function teardownDashAudio(audio: HTMLAudioElement): Promise<void> {
+  return enqueue(audio, async () => {
+    const binding = getBinding(audio);
+    binding.activeSessionId = 0;
+    binding.removeListeners?.();
+    binding.removeListeners = null;
+    const player = binding.player;
+    binding.player = null;
+    binding.initialized = false;
+    binding.configured = false;
+    if (!player) return;
+
+    try {
+      audio.pause();
+    } catch {
+      // ignore
+    }
+    schedulePlayerDestroy(player);
+  });
+}
 
 function findAudioTrackForRendition(
   player: DashPlayerInstance,
@@ -101,32 +307,18 @@ function findAudioTrackForRendition(
   );
 }
 
-export async function attachDashToAudio(
+function createDashSession(
   audio: HTMLAudioElement,
-  manifestUrl: string,
-  getToken: () => string | null,
-  initialRendition?: TrackStreamRenditionDto | null,
-): Promise<DashSession> {
-  const dashjs = await import("dashjs");
-  const player = dashjs.MediaPlayer().create() as unknown as DashPlayerInstance;
-
-  player.updateSettings?.({
-    streaming: {
-      abr: {
-        autoSwitchBitrate: { audio: false },
-      },
-      buffer: bufferRetentionSettings(undefined),
-      gaps: {
-        jumpGaps: true,
-        // VoD: disjoint cached ranges (e.g. 1:00–1:02 and 3:00+) must not skip — resume buffering.
-        jumpLargeGaps: false,
-        smallGapLimit: 1.5,
-        threshold: 0.3,
-        // Keep false so dash does not advance the scheduler across intentional buffer gaps.
-        enableSeekFix: false,
-      },
-    },
-  });
+  player: DashPlayerInstance,
+  initialRendition: TrackStreamRenditionDto | null | undefined,
+  sessionId: number,
+): DashSession {
+  const listeners = new Set<(info: ActiveRenditionInfo | null) => void>();
+  const stallListeners = new Set<() => void>();
+  let active: ActiveRenditionInfo | null = null;
+  let streamReady = false;
+  let pendingRendition: TrackStreamRenditionDto | null = initialRendition ?? null;
+  let destroyed = false;
 
   const applyBufferRetentionForDuration = (durationSec: number) => {
     player.updateSettings?.({
@@ -136,37 +328,18 @@ export async function attachDashToAudio(
     });
   };
 
-  player.addRequestInterceptor((request) => {
-    const headers = (request.headers ??= {}) as Record<string, string>;
-    const token = getToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    headers["X-Amuse-Client"] = WEB_CLIENT_HEADER;
-
-    if (request.url.startsWith("/api/")) {
-      request.url = resolveApiUrl(request.url);
-    }
-
-    return Promise.resolve(request);
-  });
-
-  const listeners = new Set<(info: ActiveRenditionInfo | null) => void>();
-  const stallListeners = new Set<() => void>();
-  let active: ActiveRenditionInfo | null = null;
-  let streamReady = false;
-  let pendingRendition: TrackStreamRenditionDto | null = initialRendition ?? null;
-
   const notify = () => {
     for (const listener of listeners) listener(active);
   };
 
   const notifyStall = () => {
+    if (destroyed) return;
     resyncBufferingFromPlayhead(player as DashPlayerWithStream, audio);
     for (const listener of stallListeners) listener();
   };
 
   const onPlaybackSeeked = () => {
+    if (destroyed) return;
     void pruneDisjointAheadBuffer(
       player as DashPlayerWithStream,
       audio,
@@ -188,12 +361,14 @@ export async function attachDashToAudio(
   };
 
   const setRendition = (rendition: TrackStreamRenditionDto) => {
+    if (destroyed) return;
     pendingRendition = rendition;
     if (!streamReady) return;
     applyRendition(rendition);
   };
 
   const onStreamActivated = () => {
+    if (destroyed) return;
     streamReady = true;
     if (pendingRendition) {
       applyRendition(pendingRendition);
@@ -201,9 +376,10 @@ export async function attachDashToAudio(
   };
 
   const onRepresentationSwitch = () => {
+    if (destroyed || !active) return;
     const list = player.getBitrateInfoListFor?.("audio") ?? [];
     const current = list[0];
-    if (!current || !active) return;
+    if (!current) return;
     const bandwidth = current.bandwidth ?? null;
     active = {
       rendition: active.rendition,
@@ -213,12 +389,22 @@ export async function attachDashToAudio(
   };
 
   const onDurationAvailable = () => {
+    if (destroyed) return;
     if (Number.isFinite(audio.duration) && audio.duration > 0) {
       applyBufferRetentionForDuration(audio.duration);
     }
   };
 
-  player.initialize(audio, manifestUrl, false);
+  const removePlayerListeners = () => {
+    audio.removeEventListener("loadedmetadata", onDurationAvailable);
+    audio.removeEventListener("durationchange", onDurationAvailable);
+    player.off?.("streamActivated", onStreamActivated);
+    player.off?.("representationSwitch", onRepresentationSwitch);
+    player.off?.("playbackSeeked", onPlaybackSeeked);
+    player.off?.("bufferStalled", notifyStall);
+    player.off?.("playbackStalled", notifyStall);
+  };
+
   audio.addEventListener("loadedmetadata", onDurationAvailable);
   audio.addEventListener("durationchange", onDurationAvailable);
   player.on?.("streamActivated", onStreamActivated);
@@ -228,22 +414,27 @@ export async function attachDashToAudio(
   player.on?.("playbackStalled", notifyStall);
   onDurationAvailable();
 
+  const binding = getBinding(audio);
+  binding.removeListeners = removePlayerListeners;
+
   return {
-    destroy: () => {
-      audio.removeEventListener("loadedmetadata", onDurationAvailable);
-      audio.removeEventListener("durationchange", onDurationAvailable);
-      player.off?.("streamActivated", onStreamActivated);
-      player.off?.("representationSwitch", onRepresentationSwitch);
-      player.off?.("playbackSeeked", onPlaybackSeeked);
-      player.off?.("bufferStalled", notifyStall);
-      player.off?.("playbackStalled", notifyStall);
-      player.reset();
-    },
+    destroy: () =>
+      enqueue(audio, async () => {
+        if (binding.activeSessionId !== sessionId || destroyed) return;
+        destroyed = true;
+        binding.activeSessionId = 0;
+        removePlayerListeners();
+        if (binding.removeListeners === removePlayerListeners) {
+          binding.removeListeners = null;
+        }
+      }),
     seek: (positionSec: number) => {
+      if (destroyed) return;
       player.seek?.(positionSec);
     },
     setRendition,
     getThroughputKbps: () => {
+      if (destroyed) return undefined;
       const samples = player.getRawThroughputData?.("audio") ?? [];
       if (samples.length < 2) return undefined;
 
@@ -252,6 +443,7 @@ export async function attachDashToAudio(
       return Math.round(kbps);
     },
     getBufferLengthSeconds: () => {
+      if (destroyed) return undefined;
       const seconds = player.getBufferLength?.("audio");
       return seconds !== undefined && Number.isFinite(seconds) ? seconds : undefined;
     },
@@ -262,7 +454,33 @@ export async function attachDashToAudio(
     },
     onBufferStall: (listener) => {
       stallListeners.add(listener);
-      return () => stallListeners.delete(listener);
+      return () => listeners.delete(listener);
     },
   };
+}
+
+export async function attachDashToAudio(
+  audio: HTMLAudioElement,
+  manifestUrl: string,
+  getToken: () => string | null,
+  initialRendition?: TrackStreamRenditionDto | null,
+): Promise<DashSession> {
+  const binding = getBinding(audio);
+  const sessionId = ++binding.nextSessionId;
+  let session: DashSession | null = null;
+
+  await enqueue(audio, async () => {
+    binding.removeListeners?.();
+    binding.removeListeners = null;
+
+    const player = await loadManifest(audio, manifestUrl, getToken, binding);
+    binding.activeSessionId = sessionId;
+    session = createDashSession(audio, player, initialRendition, sessionId);
+  });
+
+  if (!session) {
+    throw new Error("Failed to attach dash.js player");
+  }
+
+  return session;
 }

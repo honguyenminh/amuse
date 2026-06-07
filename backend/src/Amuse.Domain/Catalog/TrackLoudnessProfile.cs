@@ -52,10 +52,11 @@ public sealed class TrackLoudnessProfile
         double targetIntegratedLufs = DefaultTargetIntegratedLufs,
         double targetTruePeakDbtp = DefaultTargetTruePeakDbtp)
     {
-        if (!IsFiniteInRange(integratedLufs, -70.0, 0.0))
+        // loudnorm measured_I / measured_TP ranges (see ffmpeg loudnorm AVOptions).
+        if (!IsFiniteInRange(integratedLufs, -99.0, 0.0))
             throw new ArgumentOutOfRangeException(nameof(integratedLufs));
 
-        if (!IsFiniteInRange(truePeakDbtp, -99.0, 0.0))
+        if (!IsFiniteInRange(truePeakDbtp, -99.0, 99.0))
             throw new ArgumentOutOfRangeException(nameof(truePeakDbtp));
 
         if (!IsFiniteInRange(loudnessRangeLu, 0.0, 99.0))

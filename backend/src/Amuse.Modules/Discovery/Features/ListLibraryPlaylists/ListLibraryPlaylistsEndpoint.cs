@@ -20,7 +20,7 @@ public static class ListLibraryPlaylistsEndpoint
             })
             .RequireAuthorization(PersonaPolicies.RequireListenerPersona)
             .WithName("ListLibraryPlaylists")
-            .WithSummary("List owned and saved playlists in the listener library.")
+            .WithSummary("List owned, saved, and followed playlists in the listener library.")
             .Produces<PlaylistListResponse>()
             .ProducesProblem(StatusCodes.Status403Forbidden);
 

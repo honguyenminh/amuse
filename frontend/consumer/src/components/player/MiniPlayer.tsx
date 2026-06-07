@@ -7,13 +7,18 @@ import {
   PauseIcon,
   PlayIcon,
   PrevIcon,
-  RepeatIcon,
   ShuffleIcon,
 } from "@/components/ui/PlaybackIcons";
+import { RepeatModeIcon } from "@/components/ui/RepeatModeIcon";
 import { Slider } from "@/components/ui/Slider";
 import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
+import {
+  nextRepeatMode,
+  repeatButtonVariant,
+  repeatModeLabel,
+} from "@/lib/playback/repeatMode";
 import { shellContentPaddingClass } from "@/lib/ui/pageLayout";
 import {
   usePlayback,
@@ -62,8 +67,7 @@ export function MiniPlayer() {
 
   const canNext =
     state.playOrderIndex < state.playOrder.length - 1 || state.repeat === "queue";
-  const nextRepeat: typeof state.repeat =
-    state.repeat === "off" ? "queue" : state.repeat === "queue" ? "one" : "off";
+  const nextRepeat = nextRepeatMode(state.repeat);
 
   return (
     <div
@@ -129,12 +133,12 @@ export function MiniPlayer() {
             <ShuffleIcon />
           </IconButton>
           <IconButton
-            label={`Repeat ${state.repeat}`}
-            variant={state.repeat !== "off" ? "tonal" : "ghost"}
+            label={repeatModeLabel(state.repeat)}
+            variant={repeatButtonVariant(state.repeat)}
             size="sm"
             onClick={() => setRepeat(nextRepeat)}
           >
-            <RepeatIcon />
+            <RepeatModeIcon mode={state.repeat} />
           </IconButton>
         </div>
 
