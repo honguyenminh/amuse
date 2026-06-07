@@ -109,3 +109,4 @@
         name: amuse-worker-transcoder-secrets
       fieldPaths:
         - stringData.Media__PublicBaseUrl
+

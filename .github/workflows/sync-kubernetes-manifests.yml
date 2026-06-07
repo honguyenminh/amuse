@@ -30,13 +30,17 @@ jobs:
           rsync -av --delete \
             --exclude 'images-tags/' \
             --exclude 'secrets.yaml' \
+            --exclude 'secrets.example.yaml' \
             infrastructure/kubernetes/base/ \
             amuse-deploy/base/
           rsync -av --delete \
             --exclude 'images-tags/' \
             --exclude 'secrets.yaml' \
+            --exclude 'secrets.example.yaml' \
             infrastructure/kubernetes/overlays/ \
             amuse-deploy/overlays/
+          # Dev secrets are cluster-local; drop any legacy GitOps copies from the deploy repo.
+          rm -f amuse-deploy/overlays/dev/secrets-argo-patch.yaml
 
       - name: Commit and push
         working-directory: amuse-deploy

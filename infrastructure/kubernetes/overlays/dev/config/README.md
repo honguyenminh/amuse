@@ -6,10 +6,11 @@ Kustomize generates `amuse-cluster-config` and applies [`replacements.yaml`](./r
 
 - Gateway listener wildcard host
 - HTTPRoute hostnames (api / app / business)
-- API CORS, tenancy, and `Media__PublicBaseUrl`
+- API CORS, tenancy, and `Media__PublicBaseUrl` (ConfigMap env only)
 - Frontend `NEXT_PUBLIC_API_BASE_URL`
-- Example secrets (`Media__PublicBaseUrl`)
 - MinIO init job CORS (`MINIO_CORS_ALLOW_ORIGIN`)
+
+`Media__PublicBaseUrl` in **Secrets** (`amuse-api-secrets`, `amuse-worker-transcoder-secrets`) is set when you bootstrap secrets — see [`../secrets.example.yaml`](../secrets.example.yaml) and [bootstrap/k3s/README.md](../../../bootstrap/k3s/README.md). GitOps does not manage dev secrets.
 
 MinIO remains cluster-internal; media is served via `https://<API_HOST>/amuse-covers/*` and `/amuse-audio/*`.
 

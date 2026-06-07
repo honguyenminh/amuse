@@ -87,7 +87,23 @@ kubectl create secret docker-registry ghcr-pull -n amuse \
   --docker-password=GITHUB_PAT
 ```
 
-### 6. Install Argo CD
+### 6. Bootstrap application secrets (one-time per cluster)
+
+Dev secrets are **not** in GitOps. Argo CD will not create, update, or prune them — edit values in the cluster (or re-apply your own file) without sync overwriting you.
+
+From an **amuse** clone (template stays in the app repo only):
+
+```bash
+# Edit placeholders first — especially Jwt__SigningKey and Media__PublicBaseUrl
+# (must match MEDIA_PUBLIC_BASE_URL in overlays/dev/config/cluster.env).
+kubectl apply -f infrastructure/kubernetes/overlays/dev/secrets.example.yaml
+```
+
+Or copy to `secrets.yaml` (gitignored), customize, and `kubectl apply -f overlays/dev/secrets.yaml`.
+
+**Existing clusters** that previously synced `secrets.example.yaml` from amuse-deploy: after the next manifest sync, Argo stops managing those Secrets. If automated **prune** deletes them, re-run `kubectl apply` above before workloads restart.
+
+### 7. Install Argo CD
 
 ```bash
 kubectl create namespace argocd
@@ -115,7 +131,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 
 (You should delete the initial secret afterwards as suggested by the Getting Started Guide: [https://argo-cd.readthedocs.io/en/stable/getting_started/#4-login-using-the-cli](https://argo-cd.readthedocs.io/en/stable/getting_started/#4-login-using-the-cli))
 
-### 7. Deploy GitOps (dev only)
+### 8. Deploy GitOps (dev only)
 
 From the **amuse-deploy** clone:
 
@@ -126,7 +142,7 @@ kubectl apply -f argocd/bootstrap/dev-application.yaml
 
 Do **not** apply `stage-application.yaml` on K3s.
 
-### 8. Smoke test
+### 9. Smoke test
 
 ```bash
 kubectl -n amuse get gateway amuse-gateway
@@ -164,7 +180,7 @@ kubectl -n amuse wait --for=condition=complete job/amuse-migrate --timeout=600s
 
 | Wave | Resources |
 |------|-----------|
-| `-5` | Secrets (`secrets-argo-patch.yaml`) |
+| *(bootstrap)* | Opaque Secrets — `kubectl apply` only; not in Argo desired state |
 | `0` | Postgres, MinIO, RabbitMQ, Gateway, HTTPRoutes |
 | `5` | `amuse-migrate`, `minio-init` Argo **Sync hooks** |
 | `10` | API, workers, frontends |

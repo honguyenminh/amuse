@@ -11,7 +11,9 @@ Amuse uses two repositories for GitOps:
 
 | Workflow | What it commits |
 |----------|-----------------|
-| `sync-kubernetes-manifests.yml` | `base/` + `overlays/` structure (excludes `images-tags/`, `secrets.yaml`) |
+| `sync-kubernetes-manifests.yml` | `base/` + `overlays/` structure (excludes `images-tags/`, `secrets.yaml`, `secrets.example.yaml`) |
+
+Dev cluster **Opaque Secrets** are bootstrap-only in the **amuse** repo (`overlays/dev/secrets.example.yaml`). They are not synced to amuse-deploy and are not in `overlays/dev/kustomization.yaml`, so Argo CD never overwrites manual `kubectl` edits.
 | `backend-deploy.yml` | `overlays/*/images-tags/kustomization.yaml` only |
 
 ## Database migrations (Argo CD Sync hook)

@@ -8,7 +8,6 @@ resources:
   - data/minio.yaml
   - data/minio-service.yaml
   - data/minio-init-job.yaml
-  - secrets.example.yaml
 
 configMapGenerator:
   - name: amuse-cluster-config
@@ -26,7 +25,6 @@ patches:
   - path: hosts-patch.yaml
   - path: api-env-patch.yaml
   - path: workload-identity-patch.yaml
-  - path: secrets-argo-patch.yaml
 
 components:
   - images-tags
