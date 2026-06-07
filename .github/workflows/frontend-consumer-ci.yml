@@ -1,0 +1,36 @@
+name: Frontend Consumer CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - frontend/consumer/**
+      - frontend/packages/**
+  push:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - frontend/consumer/**
+      - frontend/packages/**
+
+concurrency:
+  group: frontend-consumer-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/reusable-frontend-app-ci.yml
+    with:
+      app_dir: consumer
+      dockerfile: frontend/consumer/Dockerfile
+      run_unit_tests: true
+      extra_lint_script: check:colors

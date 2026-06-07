@@ -1,21 +1,38 @@
-name: Frontend Publish
+name: Reusable frontend app publish
 
 on:
-  workflow_run:
-    workflows:
-      - Frontend CI
-    types:
-      - completed
-    branches:
-      - master
-      - staging
-      - production
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      image_tag:
-        description: Optional floating tag override (default is branch name)
+      image:
+        description: GHCR image name without registry (e.g. amuse-consumer)
+        required: true
+        type: string
+      dockerfile:
+        description: Dockerfile path relative to repo root
+        required: true
+        type: string
+      source_sha:
+        description: Git commit SHA to build and label
+        required: true
+        type: string
+      head_branch:
+        description: Branch name for default floating tag
+        required: true
+        type: string
+      trigger_event:
+        description: push, pull_request, or workflow_dispatch
+        required: true
+        type: string
+      pr_number:
+        description: PR number when trigger_event is pull_request
         required: false
         type: string
+        default: ""
+      image_tag_override:
+        description: Optional floating tag override (workflow_dispatch)
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -25,35 +42,12 @@ permissions:
 
 jobs:
   publish:
-    name: Publish frontend images
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        (
-          (
-            github.event.workflow_run.event == 'push' &&
-            contains(fromJSON('["master","staging","production"]'), github.event.workflow_run.head_branch)
-          ) ||
-          (
-            github.event.workflow_run.event == 'pull_request' &&
-            github.event.workflow_run.pull_requests[0].base.ref == 'master'
-          )
-        )
-      )
+    name: Publish ${{ inputs.image }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - image: amuse-consumer
-            dockerfile: frontend/consumer/Dockerfile
-          - image: amuse-business
-            dockerfile: frontend/business/Dockerfile
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.source_sha }}
 
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v3.9.0
 
@@ -65,25 +59,21 @@ jobs:
 
       - name: Set image tags
         id: tags
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          HEAD_BRANCH: ${{ inputs.head_branch }}
+          TRIGGER_EVENT: ${{ inputs.trigger_event }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          IMAGE_TAG_OVERRIDE: ${{ inputs.image_tag_override }}
+          IMAGE: ${{ inputs.image }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SHA="${GITHUB_SHA}"
-            BRANCH="${GITHUB_REF_NAME}"
-            EVENT="push"
-            FLOATING_OVERRIDE="${{ inputs.image_tag }}"
+          SHORT_SHA="${SOURCE_SHA:0:7}"
+          if [ -n "${IMAGE_TAG_OVERRIDE}" ]; then
+            FLOATING_TAG="${IMAGE_TAG_OVERRIDE}"
+          elif [ "${TRIGGER_EVENT}" = "pull_request" ] && [ -n "${PR_NUMBER}" ]; then
+            FLOATING_TAG="pr-${PR_NUMBER}"
           else
-            SHA="${{ github.event.workflow_run.head_sha }}"
-            BRANCH="${{ github.event.workflow_run.head_branch }}"
-            EVENT="${{ github.event.workflow_run.event }}"
-            FLOATING_OVERRIDE=""
-          fi
-          SHORT_SHA="${SHA:0:7}"
-          if [ -n "${FLOATING_OVERRIDE}" ]; then
-            FLOATING_TAG="${FLOATING_OVERRIDE}"
-          elif [ "${EVENT}" = "pull_request" ]; then
-            FLOATING_TAG="pr-${{ github.event.workflow_run.pull_requests[0].number }}"
-          else
-            FLOATING_TAG="${BRANCH}"
+            FLOATING_TAG="${HEAD_BRANCH}"
           fi
           case "${FLOATING_TAG}" in
             master|pr-*)
@@ -102,19 +92,15 @@ jobs:
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "floating_tag=${FLOATING_TAG}" >> "$GITHUB_OUTPUT"
           echo "api_base_url=${API_URL}" >> "$GITHUB_OUTPUT"
-          echo "scan_tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:scan-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          echo "push_tags=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${FLOATING_TAG},ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "source_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-          else
-            echo "source_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-          fi
+          echo "scan_tag=ghcr.io/${{ github.repository_owner }}/${IMAGE}:scan-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "push_tags=ghcr.io/${{ github.repository_owner }}/${IMAGE}:${FLOATING_TAG},ghcr.io/${{ github.repository_owner }}/${IMAGE}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "source_sha=${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Build image
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v6.15.0
         with:
           context: frontend
-          file: ${{ matrix.dockerfile }}
+          file: ${{ inputs.dockerfile }}
           load: true
           push: false
           tags: ${{ steps.tags.outputs.scan_tag }}
@@ -123,8 +109,8 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ steps.tags.outputs.source_sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=${{ inputs.image }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.image }}
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -144,14 +130,14 @@ jobs:
         uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           sarif_file: trivy-results.sarif
-          category: trivy-${{ matrix.image }}
+          category: trivy-${{ inputs.image }}
 
       - name: Push image
         if: success()
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v6.15.0
         with:
           context: frontend
-          file: ${{ matrix.dockerfile }}
+          file: ${{ inputs.dockerfile }}
           push: true
           tags: ${{ steps.tags.outputs.push_tags }}
           build-args: |
@@ -159,4 +145,4 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ steps.tags.outputs.source_sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=${{ inputs.image }}

@@ -29,10 +29,12 @@ Promotion:
 | Backend Dependency Review | [`.github/workflows/backend-dependency-review.yml`](../../.github/workflows/backend-dependency-review.yml) | PR only (`backend/**`) |
 | Backend CodeQL | [`.github/workflows/backend-codeql.yml`](../../.github/workflows/backend-codeql.yml) | Same + weekly Monday 06:00 UTC |
 | Backend Publish | [`.github/workflows/backend-publish.yml`](../../.github/workflows/backend-publish.yml) | After successful Backend CI, **PR → `master`**, or `workflow_dispatch` |
-| Frontend CI | [`.github/workflows/frontend-ci.yml`](../../.github/workflows/frontend-ci.yml) | PR + push (`frontend/**`) |
+| Frontend Consumer CI | [`.github/workflows/frontend-consumer-ci.yml`](../../.github/workflows/frontend-consumer-ci.yml) | PR + push (`frontend/consumer/**`, `frontend/packages/**`) |
+| Frontend Business CI | [`.github/workflows/frontend-business-ci.yml`](../../.github/workflows/frontend-business-ci.yml) | PR + push (`frontend/business/**`, `frontend/packages/**`) |
+| Frontend Consumer Publish | [`.github/workflows/frontend-consumer-publish.yml`](../../.github/workflows/frontend-consumer-publish.yml) | After Consumer CI, **PR → `master`**, or `workflow_dispatch` |
+| Frontend Business Publish | [`.github/workflows/frontend-business-publish.yml`](../../.github/workflows/frontend-business-publish.yml) | After Business CI, **PR → `master`**, or `workflow_dispatch` |
 | Frontend Dependency Review | [`.github/workflows/frontend-dependency-review.yml`](../../.github/workflows/frontend-dependency-review.yml) | PR only (`frontend/**`) |
-| Frontend Publish | [`.github/workflows/frontend-publish.yml`](../../.github/workflows/frontend-publish.yml) | After successful Frontend CI, **PR → `master`**, or `workflow_dispatch` |
-| Deploy | [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml) | Auto after **Backend or Frontend Publish** (push or PR to `master`); manual for `staging`/`production` |
+| Deploy | [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml) | Auto after Backend or per-app Frontend Publish (push or PR to `master`); bumps only images from that publish workflow; manual for `staging`/`production` |
 
 ### CI jobs (ordered with `needs` blockers)
 

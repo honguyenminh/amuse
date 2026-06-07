@@ -1,0 +1,52 @@
+name: Frontend Business Publish
+
+on:
+  workflow_run:
+    workflows:
+      - Frontend Business CI
+    types:
+      - completed
+    branches:
+      - master
+      - staging
+      - production
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Optional floating tag override (default is branch name)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+
+jobs:
+  publish:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        (
+          (
+            github.event.workflow_run.event == 'push' &&
+            contains(fromJSON('["master","staging","production"]'), github.event.workflow_run.head_branch)
+          ) ||
+          (
+            github.event.workflow_run.event == 'pull_request' &&
+            github.event.workflow_run.pull_requests[0].base.ref == 'master'
+          )
+        )
+      )
+    secrets: inherit
+    uses: ./.github/workflows/reusable-frontend-app-publish.yml
+    with:
+      image: amuse-business
+      dockerfile: frontend/business/Dockerfile
+      source_sha: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+      head_branch: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.workflow_run.head_branch }}
+      trigger_event: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || github.event.workflow_run.event }}
+      pr_number: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.pull_requests[0].number || '' }}
+      image_tag_override: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || '' }}

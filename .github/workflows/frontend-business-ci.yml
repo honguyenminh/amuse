@@ -1,0 +1,36 @@
+name: Frontend Business CI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - frontend/business/**
+      - frontend/packages/**
+  push:
+    branches:
+      - master
+      - staging
+      - production
+    paths:
+      - frontend/business/**
+      - frontend/packages/**
+
+concurrency:
+  group: frontend-business-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/reusable-frontend-app-ci.yml
+    with:
+      app_dir: business
+      dockerfile: frontend/business/Dockerfile
+      run_unit_tests: false
+      extra_lint_script: ""
