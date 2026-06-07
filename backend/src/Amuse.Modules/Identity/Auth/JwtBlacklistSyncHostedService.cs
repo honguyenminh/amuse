@@ -8,7 +8,7 @@ using StackExchange.Redis;
 
 namespace Amuse.Modules.Identity.Auth;
 
-internal sealed class JwtBlacklistSyncHostedService(
+internal sealed partial class JwtBlacklistSyncHostedService(
     IConnectionMultiplexer multiplexer,
     RedisJwtBlacklistStore blacklistStore,
     JwtBlacklistLocalCache localCache,
@@ -49,7 +49,7 @@ internal sealed class JwtBlacklistSyncHostedService(
                 }
                 catch (JsonException ex)
                 {
-                    logger.LogWarning(ex, "Ignored invalid JWT blacklist pub/sub payload.");
+                    LogInvalidPubSubPayload(ex);
                 }
             });
     }
@@ -92,6 +92,6 @@ internal sealed class JwtBlacklistSyncHostedService(
             hydrated++;
         }
 
-        logger.LogInformation("Hydrated {Count} revoked JWT entries into local blacklist cache.", hydrated);
+        LogHydrated(hydrated);
     }
 }
