@@ -28,13 +28,12 @@ This folder documents **current backend behavior and conventions** as implemente
 - Modular monolith with **Identity**, **Tenancy**, **Listener**, **Platform**, **Audit** modules and separate EF schemas.
 - **Persona-aware JWT access tokens**; **opaque refresh sessions** (permission-agnostic; persona chosen at login/refresh).
 - **Vertical slice features** under `Amuse.Modules/Identity/Features/` with FluentValidation and RFC 7807-style problem mapping.
-- **JTI blacklist** on revoke + JWT bearer validation.
-- **Integration tests** (Testcontainers + Postgres) and **local compose** Postgres service.
+- **JTI blacklist** on revoke via Redis (source of truth) + per-pod local cache; JWT bearer checks memory only.
+- **Integration tests** (Testcontainers + Postgres + Redis) and **local compose** stack.
 
 ## Not yet implemented (follow-ups)
 
 - Listener `ensure-profile` HTTP feature
 - Tenancy org/membership CRUD features
 - OpenAPI/Scalar polish
-- Blacklist retention/cleanup job
 - Frontend auth client

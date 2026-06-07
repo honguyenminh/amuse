@@ -52,3 +52,7 @@ amuse_smtp_password = ""
 
 amuse_rabbitmq_password         = "REPLACE_ME"
 amuse_rabbitmq_password_version = 1
+
+amuse_redis_password                    = "REPLACE_ME"
+amuse_redis_password_version            = 1
+amuse_redis_connection_string_version   = 1

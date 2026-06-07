@@ -78,3 +78,21 @@ resource "azurerm_key_vault_secret" "amuse_rabbitmq_password" {
 
   depends_on = [module.key_vault]
 }
+
+resource "azurerm_key_vault_secret" "amuse_redis_password" {
+  name             = "amuse-redis-password"
+  key_vault_id     = module.key_vault.id
+  value_wo         = var.amuse_redis_password
+  value_wo_version = var.amuse_redis_password_version
+
+  depends_on = [module.key_vault]
+}
+
+resource "azurerm_key_vault_secret" "amuse_redis_connection_string" {
+  name             = "amuse-redis-connection-string"
+  key_vault_id     = module.key_vault.id
+  value_wo         = local.amuse_redis_connection_string
+  value_wo_version = var.amuse_redis_connection_string_version
+
+  depends_on = [module.key_vault]
+}

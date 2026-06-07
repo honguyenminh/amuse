@@ -33,6 +33,7 @@ pnpm dev
 | OpenAPI | http://localhost:5000/openapi/v1.json |
 | MinIO console | http://localhost:9001 (`amuse` / `amuse_dev_secret`) |
 | RabbitMQ UI | http://localhost:15672 (`amuse` / `amuse_dev_secret`) |
+| Redis | localhost:6379 (`amuse_dev_secret`) — JWT blacklist only |
 | Mailpit (dev email) | http://localhost:8025 (SMTP `localhost:1025`) |
 
 The API listens on **HTTP port 5000** with CORS enabled for local Next.js dev servers
@@ -42,7 +43,7 @@ if needed (defaults to `http://localhost:5000` in both frontends).
 Infra-only (no API/worker containers):
 
 ```bash
-docker compose up -d postgres minio minio-init rabbitmq mailpit
+docker compose up -d postgres minio minio-init rabbitmq redis mailpit
 ```
 
 Registration confirmation emails use **Mailpit** when `Identity:Email:Smtp:Enabled` is true (default in `appsettings.Development.json`). After sign-up, open Mailpit and click the confirm link. With `dotnet run` on the host, SMTP targets `localhost:1025`; API-in-compose uses hostname `mailpit`. Set `Smtp.Enabled` to `false` to log links only.

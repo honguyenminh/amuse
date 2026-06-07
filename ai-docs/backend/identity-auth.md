@@ -108,18 +108,24 @@ Validated on each request: issuer, audience, lifetime, signature (`Jwt` section 
 - On refresh: old session **revoked**, new session issued (rotation).
 - Refresh row does **not** store persona; client supplies `context` on every refresh.
 
-## Revoke & JTI blacklist
+## Revoke & JTI blacklist (Redis + local cache)
 
 `POST /revoke`:
 
-1. Revokes matching **refresh session** (if refresh token provided via body or cookie).
-2. If **`Authorization: Bearer <access>`** is present, parses `jti` + `exp` and inserts **`identity.token_blacklist`** until access expiry.
+1. Revokes matching **refresh session** (if refresh token provided via body or cookie) in Postgres `identity.refresh_session`.
+2. If **`Authorization: Bearer <access>`** is present, parses `jti` + `exp` and writes to **Redis** (`SET amuse:identity:blacklist:{jti}` with TTL until access expiry), updates the pod **local cache**, and **pub/sub** notifies other API replicas.
 3. Clears refresh cookie (web).
 4. Writes audit entry (`refresh_revoked`).
 
-Subsequent API calls with that access token: JWT middleware checks blacklist → **`401`** with `identity.token_revoked`.
+**Hot path (authenticated requests):** JWT middleware checks the **in-memory local cache only** — no Redis or Postgres I/O per request.
+
+**Cold start:** each API pod hydrates its local cache from Redis (`SCAN` on startup) and subscribes to `amuse:identity:token-revoked`.
+
+Subsequent API calls with that access token: local cache hit → **`401`** with `identity.token_revoked`.
 
 Refresh after revoke → `identity.invalid_refresh_token`.
+
+Redis uses hybrid persistence (AOF + RDB) in compose/k8s. Revoked keys auto-expire via Redis TTL (aligned with access token `exp`).
 
 ## Auth flows (concrete)
 
@@ -228,6 +234,9 @@ Problems use `title` = code, `detail` = message, extension `code` (see `ProblemD
 | Section | Purpose |
 |---------|---------|
 | `ConnectionStrings:DefaultConnection` | Postgres |
+| `Redis:ConnectionString` | StackExchange.Redis connection (required for API) |
+| `Redis:BlacklistKeyPrefix` | Key prefix (default `amuse:identity:blacklist:`) |
+| `Redis:RevokedChannel` | Pub/sub channel (default `amuse:identity:token-revoked`) |
 | `Jwt` | Issuer, audience, signing key, access/refresh lifetimes |
 | `ExternalProviders:Providers` | Named OIDC/OAuth2 provider definitions |
 | `Platform:Root` | Seed root platform operator + optional dev `ApplicationUser` |
@@ -253,7 +262,7 @@ Amuse.Modules/Identity/
 
 | Schema | Tables (relevant) |
 |--------|-------------------|
-| `identity` | `account`, `refresh_session`, `token_blacklist`, ASP.NET Identity tables |
+| `identity` | `account`, `refresh_session`, ASP.NET Identity tables |
 | `tenancy` | `organization_member`, … |
 | `listener` | `listener_profile` |
 | `platform` | `platform_operator` (root `id = 1`) |

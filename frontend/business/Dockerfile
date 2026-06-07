@@ -7,7 +7,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY packages/catalog-text/package.json packages/catalog-text/
-COPY business/package.json business/pnpm-lock.yaml business/
+COPY business/package.json business/pnpm-lock.yaml business/pnpm-workspace.yaml business/
 COPY packages/catalog-text packages/catalog-text
 WORKDIR /app/business
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \

@@ -297,3 +297,19 @@ variable "amuse_rabbitmq_password_version" {
   type    = number
   default = 1
 }
+
+variable "amuse_redis_password" {
+  description = "Redis password for in-cluster broker on stage."
+  type        = string
+  sensitive   = true
+}
+
+variable "amuse_redis_password_version" {
+  type    = number
+  default = 1
+}
+
+variable "amuse_redis_connection_string_version" {
+  type    = number
+  default = 1
+}

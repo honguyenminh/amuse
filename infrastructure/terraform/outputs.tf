@@ -69,6 +69,8 @@ output "amuse_key_vault_secret_names" {
     smtp_user          = azurerm_key_vault_secret.amuse_smtp_user.name
     smtp_password      = azurerm_key_vault_secret.amuse_smtp_password.name
     rabbitmq_password  = azurerm_key_vault_secret.amuse_rabbitmq_password.name
+    redis_password     = azurerm_key_vault_secret.amuse_redis_password.name
+    redis_connection   = azurerm_key_vault_secret.amuse_redis_connection_string.name
     postgres           = "${var.resource_prefix}-postgres-connection-string"
   }
 }

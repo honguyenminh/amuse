@@ -10,6 +10,7 @@ locals {
   rg_name           = module.resource-group.name
   rg_location       = module.resource-group.location
   postgres_password = coalesce(var.postgres_admin_password, random_password.postgres_admin.result)
+  amuse_redis_connection_string = "redis:6379,password=${urlencode(var.amuse_redis_password)},abortConnect=false"
 }
 
 resource "random_password" "postgres_admin" {
