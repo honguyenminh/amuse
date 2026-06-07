@@ -15,5 +15,5 @@ data:
   Identity__Email__Smtp__FromAddress: "noreply@amuse.local"
   Identity__Email__Smtp__FromName: "Amuse"
   Media__Endpoint: "http://minio:9000"
-  Media__PublicBaseUrl: "https://minio.dev.amuse.local"
+  Media__PublicBaseUrl: "https://api.skynet-beta.m8.io.vn"
   RabbitMq__HostName: "rabbitmq"

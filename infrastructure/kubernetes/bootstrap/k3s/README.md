@@ -59,8 +59,12 @@ kubectl -n amuse get httproute
 | Host                            | Service     |
 | ------------------------------- | ----------- |
 | `api.skynet-beta.m8.io.vn`      | `amuse-api` |
+| `api.skynet-beta.m8.io.vn/amuse-covers/*` | in-cluster `minio` (proxied; no public MinIO host) |
+| `api.skynet-beta.m8.io.vn/amuse-audio/*`  | in-cluster `minio` (proxied; presigned uploads/GETs) |
 | `app.skynet-beta.m8.io.vn`      | `consumer`  |
 | `business.skynet-beta.m8.io.vn` | `business`  |
+
+MinIO runs as a cluster-internal `StatefulSet` only. Set `Media__PublicBaseUrl` to `https://api.skynet-beta.m8.io.vn` (not a dedicated MinIO hostname) so cover URLs and browser presigned uploads use the API gateway bucket paths above.
 
 
 ### 5. GHCR pull secret

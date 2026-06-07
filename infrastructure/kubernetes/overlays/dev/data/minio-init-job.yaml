@@ -44,6 +44,12 @@ spec:
             - -c
             - |
               mc alias set local http://minio:9000 "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+              mc admin config set local api \
+                cors_allow_origin='https://app.skynet-beta.m8.io.vn,https://business.skynet-beta.m8.io.vn' \
+                cors_allow_methods='GET,HEAD,PUT' \
+                cors_allow_headers='Authorization,Content-Type,Range,Origin,Accept,Cache-Control,If-Modified-Since,If-None-Match' \
+                cors_expose_headers='ETag,Accept-Ranges,Content-Length,Content-Range,Content-Type'
+              mc admin service restart --json --quiet local
               mc mb --ignore-existing local/amuse-covers
               mc mb --ignore-existing local/amuse-audio
               mc anonymous set download local/amuse-covers
