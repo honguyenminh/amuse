@@ -18,6 +18,7 @@ type SliderProps = Omit<
   onScrubEnd?: (final: number) => void;
   /** Visual size of the track / thumb. */
   size?: "sm" | "md";
+  orientation?: "horizontal" | "vertical";
   /** Optional non-visual label for assistive tech. */
   label?: string;
   /** Buffered extent on the same scale as `value` (shown behind the played fill). */
@@ -32,6 +33,14 @@ const sizeClass: Record<NonNullable<SliderProps["size"]>, string> = {
   sm: "h-1",
   md: "h-1.5",
 };
+
+const verticalTrackLengthClass: Record<NonNullable<SliderProps["size"]>, string> = {
+  sm: "h-32",
+  md: "h-36",
+};
+
+const thumbClass =
+  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-on-primary [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-on-primary";
 
 /**
  * Tokenised range slider.
@@ -54,6 +63,7 @@ export function Slider({
   onScrubEnd,
   className,
   size = "md",
+  orientation = "horizontal",
   label,
   bufferedValue,
   showHoverTooltip = false,
@@ -73,9 +83,10 @@ export function Slider({
     value: number;
     xPercent: number;
   } | null>(null);
+  const isVertical = orientation === "vertical";
 
   const updateHoverTooltip = (event: PointerEvent<HTMLElement>) => {
-    if (!showHoverTooltip || scrubbingRef.current) {
+    if (!showHoverTooltip || scrubbingRef.current || isVertical) {
       setHoverTooltip(null);
       return;
     }
@@ -89,6 +100,155 @@ export function Slider({
 
   const clearHoverTooltip = () => setHoverTooltip(null);
 
+  const valueFromClientY = (clientY: number): number => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || rect.height <= 0) return clamped;
+    const ratio = 1 - (clientY - rect.top) / rect.height;
+    const raw = min + Math.max(0, Math.min(1, ratio)) * span;
+    if (step <= 0) return raw;
+    const stepped = Math.round(raw / step) * step;
+    return Math.max(min, Math.min(max, stepped));
+  };
+
+  const endVerticalScrub = (event: PointerEvent<HTMLSpanElement>, emitFinal = true) => {
+    if (!scrubbingRef.current) return;
+    scrubbingRef.current = false;
+    if (emitFinal) {
+      const final = valueFromClientY(event.clientY);
+      onChange(final);
+      onScrubEnd?.(final);
+    }
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Ignore.
+    }
+  };
+
+  const rangeInput = (
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={clamped}
+      aria-label={label}
+      aria-orientation={isVertical ? "vertical" : "horizontal"}
+      onChange={(event) => onChange(Number(event.target.value))}
+      onInput={(event) => onChange(Number(event.currentTarget.value))}
+      onPointerDown={(event) => {
+        if (isVertical) return;
+        scrubbingRef.current = true;
+        clearHoverTooltip();
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignore browsers that don't support pointer capture here.
+        }
+        onScrubStart?.();
+      }}
+      onPointerUp={(event) => {
+        if (isVertical) return;
+        if (scrubbingRef.current) {
+          scrubbingRef.current = false;
+          onScrubEnd?.(Number(event.currentTarget.value));
+        }
+        updateHoverTooltip(event);
+        try {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        } catch {
+          // Ignore.
+        }
+      }}
+      onPointerCancel={(event) => {
+        if (isVertical) return;
+        if (scrubbingRef.current) {
+          scrubbingRef.current = false;
+          onScrubEnd?.(Number(event.currentTarget.value));
+        }
+      }}
+      onLostPointerCapture={(event) => {
+        if (isVertical) return;
+        if (scrubbingRef.current) {
+          scrubbingRef.current = false;
+          onScrubEnd?.(Number(event.currentTarget.value));
+        }
+      }}
+      className={cn(
+        "absolute inset-0 cursor-pointer appearance-none bg-transparent",
+        isVertical && "pointer-events-none opacity-0",
+        !isVertical && thumbClass,
+      )}
+      {...props}
+    />
+  );
+
+  const track = (
+    <span
+      className={cn(
+        "pointer-events-none absolute overflow-hidden rounded-full bg-surface-variant",
+        isVertical
+          ? cn(
+              "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+              verticalTrackLengthClass[size],
+              "w-1.5",
+            )
+          : cn("inset-x-0 top-1/2 w-full -translate-y-1/2", sizeClass[size]),
+      )}
+      aria-hidden
+    >
+      {bufferedPercent !== undefined && bufferedPercent > 0 ? (
+        <span
+          className={cn(
+            "absolute bg-primary/35",
+            isVertical ? "inset-x-0 bottom-0 w-full" : "inset-y-0 left-0",
+          )}
+          style={isVertical ? { height: `${bufferedPercent}%` } : { width: `${bufferedPercent}%` }}
+        />
+      ) : null}
+      <span
+        className={cn(
+          "absolute bg-primary",
+          isVertical ? "inset-x-0 bottom-0 w-full" : "inset-y-0 left-0",
+        )}
+        style={isVertical ? { height: `${percent}%` } : { width: `${percent}%` }}
+      />
+    </span>
+  );
+
+  if (isVertical) {
+    return (
+      <span
+        ref={containerRef}
+        className={cn(
+          "relative block w-5 min-h-0 cursor-pointer select-none touch-none",
+          verticalTrackLengthClass[size],
+          className,
+        )}
+        onPointerDown={(event) => {
+          scrubbingRef.current = true;
+          onScrubStart?.();
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            // Ignore.
+          }
+          onChange(valueFromClientY(event.clientY));
+        }}
+        onPointerMove={(event) => {
+          if (!scrubbingRef.current) return;
+          onChange(valueFromClientY(event.clientY));
+        }}
+        onPointerUp={(event) => endVerticalScrub(event)}
+        onPointerCancel={(event) => endVerticalScrub(event, false)}
+        onLostPointerCapture={(event) => endVerticalScrub(event, false)}
+      >
+        {track}
+        {rangeInput}
+      </span>
+    );
+  }
+
   return (
     <span
       ref={containerRef}
@@ -99,72 +259,8 @@ export function Slider({
       onPointerMove={updateHoverTooltip}
       onPointerLeave={clearHoverTooltip}
     >
-      <span
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-1/2 w-full -translate-y-1/2 overflow-hidden rounded-full bg-surface-variant",
-          sizeClass[size],
-        )}
-        aria-hidden
-      >
-        {bufferedPercent !== undefined && bufferedPercent > 0 ? (
-          <span
-            className="absolute inset-y-0 left-0 bg-primary/35"
-            style={{ width: `${bufferedPercent}%` }}
-          />
-        ) : null}
-        <span
-          className="absolute inset-y-0 left-0 bg-primary"
-          style={{ width: `${percent}%` }}
-        />
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={clamped}
-        aria-label={label}
-        onChange={(event) => onChange(Number(event.target.value))}
-        onInput={(event) => onChange(Number(event.currentTarget.value))}
-        onPointerDown={(event) => {
-          // Keep receiving pointer events even if the pointer leaves the input,
-          // so we always end scrubbing and re-enable progress updates.
-          scrubbingRef.current = true;
-          clearHoverTooltip();
-          try {
-            event.currentTarget.setPointerCapture(event.pointerId);
-          } catch {
-            // Ignore browsers that don't support pointer capture here.
-          }
-          onScrubStart?.();
-        }}
-        onPointerUp={(event) => {
-          if (scrubbingRef.current) {
-            scrubbingRef.current = false;
-            onScrubEnd?.(Number(event.currentTarget.value));
-          }
-          updateHoverTooltip(event);
-          try {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          } catch {
-            // Ignore.
-          }
-        }}
-        onPointerCancel={(event) => {
-          if (scrubbingRef.current) {
-            scrubbingRef.current = false;
-            onScrubEnd?.(Number(event.currentTarget.value));
-          }
-        }}
-        onLostPointerCapture={(event) => {
-          if (scrubbingRef.current) {
-            scrubbingRef.current = false;
-            onScrubEnd?.(Number(event.currentTarget.value));
-          }
-        }}
-        className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-on-primary [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-on-primary"
-        {...props}
-      />
+      {track}
+      {rangeInput}
       {showHoverTooltip && hoverTooltip ? (
         <span
           role="tooltip"

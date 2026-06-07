@@ -3,6 +3,7 @@
 import { IconButton } from "@/components/ui/IconButton";
 import { UserAccountChip } from "@/components/account/UserAccountChip";
 import { MenuIcon, SearchIcon } from "@/components/ui/NavIcons";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/cn";
@@ -10,7 +11,7 @@ import { shellContentPaddingClass } from "@/lib/ui/pageLayout";
 import Link from "next/link";
 
 type TopBarProps = {
-  title: string;
+  title?: string;
   trailing?: React.ReactNode;
   onMenuClick: () => void;
 };
@@ -41,9 +42,16 @@ export function TopBar({ title, trailing, onMenuClick }: TopBarProps) {
         <MenuIcon />
       </IconButton>
 
-      <Text as="h1" variant="title-large" className="min-w-0 flex-1 truncate">
-        {title}
-      </Text>
+      {title ? (
+        <Text as="h1" variant="title-large" className="min-w-0 flex-1 truncate">
+          {title}
+        </Text>
+      ) : (
+        <Skeleton
+          className="h-7 w-40 max-w-full flex-1 rounded-md"
+          ariaLabel="Loading page title"
+        />
+      )}
 
       {/* Desktop search affordance — opens the search page. */}
       <Link

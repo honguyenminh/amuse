@@ -4,13 +4,14 @@ import { FilterChip } from "@/components/ui/FilterChip";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
+import { GlobeIcon, PadlockIcon } from "@/components/ui/VisibilityIcons";
 import {
   DEFAULT_PLAYLIST_LIBRARY_FILTERS,
   type PlaylistLibraryFilters,
   type PlaylistOwnershipFilter,
   type PlaylistVisibilityFilter,
 } from "@/lib/discovery/playlistLibraryFilters";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type ComponentType } from "react";
 
 type PlaylistFiltersDialogProps = {
   open: boolean;
@@ -25,10 +26,14 @@ const OWNERSHIP_OPTIONS: { value: PlaylistOwnershipFilter; label: string }[] = [
   { value: "following", label: "Following" },
 ];
 
-const VISIBILITY_OPTIONS: { value: PlaylistVisibilityFilter; label: string }[] = [
+const VISIBILITY_OPTIONS: {
+  value: PlaylistVisibilityFilter;
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+}[] = [
   { value: "all", label: "All" },
-  { value: "public", label: "Public" },
-  { value: "private", label: "Private" },
+  { value: "public", label: "Public", icon: GlobeIcon },
+  { value: "private", label: "Private", icon: PadlockIcon },
 ];
 
 export function PlaylistFiltersDialog({
@@ -104,15 +109,20 @@ export function PlaylistFiltersDialog({
               Visibility
             </Text>
             <div className="flex flex-wrap gap-2">
-              {VISIBILITY_OPTIONS.map((option) => (
-                <FilterChip
-                  key={option.value}
-                  selected={draft.visibility === option.value}
-                  onClick={() => setDraft((prev) => ({ ...prev, visibility: option.value }))}
-                >
-                  {option.label}
-                </FilterChip>
-              ))}
+              {VISIBILITY_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <FilterChip
+                    key={option.value}
+                    selected={draft.visibility === option.value}
+                    onClick={() => setDraft((prev) => ({ ...prev, visibility: option.value }))}
+                    className={Icon ? "inline-flex items-center gap-1.5" : undefined}
+                  >
+                    {Icon ? <Icon className="shrink-0" /> : null}
+                    {option.label}
+                  </FilterChip>
+                );
+              })}
             </div>
           </section>
         </div>

@@ -32,7 +32,7 @@ export function QualityPicker() {
     : "Select quality";
 
   return (
-    <div className="flex flex-col items-center gap-1 md:items-start">
+    <div className="mt-3 flex flex-col items-center gap-1">
       <button
         ref={triggerRef}
         type="button"

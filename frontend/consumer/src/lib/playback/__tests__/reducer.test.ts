@@ -211,4 +211,149 @@ describe("playbackReducer", () => {
       expect(next.currentIndex).toBe(seeded.playOrder[1]);
     });
   });
+
+  describe("jumpToPlayOrderIndex", () => {
+    it("jumps to a track in the play order and starts from the beginning", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      const next = playbackReducer(seeded, { type: "jumpToPlayOrderIndex", playOrderIndex: 2 });
+      expect(next.playOrderIndex).toBe(2);
+      expect(next.currentIndex).toBe(2);
+      expect(next.positionMs).toBe(0);
+      expect(next.isPlaying).toBe(true);
+    });
+
+    it("restarts the current track when selecting the same index", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2)],
+        startIndex: 0,
+      });
+      const midTrack = playbackReducer(seeded, { type: "seek", positionMs: 90_000 });
+      const next = playbackReducer(midTrack, { type: "jumpToPlayOrderIndex", playOrderIndex: 0 });
+      expect(next.positionMs).toBe(0);
+      expect(next.isPlaying).toBe(true);
+    });
+  });
+
+  describe("reorderPlayOrder", () => {
+    it("moves an upcoming track and keeps the current track pinned", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3), T("d", 4)],
+        startIndex: 0,
+      });
+      const next = playbackReducer(seeded, {
+        type: "reorderPlayOrder",
+        fromPlayOrderIndex: 3,
+        toPlayOrderIndex: 1,
+      });
+      expect(next.playOrder).toEqual([0, 3, 1, 2]);
+      expect(next.playOrderIndex).toBe(0);
+      expect(next.currentIndex).toBe(0);
+      expect(next.shuffle).toBe(false);
+    });
+
+    it("updates playOrderIndex when the current track is moved down", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      const next = playbackReducer(seeded, {
+        type: "reorderPlayOrder",
+        fromPlayOrderIndex: 0,
+        toPlayOrderIndex: 2,
+      });
+      expect(next.playOrder).toEqual([1, 2, 0]);
+      expect(next.playOrderIndex).toBe(2);
+      expect(next.currentIndex).toBe(0);
+    });
+
+    it("ignores reordering into played history", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      const advanced = playbackReducer(seeded, { type: "next" });
+      expect(advanced.playOrderIndex).toBe(1);
+      const next = playbackReducer(advanced, {
+        type: "reorderPlayOrder",
+        fromPlayOrderIndex: 2,
+        toPlayOrderIndex: 0,
+      });
+      expect(next.playOrder).toEqual(advanced.playOrder);
+    });
+  });
+
+  describe("moveToPlayNext", () => {
+    it("moves an upcoming track directly after the current track", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3), T("d", 4)],
+        startIndex: 0,
+      });
+      const next = playbackReducer(seeded, { type: "moveToPlayNext", trackId: "d" });
+      expect(next.playOrder).toEqual([0, 3, 1, 2]);
+      expect(next.playOrderIndex).toBe(0);
+      expect(next.currentIndex).toBe(0);
+    });
+
+    it("moves a played track back to play next", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      const advanced = playbackReducer(seeded, { type: "next" });
+      const next = playbackReducer(advanced, { type: "moveToPlayNext", trackId: "a" });
+      expect(next.playOrder).toEqual([1, 0, 2]);
+      expect(next.playOrderIndex).toBe(0);
+      expect(next.currentIndex).toBe(1);
+    });
+
+    it("no-ops when the track is already playing or up next", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      expect(playbackReducer(seeded, { type: "moveToPlayNext", trackId: "a" })).toBe(seeded);
+      expect(playbackReducer(seeded, { type: "moveToPlayNext", trackId: "b" })).toBe(seeded);
+    });
+  });
+
+  describe("restoreState", () => {
+    it("restores queue fields and applies caller-controlled isPlaying", () => {
+      const next = playbackReducer(initialPlaybackState, {
+        type: "restoreState",
+        isPlaying: false,
+        snapshot: {
+          version: 1,
+          queue: [T("a"), T("b", 2)],
+          playOrder: [0, 1],
+          playOrderIndex: 1,
+          currentIndex: 1,
+          positionMs: 45_000,
+          durationMs: 180_000,
+          shuffle: true,
+          repeat: "queue",
+          updatedAt: 99,
+          activeTabId: "tab-1",
+          isPlaying: true,
+        },
+      });
+      expect(next.queue).toHaveLength(2);
+      expect(next.currentIndex).toBe(1);
+      expect(next.playOrderIndex).toBe(1);
+      expect(next.positionMs).toBe(45_000);
+      expect(next.shuffle).toBe(true);
+      expect(next.repeat).toBe("queue");
+      expect(next.isPlaying).toBe(false);
+    });
+  });
 });

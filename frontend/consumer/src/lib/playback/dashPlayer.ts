@@ -54,7 +54,7 @@ type DashPlayerInstance = {
   addRequestInterceptor: (
     interceptor: (request: { url: string; headers?: Record<string, string> }) => Promise<unknown>,
   ) => void;
-  initialize: (audio: HTMLAudioElement, url: string, autoPlay: boolean) => void;
+  initialize: (audio: HTMLAudioElement, url: string, autoPlay: boolean, startTime?: number) => void;
   attachSource: (url: string | null, startTime?: number) => void;
   destroy: () => void;
   seek?: (time: number) => void;
@@ -75,6 +75,7 @@ type DashPlayerInstance = {
 type DashSession = {
   destroy: () => Promise<void>;
   seek: (positionSec: number) => void;
+  whenStreamReady: () => Promise<void>;
   setRendition: (rendition: TrackStreamRenditionDto) => void;
   getThroughputKbps: () => number | undefined;
   getBufferLengthSeconds: () => number | undefined;
@@ -167,9 +168,10 @@ function safeInitialize(
   player: DashPlayerInstance,
   audio: HTMLAudioElement,
   manifestUrl: string,
+  startTimeSec = 0,
 ): boolean {
   try {
-    player.initialize(audio, manifestUrl, false);
+    player.initialize(audio, manifestUrl, false, startTimeSec);
     return true;
   } catch {
     return false;
@@ -208,9 +210,13 @@ async function ensureDashPlayer(
  * dash.js documents track changes as attachSource(newUrl) on the same player.
  * reset/destroy during skip is what triggers "Operation is not supported" here.
  */
-function safeAttachSource(player: DashPlayerInstance, manifestUrl: string): void {
+function safeAttachSource(
+  player: DashPlayerInstance,
+  manifestUrl: string,
+  startTimeSec = 0,
+): void {
   try {
-    player.attachSource(manifestUrl);
+    player.attachSource(manifestUrl, startTimeSec);
     return;
   } catch {
     // Fall through to soft reset.
@@ -223,7 +229,7 @@ function safeAttachSource(player: DashPlayerInstance, manifestUrl: string): void
   }
 
   try {
-    player.attachSource(manifestUrl);
+    player.attachSource(manifestUrl, startTimeSec);
   } catch {
     // Swallowed by enqueue — attachDashToAudio may fail without surfacing DOM errors.
   }
@@ -234,6 +240,7 @@ async function loadManifest(
   manifestUrl: string,
   getToken: () => string | null,
   binding: AudioBinding,
+  startTimeSec = 0,
 ): Promise<DashPlayerInstance> {
   let player = await ensureDashPlayer(getToken, binding);
 
@@ -244,15 +251,15 @@ async function loadManifest(
   }
 
   if (!binding.initialized) {
-    if (!safeInitialize(player, audio, manifestUrl)) {
+    if (!safeInitialize(player, audio, manifestUrl, startTimeSec)) {
       await yieldToMediaElement();
-      if (!safeInitialize(player, audio, manifestUrl)) {
+      if (!safeInitialize(player, audio, manifestUrl, startTimeSec)) {
         schedulePlayerDestroy(player);
         binding.player = null;
         binding.configured = false;
         await yieldToMediaElement();
         player = await ensureDashPlayer(getToken, binding);
-        if (!safeInitialize(player, audio, manifestUrl)) {
+        if (!safeInitialize(player, audio, manifestUrl, startTimeSec)) {
           throw new Error("dash.js failed to initialize");
         }
       }
@@ -261,7 +268,7 @@ async function loadManifest(
     return player;
   }
 
-  safeAttachSource(player, manifestUrl);
+  safeAttachSource(player, manifestUrl, startTimeSec);
   return player;
 }
 
@@ -432,6 +439,16 @@ function createDashSession(
       if (destroyed) return;
       player.seek?.(positionSec);
     },
+    whenStreamReady: (): Promise<void> => {
+      if (destroyed || streamReady) return Promise.resolve();
+      return new Promise((resolve) => {
+        const onActivated = () => {
+          player.off?.("streamActivated", onActivated);
+          resolve();
+        };
+        player.on?.("streamActivated", onActivated);
+      });
+    },
     setRendition,
     getThroughputKbps: () => {
       if (destroyed) return undefined;
@@ -464,6 +481,7 @@ export async function attachDashToAudio(
   manifestUrl: string,
   getToken: () => string | null,
   initialRendition?: TrackStreamRenditionDto | null,
+  startTimeSec = 0,
 ): Promise<DashSession> {
   const binding = getBinding(audio);
   const sessionId = ++binding.nextSessionId;
@@ -473,7 +491,7 @@ export async function attachDashToAudio(
     binding.removeListeners?.();
     binding.removeListeners = null;
 
-    const player = await loadManifest(audio, manifestUrl, getToken, binding);
+    const player = await loadManifest(audio, manifestUrl, getToken, binding, startTimeSec);
     binding.activeSessionId = sessionId;
     session = createDashSession(audio, player, initialRendition, sessionId);
   });

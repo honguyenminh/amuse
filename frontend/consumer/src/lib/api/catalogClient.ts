@@ -54,8 +54,8 @@ export function getCatalogReleaseBySlugs(
 }
 
 // Streaming is gated: the signed URL is only handed out to authenticated
-// listeners. `authFetch` will refresh once on 401; if that still fails the
-// playback layer redirects to /login.
+// listeners. `authFetch` refreshes stale access tokens; only a failed refresh
+// surfaces as unauthenticated.
 export function getTrackStreamInfo(trackId: string): Promise<TrackStreamInfoResponse> {
   return authFetch<TrackStreamInfoResponse>(
     `/api/v1/catalog/tracks/${encodeURIComponent(trackId)}/stream-info`,

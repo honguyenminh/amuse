@@ -132,7 +132,7 @@ export function createPlaybackOutput(options: PlaybackOutputOptions = {}): Playb
       targetVolume = clampVolume(volume);
       if (webAudio && gainNode && context) {
         applyWebAudioGain();
-      } else if (audio.paused) {
+      } else {
         audio.volume = fallbackElementVolume();
       }
     },
@@ -141,7 +141,7 @@ export function createPlaybackOutput(options: PlaybackOutputOptions = {}): Playb
       normalizationGain = Number.isFinite(gain) && gain > 0 ? gain : 1;
       if (webAudio && gainNode && context) {
         applyWebAudioGain();
-      } else if (audio.paused) {
+      } else {
         audio.volume = fallbackElementVolume();
       }
     },

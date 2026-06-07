@@ -41,8 +41,10 @@ describe("seedToPalette", () => {
     expect(hueDelta(hueOf(palette.primaryContainer), seed.h)).toBeLessThan(25);
   });
 
-  it("includes tertiary container roles", () => {
+  it("includes tertiary roles", () => {
     const palette = seedToPalette({ l: 0.5, c: 0.2, h: 120 });
+    expect(palette.tertiary).toMatch(/^oklch\(/);
+    expect(palette.onTertiary).toMatch(/^oklch\(/);
     expect(palette.tertiaryContainer).toMatch(/^oklch\(/);
     expect(palette.onTertiaryContainer).toMatch(/^oklch\(/);
   });

@@ -5,15 +5,18 @@ import { SEMANTIC_PALETTE_KEYS, type SemanticPalette } from "./types";
 const ACCENT_CHROMA_FACTOR = 0.42;
 /** Slight lightness lift so paused UI feels washed back, not muddy. */
 const ACCENT_LIGHTNESS_LIFT = 0.055;
-/** Text / foreground roles — never faded; legibility must stay constant. */
-const TEXT_KEYS = new Set<keyof SemanticPalette>([
+/** Roles that must stay at full strength when paused (legibility + destructive emphasis). */
+const NO_FADE_KEYS = new Set<keyof SemanticPalette>([
   "onPrimary",
   "onPrimaryContainer",
   "onSecondary",
+  "onSecondaryContainer",
+  "onTertiary",
   "onTertiaryContainer",
   "onSurface",
   "onSurfaceVariant",
   "onBackground",
+  "error",
   "onError",
 ]);
 
@@ -21,7 +24,7 @@ function fadeRole(
   key: keyof SemanticPalette,
   value: string,
 ): string {
-  if (TEXT_KEYS.has(key)) return value;
+  if (NO_FADE_KEYS.has(key)) return value;
 
   const parsed = parseOklch(value);
   if (!parsed) return value;

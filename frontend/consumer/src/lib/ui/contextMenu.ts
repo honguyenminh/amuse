@@ -15,41 +15,52 @@ export function consumeAppContextMenu(
   open();
 }
 
+export function dispatchContextMenuAt(target: EventTarget, clientX: number, clientY: number): MouseEvent {
+  const event = new MouseEvent("contextmenu", {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX,
+    clientY,
+    button: 2,
+    buttons: 2,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
+/** Re-dispatch contextmenu to whatever is under the cursor (overlay must already be gone). */
+export function redispatchContextMenuAt(clientX: number, clientY: number): MouseEvent | null {
+  const target = document.elementFromPoint(clientX, clientY);
+  if (!target) {
+    return null;
+  }
+  return dispatchContextMenuAt(target, clientX, clientY);
+}
+
 /**
- * Close an open popup/menu, then re-dispatch contextmenu to whatever is now under
- * the cursor so track/release handlers can open the app menu instead of the browser.
+ * Close an open menu instantly, then re-dispatch contextmenu on the next frame so
+ * the new target can open with a fresh enter animation.
  */
-export function forwardContextMenuAfterClose(
+export function forwardContextMenuAfterInstantClose(
   clientX: number,
   clientY: number,
-  onClose: () => void,
+  onInstantClose: () => void,
 ): void {
-  onClose();
+  onInstantClose();
   requestAnimationFrame(() => {
-    const target = document.elementFromPoint(clientX, clientY);
-    if (!target) return;
-    target.dispatchEvent(
-      new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX,
-        clientY,
-        button: 2,
-        buttons: 2,
-      }),
-    );
+    redispatchContextMenuAt(clientX, clientY);
   });
 }
 
 export function handlePopupBackdropContextMenu(
   event: ReactMouseEvent,
-  onClose: () => void,
+  onInstantClose: () => void,
 ): void {
   if (allowNativeContextMenu(event)) return;
   event.preventDefault();
   event.stopPropagation();
-  forwardContextMenuAfterClose(event.clientX, event.clientY, onClose);
+  forwardContextMenuAfterInstantClose(event.clientX, event.clientY, onInstantClose);
 }
 
 export function suppressBrowserContextMenu(event: ReactMouseEvent): void {

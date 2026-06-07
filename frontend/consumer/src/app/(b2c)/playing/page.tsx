@@ -1,7 +1,9 @@
 "use client";
 
-import { QualityPicker } from "@/components/player/QualityPicker";
 import { VolumeControl } from "@/components/player/VolumeControl";
+import { LikeTrackButton } from "@/components/player/LikeTrackButton";
+import { PlayingQueuePanel } from "@/components/player/PlayingQueuePanel";
+import { QualityPicker } from "@/components/player/QualityPicker";
 import { IconButton } from "@/components/ui/IconButton";
 import {
   ChevronDownIcon,
@@ -14,7 +16,7 @@ import {
 import { RepeatModeIcon } from "@/components/ui/RepeatModeIcon";
 import { Slider } from "@/components/ui/Slider";
 import { Text } from "@/components/ui/Text";
-import { catalogArtistPath, catalogReleasePath } from "@/lib/catalog/paths";
+import { catalogArtistPath, catalogReleaseByIdHref, catalogReleaseHref } from "@/lib/catalog/paths";
 import { cn } from "@/lib/cn";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import {
@@ -33,15 +35,14 @@ import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
 import { usePageSeed } from "@/theme/ThemeProvider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTrackContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
-import type { PlaybackTrack } from "@/lib/playback/types";
 import { useKeyboardShortcuts } from "@/lib/keyboard/KeyboardShortcutsContext";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 
 export default function PlayingPage() {
   const router = useRouter();
   const {
     state,
+    isQueueHydrated,
     currentTrack,
     toggle,
     next,
@@ -54,15 +55,15 @@ export default function PlayingPage() {
   const smoothMs = usePlaybackPosition();
   const bufferedMs = usePlaybackBufferedEnd();
   const { helpOpen } = useKeyboardShortcuts();
+  const [queueExpanded, setQueueExpanded] = useState(false);
 
-  // Theme: this view IS the playing seed, so route the cover into pageSeed for
-  // identical resolution to the rest of the app (page > playing > default).
   const coverSeed = useCoverArtSeed(currentTrack?.coverArtUrl ?? null);
   usePageSeed(coverSeed);
 
   useEffect(() => {
-    if (!currentTrack) router.replace("/home");
-  }, [currentTrack, router]);
+    if (!isQueueHydrated || currentTrack) return;
+    router.replace("/home");
+  }, [isQueueHydrated, currentTrack, router]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -74,10 +75,12 @@ export default function PlayingPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [helpOpen, router]);
 
-  if (!currentTrack) {
+  if (!isQueueHydrated || !currentTrack) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background p-6">
-        <Text variant="body-medium">No track in the queue.</Text>
+        <Text variant="body-medium">
+          {!isQueueHydrated ? "Restoring queue…" : "No track in the queue."}
+        </Text>
       </div>
     );
   }
@@ -91,13 +94,114 @@ export default function PlayingPage() {
   const canNext =
     state.playOrderIndex < state.playOrder.length - 1 || state.repeat === "queue";
 
-  const upNextTracks = useMemo(() => {
-    if (state.playOrderIndex < 0) return [];
-    return state.playOrder
-      .slice(state.playOrderIndex + 1)
-      .map((idx) => state.queue[idx])
-      .filter((t): t is PlaybackTrack => t !== undefined);
-  }, [state.playOrder, state.playOrderIndex, state.queue]);
+  const controlsBlock = (
+    <div className="relative flex w-full max-w-md items-center justify-center px-10">
+      <div className="absolute left-0 top-1/2 -translate-y-1/2">
+        <VolumeControl variant="full" />
+      </div>
+      <div className="flex items-center justify-center gap-2">
+        <IconButton
+          label={`Shuffle ${state.shuffle ? "on" : "off"}`}
+          variant={state.shuffle ? "tonal" : "ghost"}
+          onClick={toggleShuffle}
+        >
+          <ShuffleIcon />
+        </IconButton>
+        <IconButton label="Previous track" variant="ghost" size="lg" onClick={previous}>
+          <PrevIcon />
+        </IconButton>
+        <IconButton
+          label={state.isPlaying ? "Pause" : "Play"}
+          variant="filled"
+          size="lg"
+          onClick={toggle}
+        >
+          {state.isPlaying ? <PauseIcon /> : <PlayIcon />}
+        </IconButton>
+        <IconButton
+          label="Next track"
+          variant="ghost"
+          size="lg"
+          onClick={next}
+          disabled={!canNext}
+        >
+          <NextIcon />
+        </IconButton>
+        <IconButton
+          label={repeatModeLabel(state.repeat)}
+          variant={repeatButtonVariant(state.repeat)}
+          onClick={() => setRepeat(nextRepeat)}
+        >
+          <RepeatModeIcon mode={state.repeat} />
+        </IconButton>
+      </div>
+      <div className="absolute right-0 top-1/2 -translate-y-1/2">
+        <LikeTrackButton trackId={currentTrack.id} />
+      </div>
+    </div>
+  );
+
+  const seekBlock = (
+    <div className="flex w-full max-w-md flex-col gap-2">
+      <Slider
+        value={displayMs}
+        bufferedValue={bufferedMs}
+        min={0}
+        max={max}
+        step={1}
+        {...sliderProps}
+        label="Seek within current track"
+        showHoverTooltip
+        formatHoverValue={formatDuration}
+      />
+      <div className="flex justify-between text-on-surface-variant tabular-nums">
+        <Text variant="label-small">{formatDuration(displayMs)}</Text>
+        <Text variant="label-small">{formatDuration(state.durationMs)}</Text>
+      </div>
+    </div>
+  );
+
+  const metadataBlock = (
+    <div className="flex w-full max-w-md flex-col items-center gap-1 text-center">
+      <Text variant="headline-small">{currentTrack.title}</Text>
+      <Link
+        href={
+          currentTrack.artistSlug
+            ? catalogArtistPath(currentTrack.artistSlug)
+            : `/artist/${currentTrack.artistId}`
+        }
+      >
+        <Text variant="body-medium" className="text-on-surface-variant">
+          {currentTrack.artistName}
+        </Text>
+      </Link>
+      <QualityPicker />
+    </div>
+  );
+
+  const coverArt = (
+    <button
+      type="button"
+      aria-label={state.isPlaying ? "Pause" : "Play"}
+      onClick={toggle}
+      className={cn(
+        "block shrink-0 overflow-hidden rounded-2xl border-2 border-outline bg-surface-variant",
+        "aspect-square w-full max-w-sm sm:max-w-md md:max-w-[24rem] lg:max-w-[28rem] xl:max-w-[32rem]",
+        queueExpanded && "md:max-w-[min(100%,24rem)]",
+        "transition-opacity hover:opacity-95",
+      )}
+    >
+      {currentTrack.coverArtUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={currentTrack.coverArtUrl}
+          alt=""
+          className="size-full object-cover"
+          draggable={false}
+        />
+      ) : null}
+    </button>
+  );
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -112,8 +216,12 @@ export default function PlayingPage() {
           <Link
             href={
               currentTrack.artistSlug && currentTrack.releaseSlug
-                ? catalogReleasePath(currentTrack.artistSlug, currentTrack.releaseSlug)
-                : `/release/${currentTrack.releaseId}`
+                ? catalogReleaseHref(currentTrack.artistSlug, currentTrack.releaseSlug, {
+                    title: currentTrack.releaseTitle,
+                  })
+                : catalogReleaseByIdHref(currentTrack.releaseId, {
+                    title: currentTrack.releaseTitle,
+                  })
             }
           >
             <Text variant="title-small">{currentTrack.releaseTitle}</Text>
@@ -124,136 +232,52 @@ export default function PlayingPage() {
 
       <div
         className={cn(
-          "flex flex-1 min-h-0 flex-col gap-6 overflow-y-auto md:flex-row md:items-center md:justify-center md:gap-12",
+          "flex flex-1 min-h-0 flex-col gap-6 overflow-y-auto",
           mainScrollPaddingClass,
+          queueExpanded
+            ? "md:flex-row md:items-stretch md:overflow-hidden"
+            : "md:flex-row md:items-center md:justify-center",
         )}
       >
-        <div className="mx-auto aspect-square w-full max-w-md shrink-0 overflow-hidden rounded-2xl border-2 border-outline bg-surface-variant md:mx-0 md:max-w-[28rem] lg:max-w-[36rem]">
-          {currentTrack.coverArtUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={currentTrack.coverArtUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
+        <div
+          className={cn(
+            "flex w-full flex-col items-center justify-center gap-6",
+            queueExpanded ? "md:min-w-0 md:flex-1 md:self-stretch" : "md:flex-1",
+          )}
+        >
+          {coverArt}
+
+          {queueExpanded ? (
+            <div className="flex w-full max-w-md flex-col items-center gap-4">
+              {seekBlock}
+              {controlsBlock}
+            </div>
           ) : null}
         </div>
 
-        <div className="flex w-full max-w-xl flex-col gap-6 md:max-w-md">
-          <div className="flex flex-col gap-1 text-center md:text-left">
-            <Text variant="headline-small">{currentTrack.title}</Text>
-            <Link
-              href={
-                currentTrack.artistSlug
-                  ? catalogArtistPath(currentTrack.artistSlug)
-                  : `/artist/${currentTrack.artistId}`
-              }
-            >
-              <Text variant="body-medium" className="text-on-surface-variant">
-                {currentTrack.artistName}
-              </Text>
-            </Link>
-            <QualityPicker />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Slider
-              value={displayMs}
-              bufferedValue={bufferedMs}
-              min={0}
-              max={max}
-              step={1}
-              {...sliderProps}
-              label="Seek within current track"
-              showHoverTooltip
-              formatHoverValue={formatDuration}
-            />
-            <div className="flex justify-between text-on-surface-variant tabular-nums">
-              <Text variant="label-small">{formatDuration(displayMs)}</Text>
-              <Text variant="label-small">{formatDuration(state.durationMs)}</Text>
+        <div
+          className={cn(
+            "flex w-full min-h-0 flex-col items-center gap-6",
+            queueExpanded
+              ? "md:w-full md:max-w-md md:shrink-0 md:items-stretch md:self-stretch lg:max-w-lg xl:max-w-xl"
+              : "md:flex-1 md:justify-center",
+          )}
+        >
+          {!queueExpanded ? (
+            <div className="flex w-full max-w-md flex-col items-center gap-6">
+              {metadataBlock}
+              {seekBlock}
+              {controlsBlock}
             </div>
-          </div>
+          ) : null}
 
-          <div className="flex flex-col gap-4">
-          <VolumeControl variant="full" className="flex items-center justify-center gap-2 md:justify-start" />
-          <div className="flex items-center justify-around md:justify-start md:gap-2">
-            <IconButton
-              label={`Shuffle ${state.shuffle ? "on" : "off"}`}
-              variant={state.shuffle ? "tonal" : "ghost"}
-              onClick={toggleShuffle}
-            >
-              <ShuffleIcon />
-            </IconButton>
-            <IconButton label="Previous track" variant="ghost" size="lg" onClick={previous}>
-              <PrevIcon />
-            </IconButton>
-            <IconButton
-              label={state.isPlaying ? "Pause" : "Play"}
-              variant="filled"
-              size="lg"
-              onClick={toggle}
-            >
-              {state.isPlaying ? <PauseIcon /> : <PlayIcon />}
-            </IconButton>
-            <IconButton
-              label="Next track"
-              variant="ghost"
-              size="lg"
-              onClick={next}
-              disabled={!canNext}
-            >
-              <NextIcon />
-            </IconButton>
-            <IconButton
-              label={repeatModeLabel(state.repeat)}
-              variant={repeatButtonVariant(state.repeat)}
-              onClick={() => setRepeat(nextRepeat)}
-            >
-              <RepeatModeIcon mode={state.repeat} />
-            </IconButton>
-          </div>
-          </div>
-
-          <section className="flex flex-col gap-2">
-            <Text variant="title-small" className="text-on-surface-variant">
-              Up next
-            </Text>
-            <ol className="flex flex-col">
-              {upNextTracks.map((track) => (
-                <UpNextRow key={track.id} track={track} />
-              ))}
-              {upNextTracks.length === 0 && (
-                <Text variant="body-small" className="py-2 text-on-surface-variant">
-                  End of queue.
-                </Text>
-              )}
-            </ol>
-          </section>
+          <PlayingQueuePanel
+            expanded={queueExpanded}
+            onExpandedChange={setQueueExpanded}
+            className={cn("w-full max-w-md", queueExpanded && "min-h-0 flex-1")}
+          />
         </div>
       </div>
     </div>
-  );
-}
-
-function UpNextRow({ track }: { track: PlaybackTrack }) {
-  const { onContextMenu } = useTrackContextMenu(track, true);
-
-  return (
-    <li
-      className="flex items-center justify-between border-b border-outline/50 py-2"
-      onContextMenu={onContextMenu}
-    >
-      <div className="flex min-w-0 flex-col">
-        <Text variant="body-medium" className="truncate">
-          {track.title}
-        </Text>
-        <Text variant="label-small" className="truncate text-on-surface-variant">
-          {track.artistName}
-        </Text>
-      </div>
-      <Text variant="label-small" className="text-on-surface-variant">
-        {formatDuration(track.durationMs)}
-      </Text>
-    </li>
   );
 }

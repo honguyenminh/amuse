@@ -19,6 +19,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+const POPUP_EXIT_MS = 90;
+
+type PopupPosition = ReturnType<typeof computeAnchoredPosition>;
+
 type AnchoredPopupProps = {
   open: boolean;
   onClose: () => void;
@@ -52,13 +56,68 @@ export function AnchoredPopup({
   role,
 }: AnchoredPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<ReturnType<typeof computeAnchoredPosition> | null>(
-    null,
-  );
+  const skipExitRef = useRef(false);
+  const cachedChildrenRef = useRef<ReactNode>(null);
+  const cachedPositionRef = useRef<PopupPosition | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const [position, setPosition] = useState<PopupPosition | null>(null);
+
+  if (open) {
+    cachedChildrenRef.current = children;
+  }
 
   useLayoutEffect(() => {
-    if (!open) {
+    if (open) {
+      setVisible(true);
+      setExiting(false);
+      return;
+    }
+
+    if (!visible || exiting) {
+      return;
+    }
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (skipExitRef.current || reducedMotion) {
+      skipExitRef.current = false;
+      setVisible(false);
+      setExiting(false);
       setPosition(null);
+      cachedPositionRef.current = null;
+      return;
+    }
+
+    if (position) {
+      cachedPositionRef.current = position;
+    }
+    setExiting(true);
+  }, [open, visible, exiting, position]);
+
+  useEffect(() => {
+    if (!exiting) {
+      return;
+    }
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(
+      () => {
+        setVisible(false);
+        setExiting(false);
+        setPosition(null);
+        cachedPositionRef.current = null;
+      },
+      reducedMotion ? 0 : POPUP_EXIT_MS,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [exiting]);
+
+  useLayoutEffect(() => {
+    if (!visible || exiting || !open) {
+      if (!visible) {
+        setPosition(null);
+      }
       return;
     }
 
@@ -76,20 +135,20 @@ export function AnchoredPopup({
       }
 
       const popupRect = popup.getBoundingClientRect();
-      setPosition(
-        computeAnchoredPosition({
-          anchor,
-          popup: { width: popupRect.width, height: popupRect.height },
-          viewport: {
-            width: window.innerWidth,
-            height: window.innerHeight,
-          },
-          preferredPlacement,
-          align,
-          offset,
-          padding: viewportPadding,
-        }),
-      );
+      const nextPosition = computeAnchoredPosition({
+        anchor,
+        popup: { width: popupRect.width, height: popupRect.height },
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+        preferredPlacement,
+        align,
+        offset,
+        padding: viewportPadding,
+      });
+      setPosition(nextPosition);
+      cachedPositionRef.current = nextPosition;
     };
 
     updatePosition();
@@ -109,6 +168,8 @@ export function AnchoredPopup({
       }
     };
   }, [
+    visible,
+    exiting,
     open,
     anchorRef,
     anchorRect,
@@ -122,7 +183,7 @@ export function AnchoredPopup({
   ]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || exiting) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -132,33 +193,61 @@ export function AnchoredPopup({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, exiting, onClose]);
 
-  if (!open || typeof document === "undefined") {
+  if (!visible || typeof document === "undefined") {
     return null;
   }
+
+  const displayPosition = exiting ? cachedPositionRef.current : position;
+  const displayChildren = open ? children : cachedChildrenRef.current;
+  const isPositioned = displayPosition !== null;
+
+  const requestClose = () => {
+    if (exiting) {
+      return;
+    }
+    onClose();
+  };
+
+  const requestInstantClose = () => {
+    if (exiting) {
+      return;
+    }
+    skipExitRef.current = true;
+    onClose();
+  };
 
   return createPortal(
     <>
       <div
         className="fixed inset-0 z-40 cursor-default bg-transparent"
         aria-hidden
-        onClick={onClose}
-        onContextMenu={(event) => handlePopupBackdropContextMenu(event, onClose)}
+        onClick={requestClose}
+        onContextMenu={(event) => handlePopupBackdropContextMenu(event, requestInstantClose)}
       />
       <div
         ref={popupRef}
         role={role}
-        className={cn("fixed z-50 overflow-y-auto", className)}
+        className={cn(
+          "fixed z-50 overflow-y-auto",
+          exiting
+            ? "anchored-popup-exit"
+            : isPositioned
+              ? "anchored-popup-enter"
+              : null,
+          className,
+        )}
         onContextMenu={suppressBrowserContextMenu}
         style={{
-          top: position?.top ?? 0,
-          left: position?.left ?? 0,
-          maxHeight: position?.maxHeight,
-          visibility: position ? "visible" : "hidden",
+          top: displayPosition?.top ?? 0,
+          left: displayPosition?.left ?? 0,
+          maxHeight: displayPosition?.maxHeight,
+          visibility: isPositioned ? "visible" : "hidden",
+          pointerEvents: exiting ? "none" : undefined,
         }}
       >
-        {children}
+        {displayChildren}
       </div>
     </>,
     document.body,

@@ -6,10 +6,11 @@ import { Sidebar } from "@/components/ui/Sidebar";
 import { TopBar } from "@/components/ui/TopBar";
 import { cn } from "@/lib/cn";
 import { mainScrollPaddingClass } from "@/lib/ui/pageLayout";
-import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type AppShellProps = {
-  title: string;
+  title?: string;
   activePath: string;
   trailing?: React.ReactNode;
   children: ReactNode;
@@ -29,7 +30,7 @@ type AppShellProps = {
  * │ Sidebar │ scrollable main        │
  * │ (md+)   │                        │
  * └─────────┴────────────────────────┘
- * │ MiniPlayer (full-width, fixed)    │
+ * │ MiniPlayer (full-width)           │
  * └───────────────────────────────────┘
  * ```
  *
@@ -45,6 +46,12 @@ export function AppShell({
   hidePlayer = false,
 }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [pathname]);
 
   return (
     <div className="flex h-dvh flex-col bg-background text-on-background">
@@ -58,7 +65,12 @@ export function AppShell({
             trailing={trailing}
             onMenuClick={() => setDrawerOpen(true)}
           />
-          <main className={cn("flex-1 overflow-y-auto", mainScrollPaddingClass)}>{children}</main>
+          <main
+            ref={mainRef}
+            className={cn("min-h-0 flex-1 overflow-y-auto", mainScrollPaddingClass)}
+          >
+            {children}
+          </main>
         </div>
       </div>
       {hidePlayer ? null : <MiniPlayer />}

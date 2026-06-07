@@ -48,3 +48,7 @@ Use `sharing=locked` on cache mounts. Keep the `# syntax=docker/dockerfile:1` di
 BuildKit must be enabled (`DOCKER_BUILDKIT=1`; default in Docker 23+ and `docker compose build`). When adding a new Dockerfile or a `RUN` step that downloads packages, apply the same cache mounts.
 
 **Exception:** do not use NuGet cache mounts when the restored packages or tools must remain in the final image (e.g. `Dockerfile.migrate` runs `dotnet ef` at container start, so `dotnet tool restore` must bake packages into the image layer).
+
+# Frontend
+
+DO NOT generate icons or images yourself, either use an icon set, prompt user to provide the svg icon files, or use a library.

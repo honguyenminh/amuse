@@ -1,11 +1,15 @@
 "use client";
 
 import { TrackRow } from "@/components/discovery/TrackRow";
+import { TrackDropIndicator } from "@/components/ui/TrackDropIndicator";
 import type { PlaylistItemDto, PlayableTrackDto } from "@/lib/api/types";
-import { useTrackDragReorder } from "@/lib/discovery/useTrackDragReorder";
+import {
+  INSERT_AFTER_LAST,
+  useTrackDragReorder,
+} from "@/lib/discovery/useTrackDragReorder";
 import { fromPlayableTrackDto } from "@/lib/playback/toPlaybackTrack";
 import { cn } from "@/lib/cn";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 
 type PlaylistTrackListProps = {
   items: PlaylistItemDto[];
@@ -15,7 +19,7 @@ type PlaylistTrackListProps = {
   isLikedMode: boolean;
   currentTrackId: string | null;
   isPlaying: boolean;
-  onReorder: (draggedItemId: string, targetItemId: string) => void;
+  onReorder: (draggedItemId: string, insertBeforeId: string) => void;
   onRemove: (item: PlaylistItemDto) => void;
   onPlayTrack: (trackId: string) => void;
   onToggle: () => void;
@@ -40,7 +44,7 @@ export function PlaylistTrackList({
   );
 
   const dragEnabled = reorderMode && canEdit;
-  const { activeId, overId, getItemProps, isDragging } = useTrackDragReorder(
+  const { activeId, insertBeforeId, getItemProps, isDragging } = useTrackDragReorder(
     dragEnabled,
     onReorder,
   );
@@ -71,34 +75,40 @@ export function PlaylistTrackList({
             };
         const isCurrent = currentTrackId === item.trackId;
         const itemProps = dragEnabled ? getItemProps(item.itemId) : undefined;
+        const showDropLine =
+          isDragging &&
+          insertBeforeId === item.itemId &&
+          activeId !== item.itemId;
 
         return (
-          <TrackRow
-            key={item.itemId}
-            track={{
-              trackId: item.trackId,
-              title: item.title,
-              artistName: item.artistName,
-              durationMs: item.durationMs,
-              hasAudio: item.hasAudio,
-              position: item.position,
-            }}
-            removeLabel={isLikedMode ? "Remove from liked" : "Remove from playlist"}
-            playbackTrack={playbackTrack}
-            isCurrent={isCurrent}
-            isPlaying={isPlaying}
-            isLiked={isLikedMode}
-            showDragHandle={dragEnabled}
-            isDragging={activeId === item.itemId}
-            isDropTarget={overId === item.itemId && activeId !== item.itemId}
-            itemProps={itemProps}
-            canRemove={canEdit}
-            onRemove={() => onRemove(item)}
-            onPlay={() => onPlayTrack(item.trackId)}
-            onToggle={onToggle}
-          />
+          <Fragment key={item.itemId}>
+            {showDropLine ? <TrackDropIndicator /> : null}
+            <TrackRow
+              track={{
+                trackId: item.trackId,
+                title: item.title,
+                artistName: item.artistName,
+                durationMs: item.durationMs,
+                hasAudio: item.hasAudio,
+                position: item.position,
+              }}
+              removeLabel={isLikedMode ? "Remove from liked" : "Remove from playlist"}
+              playbackTrack={playbackTrack}
+              isCurrent={isCurrent}
+              isPlaying={isPlaying}
+              isLiked={isLikedMode}
+              showDragHandle={dragEnabled}
+              isDragging={activeId === item.itemId}
+              itemProps={itemProps}
+              canRemove={canEdit}
+              onRemove={() => onRemove(item)}
+              onPlay={() => onPlayTrack(item.trackId)}
+              onToggle={onToggle}
+            />
+          </Fragment>
         );
       })}
+      {isDragging && insertBeforeId === INSERT_AFTER_LAST ? <TrackDropIndicator /> : null}
     </ol>
   );
 }

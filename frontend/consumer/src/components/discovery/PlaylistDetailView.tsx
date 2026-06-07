@@ -3,6 +3,7 @@
 import { PlaylistCoverArt } from "@/components/discovery/PlaylistCoverArt";
 import { PlaylistMoreMenu } from "@/components/discovery/PlaylistMoreMenu";
 import { PlaylistTrackList } from "@/components/discovery/PlaylistTrackList";
+import { PlaylistVisibilityLabel } from "@/components/discovery/PlaylistVisibilityLabel";
 import { AppShell } from "@/components/ui/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -32,6 +33,10 @@ import type { PlaylistDetailDto, PlayableTrackDto } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { playlistPath } from "@/lib/discovery/paths";
+import {
+  computeReorderTargetIndex,
+  INSERT_AFTER_LAST,
+} from "@/lib/discovery/useTrackDragReorder";
 import { usePlayback } from "@/lib/playback/PlaybackContext";
 import { playableTracksFromDtos } from "@/lib/playback/toPlaybackTrack";
 import { usePageSeed } from "@/theme/ThemeProvider";
@@ -128,11 +133,21 @@ export function PlaylistDetailView({
   const canEditTracks =
     playlist?.isOwned === true && activePlaylistId !== EMPTY_PLAYLIST_ID;
   const handleReorder = useCallback(
-    (draggedItemId: string, targetItemId: string) => {
+    (draggedItemId: string, insertBeforeId: string) => {
       if (!playlist || !canEditTracks) return;
       const sorted = [...playlist.items].sort((a, b) => a.position - b.position);
-      const toIndex = sorted.findIndex((item) => item.itemId === targetItemId);
-      if (toIndex < 0) return;
+      const fromIndex = sorted.findIndex((item) => item.itemId === draggedItemId);
+      if (fromIndex < 0) return;
+
+      const insertBeforeIndex =
+        insertBeforeId === INSERT_AFTER_LAST
+          ? sorted.length
+          : sorted.findIndex((item) => item.itemId === insertBeforeId);
+      if (insertBeforeIndex < 0) return;
+
+      const toIndex = computeReorderTargetIndex(fromIndex, insertBeforeIndex);
+      if (toIndex === null) return;
+
       void runAction(async () => {
         await reorderPlaylistItems(activePlaylistId, {
           itemId: draggedItemId,
@@ -281,8 +296,6 @@ export function PlaylistDetailView({
 
   const ownerName = playlist?.owner?.displayName ?? "Unknown listener";
   const chromeTitle = isLikedMode ? "Liked" : (playlist?.title ?? "Playlist");
-  const visibilityLabel =
-    playlist?.visibility === "public" ? "Public playlist" : "Private playlist";
 
   const content = (
     <>
@@ -302,9 +315,10 @@ export function PlaylistDetailView({
                 <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start">
                 <PlaylistCoverArt coverArtUrls={coverArtUrls} variant="hero" />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <Text variant="label-medium" className="text-on-surface-variant">
-                    {isLikedMode ? `Liked · ${visibilityLabel.toLowerCase()}` : visibilityLabel}
-                  </Text>
+                  <PlaylistVisibilityLabel
+                    visibility={playlist.visibility}
+                    prefix={isLikedMode ? "Liked · " : undefined}
+                  />
                   <Text variant="headline-medium">{playlist.title}</Text>
                   {!isLikedMode && playlist.owner && !playlist.isOwned ? (
                     <Text variant="title-medium">{ownerName}</Text>

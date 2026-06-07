@@ -68,6 +68,20 @@ export function ShuffleIcon({ className }: IconProps) {
   );
 }
 
+/** Equalizer bars — indicates active playback (Lucide `audio-lines`). */
+export function NowPlayingIcon({ className }: IconProps) {
+  return (
+    <svg {...baseProps} className={className} aria-hidden>
+      <path d="M2 10v3" />
+      <path d="M6 6v11" />
+      <path d="M10 3v18" />
+      <path d="M14 8v7" />
+      <path d="M18 5v13" />
+      <path d="M22 10v3" />
+    </svg>
+  );
+}
+
 /** Repeat entire queue when a track ends. */
 export function RepeatQueueIcon({ className }: IconProps) {
   return (

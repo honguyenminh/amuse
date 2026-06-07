@@ -27,7 +27,7 @@ export function LibraryAuthGate({ children }: LibraryAuthGateProps) {
       <Card>
         <Text variant="title-large">Log in to view your library</Text>
         <Text variant="label-medium" className="mt-1 text-on-surface-variant">
-          Playlists, liked tracks, and saved albums are available after you sign in.
+          Playlists, liked tracks, and saved releases are available after you sign in.
         </Text>
         <Link href="/login" className="mt-4 inline-block">
           <Button type="button">Log in</Button>

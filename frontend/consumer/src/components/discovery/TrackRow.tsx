@@ -28,7 +28,6 @@ type TrackRowProps = {
   isLiked?: boolean;
   showDragHandle?: boolean;
   isDragging?: boolean;
-  isDropTarget?: boolean;
   canRemove?: boolean;
   removeLabel?: string;
   itemProps?: HTMLAttributes<HTMLLIElement>;
@@ -65,7 +64,6 @@ export function TrackRow({
   isLiked,
   showDragHandle,
   isDragging,
-  isDropTarget,
   canRemove,
   removeLabel = "Remove from playlist",
   itemProps,
@@ -98,7 +96,6 @@ export function TrackRow({
         isCurrent && "text-primary",
         queueAddPulsing && "queue-add-pulse",
         isDragging && "opacity-50",
-        isDropTarget && "border-primary bg-surface-variant/60",
         showDragHandle && "cursor-grab active:cursor-grabbing",
         itemClassName,
       )}

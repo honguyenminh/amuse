@@ -32,4 +32,11 @@ describe("makePausedPalette via seedToPalette", () => {
     expect(paused.onPrimaryContainer).toBe(playing.onPrimaryContainer);
     expect(paused.onBackground).toBe(playing.onBackground);
   });
+
+  it("leaves error colors unchanged when paused", () => {
+    const playing = seedToPalette(seed, { paused: false });
+    const paused = seedToPalette(seed, { paused: true });
+    expect(paused.error).toBe(playing.error);
+    expect(paused.onError).toBe(playing.onError);
+  });
 });

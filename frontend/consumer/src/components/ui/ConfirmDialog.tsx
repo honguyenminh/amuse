@@ -4,18 +4,36 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useEffect, useId, type ReactNode } from "react";
 
+export type ConfirmDialogVariant = "default" | "primary" | "destructive";
+
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
   description: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** When true, the confirm action uses outlined styling to signal caution. */
+  /** Confirm button styling. Overrides `destructive` when set. */
+  confirmVariant?: ConfirmDialogVariant;
+  /** Shorthand for `confirmVariant="destructive"`. */
   destructive?: boolean;
   confirmDisabled?: boolean;
   onClose: () => void;
   onConfirm: () => void;
 };
+
+const confirmButtonVariant = {
+  default: "filled",
+  primary: "primary",
+  destructive: "error",
+} as const;
+
+function resolveConfirmVariant(
+  destructive: boolean,
+  confirmVariant?: ConfirmDialogVariant,
+): ConfirmDialogVariant {
+  if (confirmVariant) return confirmVariant;
+  return destructive ? "destructive" : "default";
+}
 
 export function ConfirmDialog({
   open,
@@ -23,6 +41,7 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  confirmVariant,
   destructive = false,
   confirmDisabled = false,
   onClose,
@@ -30,6 +49,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const resolvedVariant = resolveConfirmVariant(destructive, confirmVariant);
 
   useEffect(() => {
     if (!open) return;
@@ -73,8 +93,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             type="button"
-            variant={destructive ? "outlined" : "filled"}
-            className={destructive ? "border-error text-error" : undefined}
+            variant={confirmButtonVariant[resolvedVariant]}
             disabled={confirmDisabled}
             onClick={onConfirm}
           >

@@ -44,7 +44,7 @@ export default function LibraryAlbumsPage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Text variant="title-large">Saved albums</Text>
+      <Text variant="title-large">Releases</Text>
 
       {loading ? (
         <LibraryCardGrid>

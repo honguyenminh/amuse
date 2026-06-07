@@ -13,7 +13,7 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: libraryPlaylistsPath, label: "Playlists" },
   { href: libraryLikedPath, label: "Liked" },
-  { href: libraryAlbumsPath, label: "Albums" },
+  { href: libraryAlbumsPath, label: "Releases" },
 ] as const;
 
 export function LibraryTabs() {

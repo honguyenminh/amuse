@@ -1,3 +1,5 @@
+import type { PersistedQueueSnapshot } from "./queuePersistence";
+
 export type PlaybackTrack = {
   id: string;
   title: string;
@@ -56,4 +58,8 @@ export type PlaybackAction =
   | { type: "setRepeat"; mode: RepeatMode }
   | { type: "setShuffle"; enabled: boolean }
   | { type: "toggleShuffle" }
-  | { type: "clear" };
+  | { type: "clear" }
+  | { type: "jumpToPlayOrderIndex"; playOrderIndex: number }
+  | { type: "reorderPlayOrder"; fromPlayOrderIndex: number; toPlayOrderIndex: number }
+  | { type: "moveToPlayNext"; trackId: string }
+  | { type: "restoreState"; snapshot: PersistedQueueSnapshot; isPlaying: boolean };

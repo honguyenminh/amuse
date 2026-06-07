@@ -32,6 +32,7 @@ import {
 import { usePageSeed } from "@/theme/ThemeProvider";
 import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const releaseTypeLabel: Record<ReleaseType, string> = {
@@ -47,17 +48,21 @@ type ReleasePageViewProps = {
 };
 
 export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
+  const searchParams = useSearchParams();
+  const titleHint = searchParams.get("title") ?? undefined;
   const [release, setRelease] = useState<GetReleaseDetailResponse | null>(null);
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { state, currentTrack, playQueue, toggle } = usePlayback();
 
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    setRelease(null);
     load()
       .then((response) => {
-        if (!cancelled) setRelease(response);
+        if (!cancelled) {
+          setRelease(response);
+          setResolvedKey(loadKey);
+        }
       })
       .catch((err: Error) => {
         if (!cancelled) setError(err.message);
@@ -66,6 +71,9 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
       cancelled = true;
     };
   }, [loadKey, load]);
+
+  const pending = resolvedKey !== loadKey;
+  const { state, currentTrack, playQueue, toggle } = usePlayback();
 
   const seed = useCoverArtSeed(release?.coverArtUrl);
   usePageSeed(seed);
@@ -110,7 +118,8 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
     },
   });
 
-  const chromeTitle = release ? release.title : "Release";
+  const chromeTitle =
+    !pending && release ? release.title : (titleHint ?? undefined);
 
   return (
     <AppShell title={chromeTitle} activePath="/release">
@@ -121,8 +130,8 @@ export function ReleasePageView({ loadKey, load }: ReleasePageViewProps) {
             <Text variant="label-medium">{error}</Text>
           </Card>
         )}
-        {!release && !error && <ReleaseSkeleton />}
-        {release && (
+        {(pending || !release) && !error ? <ReleaseSkeleton /> : null}
+        {!pending && release && (
           <>
             <Card onContextMenu={onReleaseContextMenu}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">

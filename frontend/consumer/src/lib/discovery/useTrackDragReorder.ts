@@ -4,13 +4,41 @@ import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent }
 
 const DRAG_THRESHOLD_PX = 6;
 export const TRACK_ITEM_ID_ATTR = "data-track-item-id";
+/** Insert after the last visible row. */
+export const INSERT_AFTER_LAST = "__insert-after-last__";
 
-function findItemIdAt(x: number, y: number): string | null {
-  for (const el of document.elementsFromPoint(x, y)) {
-    const id = el.closest(`[${TRACK_ITEM_ID_ATTR}]`)?.getAttribute(TRACK_ITEM_ID_ATTR);
-    if (id) return id;
+function findInsertBeforeId(
+  clientY: number,
+  activeId: string | null,
+): string | null {
+  const rows = Array.from(
+    document.querySelectorAll<HTMLElement>(`[${TRACK_ITEM_ID_ATTR}]`),
+  ).filter((row) => row.getAttribute(TRACK_ITEM_ID_ATTR) !== activeId);
+
+  if (rows.length === 0) return null;
+
+  for (const row of rows) {
+    const id = row.getAttribute(TRACK_ITEM_ID_ATTR);
+    if (!id) continue;
+    const rect = row.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (clientY < midY) return id;
   }
-  return null;
+
+  return INSERT_AFTER_LAST;
+}
+
+/** Maps a drag from `fromIndex` to the splice index after removal. */
+export function computeReorderTargetIndex(
+  fromIndex: number,
+  insertBeforeIndex: number,
+): number | null {
+  if (insertBeforeIndex < 0) return null;
+  if (insertBeforeIndex === fromIndex || insertBeforeIndex === fromIndex + 1) {
+    return null;
+  }
+  if (fromIndex < insertBeforeIndex) return insertBeforeIndex - 1;
+  return insertBeforeIndex;
 }
 
 type PendingDrag = {
@@ -23,17 +51,24 @@ type PendingDrag = {
 
 export function useTrackDragReorder(
   enabled: boolean,
-  onCommit: (activeId: string, overId: string) => void,
+  onCommit: (activeId: string, insertBeforeId: string) => void,
 ) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  const [insertBeforeId, setInsertBeforeId] = useState<string | null>(null);
   const pending = useRef<PendingDrag | null>(null);
 
   const reset = useCallback(() => {
     pending.current = null;
     setActiveId(null);
-    setOverId(null);
+    setInsertBeforeId(null);
   }, []);
+
+  const updateInsertBefore = useCallback(
+    (clientY: number, draggingId: string | null) => {
+      setInsertBeforeId(findInsertBeforeId(clientY, draggingId));
+    },
+    [],
+  );
 
   const getItemProps = useCallback(
     (itemId: string) => ({
@@ -61,21 +96,23 @@ export function useTrackDragReorder(
 
         if (!activeId && distance < DRAG_THRESHOLD_PX) return;
 
+        const draggingId = activeId ?? drag.id;
         if (!activeId) {
           setActiveId(drag.id);
           drag.element.setPointerCapture(event.pointerId);
         }
 
-        setOverId(findItemIdAt(event.clientX, event.clientY));
+        updateInsertBefore(event.clientY, draggingId);
       },
       onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
         const drag = pending.current;
         if (!enabled || !drag || drag.pointerId !== event.pointerId) return;
 
         const source = activeId ?? drag.id;
-        const target = overId ?? findItemIdAt(event.clientX, event.clientY);
+        const target =
+          insertBeforeId ?? findInsertBeforeId(event.clientY, source);
 
-        if (activeId && target && source !== target) {
+        if (activeId && target) {
           onCommit(source, target);
         }
 
@@ -88,8 +125,8 @@ export function useTrackDragReorder(
         reset();
       },
     }),
-    [enabled, activeId, overId, onCommit, reset],
+    [enabled, activeId, insertBeforeId, onCommit, reset, updateInsertBefore],
   );
 
-  return { activeId, overId, getItemProps, isDragging: activeId !== null };
+  return { activeId, insertBeforeId, getItemProps, isDragging: activeId !== null };
 }

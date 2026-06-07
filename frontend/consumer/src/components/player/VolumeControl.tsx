@@ -5,7 +5,8 @@ import { Slider } from "@/components/ui/Slider";
 import { usePlayback } from "@/lib/playback/PlaybackContext";
 import { savePlaybackSettings } from "@/lib/playback/playbackSettings";
 import { cn } from "@/lib/cn";
-import { useCallback, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 function VolumeIcon({ muted, level }: { muted: boolean; level: number }) {
   if (muted || level === 0) {
@@ -30,15 +31,26 @@ function VolumeIcon({ muted, level }: { muted: boolean; level: number }) {
 }
 
 type VolumeControlProps = {
-  /** Compact layout for the mini player. */
   variant?: "compact" | "full";
   className?: string;
+  /** Portal the slider popup to `document.body` (needed when overlapping layered mini-player chrome). */
+  portalPopup?: boolean;
 };
 
-export function VolumeControl({ variant = "full", className }: VolumeControlProps) {
+export function VolumeControl({
+  variant = "full",
+  className,
+  portalPopup = false,
+}: VolumeControlProps) {
   const { state, setVolume, toggleMute } = usePlayback();
-  const muted = state.volume === 0;
+  const muted = !Number.isFinite(state.volume) || state.volume === 0;
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [popupPosition, setPopupPosition] = useState<{ left: number; bottom: number } | null>(
+    null,
+  );
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persistVolume = useCallback((volume: number) => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
@@ -49,6 +61,7 @@ export function VolumeControl({ variant = "full", className }: VolumeControlProp
 
   const onVolumeChange = useCallback(
     (value: number) => {
+      if (!Number.isFinite(value)) return;
       const v = value / 100;
       setVolume(v);
       persistVolume(v);
@@ -60,36 +73,110 @@ export function VolumeControl({ variant = "full", className }: VolumeControlProp
     toggleMute();
   }, [toggleMute]);
 
-  const sliderWidth = variant === "compact" ? "w-20" : "w-28";
+  const updatePopupPosition = useCallback(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) {
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    setPopupPosition({
+      left: rect.left + rect.width / 2,
+      bottom: window.innerHeight - rect.top + 8,
+    });
+  }, []);
+
+  const openPopup = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setOpen(true);
+    if (portalPopup) {
+      updatePopupPosition();
+    }
+  }, [portalPopup, updatePopupPosition]);
+
+  const keepPopupOpen = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setOpen(true);
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => setOpen(false), 180);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!portalPopup || !open) {
+      return;
+    }
+    updatePopupPosition();
+    window.addEventListener("resize", updatePopupPosition);
+    window.addEventListener("scroll", updatePopupPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePopupPosition);
+      window.removeEventListener("scroll", updatePopupPosition, true);
+    };
+  }, [portalPopup, open, updatePopupPosition]);
+
+  const popupVisible = open;
+  const popupClassName = cn(
+    "rounded-md border border-outline bg-surface px-2 py-3 shadow-lg transition-opacity duration-150",
+    popupVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+    !portalPopup &&
+      "group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+    portalPopup
+      ? "fixed z-50 -translate-x-1/2"
+      : "absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2",
+  );
+
+  const popup = (
+    <div
+      className={popupClassName}
+      style={
+        portalPopup && popupPosition
+          ? { left: popupPosition.left, bottom: popupPosition.bottom }
+          : undefined
+      }
+      onMouseEnter={openPopup}
+      onMouseLeave={scheduleClose}
+    >
+      <Slider
+        value={Math.round(state.volume * 100)}
+        min={0}
+        max={100}
+        step={1}
+        onChange={onVolumeChange}
+        onScrubStart={keepPopupOpen}
+        label="Volume"
+        orientation="vertical"
+        size={variant === "compact" ? "sm" : "md"}
+      />
+    </div>
+  );
 
   return (
-    <div className={className ?? "flex items-center gap-1"}>
+    <div
+      ref={anchorRef}
+      className={cn("group relative flex items-center", className)}
+      onMouseEnter={openPopup}
+      onMouseLeave={scheduleClose}
+      onFocusCapture={openPopup}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          scheduleClose();
+        }
+      }}
+    >
       <IconButton
         label={muted ? "Unmute" : "Mute"}
         variant="ghost"
         size="sm"
+        aria-expanded={open}
         onClick={onToggleMute}
       >
         <VolumeIcon muted={muted || state.volume === 0} level={state.volume} />
       </IconButton>
-      <div
-        className={cn(
-          "shrink-0",
-          sliderWidth,
-          variant === "compact" && "hidden sm:block",
-        )}
-      >
-        <Slider
-          value={Math.round(state.volume * 100)}
-          min={0}
-          max={100}
-          step={1}
-          onChange={onVolumeChange}
-          label="Volume"
-          size="sm"
-          className="w-full"
-        />
-      </div>
+      {portalPopup && typeof document !== "undefined"
+        ? createPortal(popup, document.body)
+        : popup}
     </div>
   );
 }

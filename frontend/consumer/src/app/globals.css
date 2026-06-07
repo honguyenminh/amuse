@@ -8,6 +8,10 @@
   --amuse-on-primary-container: oklch(0.890 0.061 297.6);
   --amuse-secondary: oklch(0.497 0.150 290.2);
   --amuse-on-secondary: oklch(1.000 0.000 89.9);
+  --amuse-secondary-container: oklch(0.917 0.032 301.6);
+  --amuse-on-secondary-container: oklch(0.399 0.032 297.0);
+  --amuse-tertiary: oklch(0.492 0.081 322.6);
+  --amuse-on-tertiary: oklch(1.000 0.000 89.9);
   --amuse-tertiary-container: oklch(0.517 0.234 331.2);
   --amuse-on-tertiary-container: oklch(0.897 0.078 335.9);
   --amuse-surface: oklch(0.983 0.012 317.7);
@@ -96,6 +100,10 @@
   --color-on-primary-container: var(--amuse-on-primary-container);
   --color-secondary: var(--amuse-secondary);
   --color-on-secondary: var(--amuse-on-secondary);
+  --color-secondary-container: var(--amuse-secondary-container);
+  --color-on-secondary-container: var(--amuse-on-secondary-container);
+  --color-tertiary: var(--amuse-tertiary);
+  --color-on-tertiary: var(--amuse-on-tertiary);
   --color-tertiary-container: var(--amuse-tertiary-container);
   --color-on-tertiary-container: var(--amuse-on-tertiary-container);
   --color-surface: var(--amuse-surface);
@@ -386,6 +394,28 @@ body {
   }
 }
 
+@keyframes anchored-popup-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes anchored-popup-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .queue-add-pulse {
     animation: queue-add-pulse 0.55s ease-out;
@@ -397,5 +427,15 @@ body {
 
   .snackbar-enter {
     animation: snackbar-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .anchored-popup-enter {
+    animation: anchored-popup-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform-origin: top left;
+  }
+
+  .anchored-popup-exit {
+    animation: anchored-popup-exit 0.09s cubic-bezier(0.4, 0, 1, 1) forwards;
+    transform-origin: top left;
   }
 }

@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - Backend Publish
+      - Frontend Publish
     types:
       - completed
     branches:
@@ -23,7 +24,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   deploy-development:
@@ -31,6 +32,7 @@ jobs:
     if: >
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
+      contains(fromJSON('["Backend Publish","Frontend Publish"]'), github.event.workflow_run.name) &&
       (
         (
           github.event.workflow_run.event == 'push' &&
@@ -44,38 +46,52 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     steps:
-      - name: Echo deploy plan
-        env:
-          SHA: ${{ github.event.workflow_run.head_sha }}
-          SHORT_SHA: ${{ github.event.workflow_run.head_sha }}
-          CI_EVENT: ${{ github.event.workflow_run.event }}
-          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
-          ENVIRONMENT: development
-          DATABASE: amuse_development
-          OWNER: ${{ github.repository_owner }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image tag
+        id: params
         run: |
-          SHORT_SHA="${SHORT_SHA:0:7}"
-          if [ "${CI_EVENT}" = "pull_request" ]; then
-            IMAGE_TAG="pr-${PR_NUMBER}"
-            SOURCE="PR #${PR_NUMBER} (${HEAD_BRANCH} -> master)"
+          EVENT="${{ github.event.workflow_run.event }}"
+          if [ "${EVENT}" = "pull_request" ]; then
+            TAG="pr-${{ github.event.workflow_run.pull_requests[0].number }}"
           else
-            IMAGE_TAG="master"
-            SOURCE="push to master"
+            TAG="master"
           fi
-          echo "=== Backend deploy (phase 1 echo stub) ==="
-          echo "Environment: ${ENVIRONMENT}"
-          echo "Source: ${SOURCE}"
-          echo "Git SHA: ${SHA}"
-          echo "Image tag: ${IMAGE_TAG} (sha-${SHORT_SHA} also available)"
-          echo "Database: ${DATABASE}"
-          echo ""
-          echo "Step 1: Run Job ghcr.io/${OWNER}/amuse-migrate:${IMAGE_TAG} against ${DATABASE}"
-          echo "Step 2: Roll Deployment ghcr.io/${OWNER}/amuse-api:${IMAGE_TAG}"
-          echo "Step 3: Roll Deployment ghcr.io/${OWNER}/amuse-worker-transcoder:${IMAGE_TAG}"
-          echo "Step 4: Roll Deployment ghcr.io/${OWNER}/amuse-worker-scheduler:${IMAGE_TAG}"
-          echo ""
-          echo "Next step (phase 2): wire kubeconfig + Helm/Kustomize apply"
+          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "overlay_path=infrastructure/kubernetes/overlays/dev" >> "$GITHUB_OUTPUT"
+
+      - name: Bump Kustomize image tags (GitOps)
+        run: |
+          python3 <<'PY'
+          import pathlib, re
+          overlay = pathlib.Path("${{ steps.params.outputs.overlay_path }}")
+          tag = "${{ steps.params.outputs.image_tag }}"
+          owner = "${{ github.repository_owner }}"
+          path = overlay / "kustomization.yaml"
+          text = path.read_text()
+          for image in ["amuse-api", "amuse-worker-transcoder", "amuse-worker-scheduler", "amuse-migrate", "amuse-consumer", "amuse-business"]:
+              text = re.sub(
+                  rf"(name: ghcr\.io/{re.escape(owner)}/{re.escape(image)}\n\s+newTag: ).*",
+                  rf"\g<1>{tag}",
+                  text,
+              )
+          path.write_text(text)
+          PY
+
+      - name: Commit and push GitOps manifest bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add infrastructure/kubernetes/overlays/dev/kustomization.yaml
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+          git commit -m "deploy(dev): bump images to ${{ steps.params.outputs.image_tag }}"
+          git push
 
   deploy-manual:
     name: Deploy ${{ inputs.environment }}
@@ -84,6 +100,8 @@ jobs:
     environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Resolve deploy parameters
         id: params
@@ -93,41 +111,48 @@ jobs:
             staging)
               TAG="${{ inputs.image_tag }}"
               if [ -z "${TAG}" ]; then TAG="staging"; fi
-              DB="amuse_staging"
+              OVERLAY="infrastructure/kubernetes/overlays/stage"
               ;;
             production)
-              TAG="${{ inputs.image_tag }}"
-              if [ -z "${TAG}" ]; then TAG="production"; fi
-              DB="amuse_production"
+              echo "Production overlay not yet defined." >&2
+              exit 1
               ;;
             *)
               echo "Unsupported environment: ${ENV}" >&2
               exit 1
               ;;
           esac
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          echo "environment=${ENV}" >> "$GITHUB_OUTPUT"
           echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "database=${DB}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "overlay_path=${OVERLAY}" >> "$GITHUB_OUTPUT"
 
-      - name: Echo deploy plan
-        env:
-          ENVIRONMENT: ${{ steps.params.outputs.environment }}
-          IMAGE_TAG: ${{ steps.params.outputs.image_tag }}
-          DATABASE: ${{ steps.params.outputs.database }}
-          SHORT_SHA: ${{ steps.params.outputs.short_sha }}
-          OWNER: ${{ github.repository_owner }}
+      - name: Bump Kustomize image tags (GitOps)
         run: |
-          echo "=== Backend deploy (phase 1 echo stub) ==="
-          echo "Environment: ${ENVIRONMENT}"
-          echo "Git SHA: ${GITHUB_SHA}"
-          echo "Image tag: ${IMAGE_TAG} (sha-${SHORT_SHA} also available)"
-          echo "Database: ${DATABASE}"
-          echo ""
-          echo "Step 1: Run Job ghcr.io/${OWNER}/amuse-migrate:${IMAGE_TAG} against ${DATABASE}"
-          echo "Step 2: Roll Deployment ghcr.io/${OWNER}/amuse-api:${IMAGE_TAG}"
-          echo "Step 3: Roll Deployment ghcr.io/${OWNER}/amuse-worker-transcoder:${IMAGE_TAG}"
-          echo "Step 4: Roll Deployment ghcr.io/${OWNER}/amuse-worker-scheduler:${IMAGE_TAG}"
-          echo ""
-          echo "Next step (phase 2): wire kubeconfig + Helm/Kustomize apply"
+          OVERLAY="${{ steps.params.outputs.overlay_path }}"
+          TAG="${{ steps.params.outputs.image_tag }}"
+          python3 <<'PY'
+          import pathlib, re
+          overlay = pathlib.Path("${{ steps.params.outputs.overlay_path }}")
+          tag = "${{ steps.params.outputs.image_tag }}"
+          owner = "${{ github.repository_owner }}"
+          path = overlay / "kustomization.yaml"
+          text = path.read_text()
+          for image in ["amuse-api", "amuse-worker-transcoder", "amuse-worker-scheduler", "amuse-migrate", "amuse-consumer", "amuse-business"]:
+              text = re.sub(
+                  rf"(name: ghcr\.io/{re.escape(owner)}/{re.escape(image)}\n\s+newTag: ).*",
+                  rf"\g<1>{tag}",
+                  text,
+              )
+          path.write_text(text)
+          PY
+
+      - name: Commit and push GitOps manifest bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.params.outputs.overlay_path }}/kustomization.yaml"
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+          git commit -m "deploy(${{ inputs.environment }}): bump images to ${{ steps.params.outputs.image_tag }}"
+          git push

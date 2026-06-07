@@ -10,7 +10,8 @@ import type {
 } from "@/lib/api/types";
 import {
   catalogArtistPath,
-  catalogReleasePath,
+  catalogReleaseByIdHref,
+  catalogReleaseHref,
 } from "@/lib/catalog/paths";
 import { playlistPath } from "@/lib/discovery/paths";
 import Link from "next/link";
@@ -166,14 +167,16 @@ function searchItemHref(item: SearchItemDto): string {
       return `/artist/${item.id}`;
     case "release":
       if (item.artistSlug && item.releaseSlug) {
-        return catalogReleasePath(item.artistSlug, item.releaseSlug);
+        return catalogReleaseHref(item.artistSlug, item.releaseSlug, { title: item.title });
       }
-      return `/release/${item.id}`;
+      return catalogReleaseByIdHref(item.id, { title: item.title });
     case "track":
       if (item.artistSlug && item.releaseSlug) {
-        return catalogReleasePath(item.artistSlug, item.releaseSlug);
+        return catalogReleaseHref(item.artistSlug, item.releaseSlug, { title: item.title });
       }
-      if (item.releaseId) return `/release/${item.releaseId}`;
+      if (item.releaseId) {
+        return catalogReleaseByIdHref(item.releaseId, { title: item.title });
+      }
       return "#";
     default:
       return "#";

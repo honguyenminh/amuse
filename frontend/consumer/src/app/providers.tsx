@@ -4,6 +4,7 @@ import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardSho
 import { QueueAddBurstProvider } from "@/components/ui/QueueAddBurstProvider";
 import { SnackbarProvider } from "@/components/ui/SnackbarProvider";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import { LikedTracksProvider } from "@/lib/discovery/useLikedTrackIds";
 import { KeyboardShortcutsProvider } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { PlaybackProvider } from "@/lib/playback/PlaybackContext";
 import { PlaybackContextMenuProvider } from "@/lib/playback/PlaybackContextMenuProvider";
@@ -14,6 +15,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <LikedTracksProvider>
         <PlaybackProvider>
           <SnackbarProvider>
             <QueueAddBurstProvider>
@@ -26,6 +28,7 @@ export function Providers({ children }: { children: ReactNode }) {
             </QueueAddBurstProvider>
           </SnackbarProvider>
         </PlaybackProvider>
+        </LikedTracksProvider>
       </AuthProvider>
     </ThemeProvider>
   );

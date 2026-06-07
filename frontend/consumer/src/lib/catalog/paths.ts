@@ -5,19 +5,45 @@ export function catalogArtistPath(artistSlug: string): string {
   return `/artist/${encodeURIComponent(artistSlug)}`;
 }
 
+type CatalogReleaseHrefOptions = {
+  title?: string;
+};
+
+function withReleaseTitle(path: string, title?: string): string {
+  if (!title) {
+    return path;
+  }
+  return `${path}?${new URLSearchParams({ title }).toString()}`;
+}
+
 export function catalogReleasePath(artistSlug: string, releaseSlug: string): string {
   return `/artist/${encodeURIComponent(artistSlug)}/release/${encodeURIComponent(releaseSlug)}`;
 }
 
+export function catalogReleaseHref(
+  artistSlug: string,
+  releaseSlug: string,
+  options?: CatalogReleaseHrefOptions,
+): string {
+  return withReleaseTitle(catalogReleasePath(artistSlug, releaseSlug), options?.title);
+}
+
+export function catalogReleaseByIdHref(
+  releaseId: string,
+  options?: CatalogReleaseHrefOptions,
+): string {
+  return withReleaseTitle(`/release/${encodeURIComponent(releaseId)}`, options?.title);
+}
+
 export function catalogReleasePathFromSummary(release: ReleaseSummary): string {
-  return catalogReleasePath(release.artistSlug, release.slug);
+  return catalogReleaseHref(release.artistSlug, release.slug, { title: release.title });
 }
 
 export function catalogReleasePathFromEdition(
   artistSlug: string,
   edition: ReleaseEditionSummary,
 ): string {
-  return catalogReleasePath(artistSlug, edition.slug);
+  return catalogReleaseHref(artistSlug, edition.slug, { title: edition.title });
 }
 
 export function catalogHashtagPath(tag: string): string {

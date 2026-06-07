@@ -130,8 +130,10 @@ export function playbackReducer(state: PlaybackState, action: PlaybackAction): P
     case "trackEnded":
       return advance(state, +1, { onEnded: true });
 
-    case "setVolume":
+    case "setVolume": {
+      if (!Number.isFinite(action.volume)) return state;
       return { ...state, volume: Math.max(0, Math.min(1, action.volume)) };
+    }
 
     case "setRepeat":
       return { ...state, repeat: action.mode };
@@ -144,6 +146,112 @@ export function playbackReducer(state: PlaybackState, action: PlaybackAction): P
 
     case "clear":
       return emptyQueueState(state);
+
+    case "jumpToPlayOrderIndex": {
+      const target = action.playOrderIndex;
+      if (target < 0 || target >= state.playOrder.length) return state;
+      if (target === state.playOrderIndex) {
+        return { ...state, positionMs: 0, isPlaying: true };
+      }
+      const queueIndex = state.playOrder[target]!;
+      const track = state.queue[queueIndex];
+      if (!track) return state;
+      return {
+        ...state,
+        playOrderIndex: target,
+        currentIndex: queueIndex,
+        positionMs: 0,
+        durationMs: track.durationMs,
+        isPlaying: true,
+      };
+    }
+
+    case "reorderPlayOrder": {
+      const { fromPlayOrderIndex, toPlayOrderIndex } = action;
+      if (fromPlayOrderIndex === toPlayOrderIndex) return state;
+      if (fromPlayOrderIndex < state.playOrderIndex) return state;
+      if (toPlayOrderIndex < state.playOrderIndex) return state;
+      if (
+        fromPlayOrderIndex < 0 ||
+        toPlayOrderIndex < 0 ||
+        fromPlayOrderIndex >= state.playOrder.length ||
+        toPlayOrderIndex >= state.playOrder.length
+      ) {
+        return state;
+      }
+
+      const playOrder = [...state.playOrder];
+      const [moved] = playOrder.splice(fromPlayOrderIndex, 1);
+      if (moved === undefined) return state;
+      playOrder.splice(toPlayOrderIndex, 0, moved);
+
+      const playOrderIndex = playOrder.indexOf(state.currentIndex);
+      if (playOrderIndex < 0) return state;
+
+      return {
+        ...state,
+        playOrder,
+        playOrderIndex,
+        shuffle: false,
+      };
+    }
+
+    case "moveToPlayNext": {
+      if (state.currentIndex < 0 || state.playOrder.length === 0) return state;
+
+      let fromPlayOrderIndex = -1;
+      for (let i = 0; i < state.playOrder.length; i++) {
+        const queueIndex = state.playOrder[i]!;
+        if (state.queue[queueIndex]?.id === action.trackId) {
+          fromPlayOrderIndex = i;
+          break;
+        }
+      }
+      if (fromPlayOrderIndex < 0) return state;
+
+      const targetPlayOrderIndex = state.playOrderIndex + 1;
+      if (
+        fromPlayOrderIndex === state.playOrderIndex ||
+        fromPlayOrderIndex === targetPlayOrderIndex
+      ) {
+        return state;
+      }
+
+      const playOrder = [...state.playOrder];
+      const [moved] = playOrder.splice(fromPlayOrderIndex, 1);
+      if (moved === undefined) return state;
+
+      let playOrderIndex = state.playOrderIndex;
+      if (fromPlayOrderIndex < playOrderIndex) {
+        playOrderIndex -= 1;
+      }
+
+      playOrder.splice(playOrderIndex + 1, 0, moved);
+
+      return {
+        ...state,
+        playOrder,
+        playOrderIndex,
+        shuffle: false,
+      };
+    }
+
+    case "restoreState": {
+      const { snapshot, isPlaying } = action;
+      if (snapshot.queue.length === 0) return emptyQueueState(state);
+      return {
+        ...state,
+        queue: snapshot.queue,
+        playOrder: snapshot.playOrder,
+        playOrderIndex: snapshot.playOrderIndex,
+        currentIndex: snapshot.currentIndex,
+        positionMs: snapshot.positionMs,
+        durationMs: snapshot.durationMs,
+        shuffle: snapshot.shuffle,
+        repeat: snapshot.repeat,
+        isPlaying,
+      };
+    }
 
     default:
       return state;

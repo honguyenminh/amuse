@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
-import { catalogReleasePath } from "@/lib/catalog/paths";
+import { catalogReleaseHref } from "@/lib/catalog/paths";
 import { useReleasePlayableClick } from "@/lib/playback/useAltClickAddToQueue";
 import { useReleaseContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import Link from "next/link";
@@ -30,7 +30,7 @@ export function ReleaseTile({ release, subtitle }: ReleaseTileProps) {
 
   return (
     <Link
-      href={catalogReleasePath(release.artistSlug, release.slug)}
+      href={catalogReleaseHref(release.artistSlug, release.slug, { title: release.title })}
       className="group block"
       onClick={onClick}
       onContextMenu={onContextMenu}

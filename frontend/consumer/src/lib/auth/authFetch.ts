@@ -1,24 +1,41 @@
 import { refreshTokens } from "@/lib/api/identityClient";
 import type { PersonaContextRequest } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/types";
+import { listenerBootstrapContext } from "./listenerBootstrapContext";
 import { getAccessToken, getListenerId, setAccessToken } from "./sessionStore";
 import { withRefreshLock } from "./refreshLock";
 
-function listenerContext(): PersonaContextRequest {
-  const id = getListenerId();
-  if (!id) {
-    throw new ApiError("Listener profile is not ready.", 400, "listener.not_ready");
+function refreshContext(): PersonaContextRequest {
+  const listenerId = getListenerId();
+  if (listenerId) {
+    return { type: "listener", orgId: null, listenerId };
   }
-  return { type: "listener", orgId: null, listenerId: id };
+  return listenerBootstrapContext;
+}
+
+/** Refresh the in-memory access token from the HTTP-only refresh cookie. */
+export async function refreshAccessToken(): Promise<string | null> {
+  try {
+    return await withRefreshLock(async () => {
+      const refreshed = await refreshTokens(refreshContext());
+      setAccessToken(refreshed.accessToken);
+      return refreshed.accessToken;
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function authFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const token = getAccessToken();
+  let token = getAccessToken();
   if (!token) {
-    throw new ApiError("Not authenticated.", 401, "auth.not_authenticated");
+    token = await refreshAccessToken();
+    if (!token) {
+      throw new ApiError("Not authenticated.", 401, "auth.not_authenticated");
+    }
   }
 
   try {
@@ -28,13 +45,12 @@ export async function authFetch<T>(
       throw error;
     }
 
-    const newToken = await withRefreshLock(async () => {
-      const refreshed = await refreshTokens(listenerContext());
-      setAccessToken(refreshed.accessToken);
-      return refreshed.accessToken;
-    });
+    const refreshedToken = await refreshAccessToken();
+    if (!refreshedToken) {
+      throw new ApiError("Not authenticated.", 401, "auth.not_authenticated");
+    }
 
-    return fetchJson<T>(path, newToken, init);
+    return fetchJson<T>(path, refreshedToken, init);
   }
 }
 

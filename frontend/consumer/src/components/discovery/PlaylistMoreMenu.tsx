@@ -3,8 +3,9 @@
 import { AnchoredPopup } from "@/components/ui/AnchoredPopup";
 import { OverflowMenuButton } from "@/components/ui/OverflowMenuButton";
 import { Text } from "@/components/ui/Text";
+import { GlobeIcon, PadlockIcon } from "@/components/ui/VisibilityIcons";
 import { cn } from "@/lib/cn";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 type PlaylistMoreMenuProps = {
   reorderMode: boolean;
@@ -22,11 +23,13 @@ type PlaylistMoreMenuProps = {
 
 function MenuItem({
   label,
+  icon,
   destructive,
   disabled,
   onClick,
 }: {
   label: string;
+  icon?: ReactNode;
   destructive?: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -41,7 +44,10 @@ function MenuItem({
       )}
       onClick={onClick}
     >
-      <Text variant="body-medium">{label}</Text>
+      <span className="flex items-center gap-2">
+        {icon}
+        <Text variant="body-medium">{label}</Text>
+      </span>
     </button>
   );
 }
@@ -100,6 +106,13 @@ export function PlaylistMoreMenu({
         />
         <MenuItem
           label={visibility === "public" ? "Make private" : "Make public"}
+          icon={
+            visibility === "public" ? (
+              <PadlockIcon className="shrink-0" />
+            ) : (
+              <GlobeIcon className="shrink-0" />
+            )
+          }
           disabled={!canEdit || busy}
           onClick={() => {
             close();

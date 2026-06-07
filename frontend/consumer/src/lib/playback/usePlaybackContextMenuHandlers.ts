@@ -40,6 +40,13 @@ type TrackRemoveAction = {
   onSelect: () => void;
 };
 
+type TrackContextMenuOptions = {
+  isLiked?: boolean;
+  remove?: TrackRemoveAction;
+  /** Hides "Add to queue" and makes "Play next" reorder within the existing queue. */
+  inQueue?: boolean;
+};
+
 function trackContextMenuItems(
   track: PlaybackTrack,
   hasAudio: boolean,
@@ -47,23 +54,28 @@ function trackContextMenuItems(
   isLiked: boolean | undefined,
   addToQueue: (tracks: PlaybackTrack[]) => void,
   playNext: (tracks: PlaybackTrack[]) => void,
+  moveToPlayNext: (trackId: string) => void,
   playlistChildren: PlaybackContextMenuItem[],
-  remove?: TrackRemoveAction,
+  options?: Pick<TrackContextMenuOptions, "inQueue" | "remove">,
 ): PlaybackContextMenuItem[] {
-  const items: PlaybackContextMenuItem[] = [
-    {
+  const items: PlaybackContextMenuItem[] = [];
+
+  if (!options?.inQueue) {
+    items.push({
       id: "add-to-queue",
       label: "Add to queue",
       disabled: !hasAudio,
       onSelect: () => addToQueue([track]),
-    },
-    {
-      id: "play-next",
-      label: "Play next",
-      disabled: !hasAudio,
-      onSelect: () => playNext([track]),
-    },
-  ];
+    });
+  }
+
+  items.push({
+    id: "play-next",
+    label: "Play next",
+    disabled: !hasAudio,
+    onSelect: () =>
+      options?.inQueue ? moveToPlayNext(track.id) : playNext([track]),
+  });
 
   if (!isAuthenticated) {
     items.push({
@@ -87,11 +99,11 @@ function trackContextMenuItems(
     items.push(addToLikedMenuItem([track.id]));
   }
 
-  if (remove) {
+  if (options?.remove) {
     items.push({
       id: "remove-track",
-      label: remove.label,
-      onSelect: remove.onSelect,
+      label: options.remove.label,
+      onSelect: options.remove.onSelect,
     });
   }
 
@@ -143,14 +155,18 @@ async function ownedPlaylistsForPicker() {
 export function useTrackContextMenu(
   track: PlaybackTrack,
   hasAudio: boolean,
-  options?: { isLiked?: boolean; remove?: TrackRemoveAction },
+  options?: TrackContextMenuOptions,
 ) {
   const auth = useAuth();
-  const { addToQueue, playNext } = usePlayback();
+  const { addToQueue, playNext, moveToPlayNext } = usePlayback();
   const { openAt } = usePlaybackContextMenu();
 
   const openMenuAt = useCallback(
     (x: number, y: number) => {
+      const menuOptions = options
+        ? { inQueue: options.inQueue, remove: options.remove }
+        : undefined;
+
       if (!auth.isAuthenticated) {
         openAt(
           x,
@@ -162,8 +178,9 @@ export function useTrackContextMenu(
             options?.isLiked,
             addToQueue,
             playNext,
+            moveToPlayNext,
             [],
-            options?.remove,
+            menuOptions,
           ),
         );
         return;
@@ -183,8 +200,9 @@ export function useTrackContextMenu(
               options?.isLiked,
               addToQueue,
               playNext,
+              moveToPlayNext,
               playlistPickerItems(owned, [track.id]),
-              options?.remove,
+              menuOptions,
             ),
           );
         })
@@ -205,10 +223,12 @@ export function useTrackContextMenu(
       track,
       hasAudio,
       options?.isLiked,
+      options?.inQueue,
       options?.remove,
       auth.isAuthenticated,
       addToQueue,
       playNext,
+      moveToPlayNext,
       openAt,
     ],
   );
