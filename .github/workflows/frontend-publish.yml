@@ -3,7 +3,7 @@ name: Frontend Publish
 on:
   workflow_run:
     workflows:
-      - Backend CI
+      - Frontend CI
     types:
       - completed
     branches:
@@ -11,6 +11,11 @@ on:
       - staging
       - production
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Optional floating tag override (default is branch name)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -65,22 +70,84 @@ jobs:
             SHA="${GITHUB_SHA}"
             BRANCH="${GITHUB_REF_NAME}"
             EVENT="push"
+            FLOATING_OVERRIDE="${{ inputs.image_tag }}"
           else
             SHA="${{ github.event.workflow_run.head_sha }}"
             BRANCH="${{ github.event.workflow_run.head_branch }}"
             EVENT="${{ github.event.workflow_run.event }}"
+            FLOATING_OVERRIDE=""
           fi
           SHORT_SHA="${SHA:0:7}"
-          if [ "${EVENT}" = "pull_request" ]; then
+          if [ -n "${FLOATING_OVERRIDE}" ]; then
+            FLOATING_TAG="${FLOATING_OVERRIDE}"
+          elif [ "${EVENT}" = "pull_request" ]; then
             FLOATING_TAG="pr-${{ github.event.workflow_run.pull_requests[0].number }}"
           else
             FLOATING_TAG="${BRANCH}"
           fi
+          case "${FLOATING_TAG}" in
+            master|pr-*)
+              API_URL="https://api.skynet-beta.m8.io.vn"
+              ;;
+            staging)
+              API_URL="https://api.staging.amuse.local"
+              ;;
+            production)
+              API_URL="https://api.amuse.local"
+              ;;
+            *)
+              API_URL="https://api.example.com"
+              ;;
+          esac
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "floating_tag=${FLOATING_TAG}" >> "$GITHUB_OUTPUT"
+          echo "api_base_url=${API_URL}" >> "$GITHUB_OUTPUT"
+          echo "scan_tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:scan-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "push_tags=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${FLOATING_TAG},ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "source_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          else
+            echo "source_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Build and push
+      - name: Build image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v6.15.0
+        with:
+          context: frontend
+          file: ${{ matrix.dockerfile }}
+          load: true
+          push: false
+          tags: ${{ steps.tags.outputs.scan_tag }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ steps.tags.outputs.api_base_url }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.tags.outputs.source_sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.tags.outputs.scan_tag }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          scanners: vuln
+          ignore-unfixed: true
+          limit-severities-for-sarif: true
+          exit-code: 1
+          trivy-config: trivy.yaml
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-${{ matrix.image }}
+
+      - name: Push image
+        if: success()
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v6.15.0
         with:
           context: frontend
@@ -88,4 +155,8 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.push_tags }}
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+            NEXT_PUBLIC_API_BASE_URL=${{ steps.tags.outputs.api_base_url }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.tags.outputs.source_sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.image }}

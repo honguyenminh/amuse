@@ -28,8 +28,11 @@ Promotion:
 | Backend CI | [`.github/workflows/backend-ci.yml`](../../.github/workflows/backend-ci.yml) | PR + push to `master`/`staging`/`production` (`backend/**`) |
 | Backend Dependency Review | [`.github/workflows/backend-dependency-review.yml`](../../.github/workflows/backend-dependency-review.yml) | PR only (`backend/**`) |
 | Backend CodeQL | [`.github/workflows/backend-codeql.yml`](../../.github/workflows/backend-codeql.yml) | Same + weekly Monday 06:00 UTC |
-| Backend Publish | [`.github/workflows/backend-publish.yml`](../../.github/workflows/backend-publish.yml) | After successful Backend CI on push to env branches, or **PR → `master`** |
-| Backend Deploy | [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml) | Auto after publish (push or PR to `master`); manual for `staging`/`production` |
+| Backend Publish | [`.github/workflows/backend-publish.yml`](../../.github/workflows/backend-publish.yml) | After successful Backend CI, **PR → `master`**, or `workflow_dispatch` |
+| Frontend CI | [`.github/workflows/frontend-ci.yml`](../../.github/workflows/frontend-ci.yml) | PR + push (`frontend/**`) |
+| Frontend Dependency Review | [`.github/workflows/frontend-dependency-review.yml`](../../.github/workflows/frontend-dependency-review.yml) | PR only (`frontend/**`) |
+| Frontend Publish | [`.github/workflows/frontend-publish.yml`](../../.github/workflows/frontend-publish.yml) | After successful Frontend CI, **PR → `master`**, or `workflow_dispatch` |
+| Deploy | [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml) | Auto after **Backend or Frontend Publish** (push or PR to `master`); manual for `staging`/`production` |
 
 ### CI jobs (ordered with `needs` blockers)
 
@@ -103,9 +106,9 @@ Enable in repository settings:
 - **`master`**: require Backend CI on PRs (direct pushes allowed for fast QA — team choice)
 - **Environments:** `development`, `staging`, `production` (add required reviewers on `production` before real deploys)
 
-## Related workflows
+## Related docs & workflows
 
-| Workflow | File |
-|----------|------|
+| Item | Location |
+|------|----------|
+| Frontend CI/CD | [../frontend/ci-cd.md](../frontend/ci-cd.md) |
 | Sync manifests to deploy repo | [`.github/workflows/sync-kubernetes-manifests.yml`](../../.github/workflows/sync-kubernetes-manifests.yml) |
-| Frontend Publish | [`.github/workflows/frontend-publish.yml`](../../.github/workflows/frontend-publish.yml) |

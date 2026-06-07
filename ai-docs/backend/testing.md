@@ -57,7 +57,7 @@ If Docker is unavailable, tests fail with `DockerUnavailableException` — expec
 ## CI recommendation
 
 - Job with Docker-in-Docker (or sibling Docker socket).
-- `dotnet test` on solution including integration project.
+- `dotnet test backend.slnx` on the solution (includes integration + `Amuse.Modules.Identity.Tests`).
 - Do **not** rely on startup migrations in the test host — fixture migrates explicitly.
 
 ## Manual vs automated parity

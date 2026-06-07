@@ -104,6 +104,9 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
+      - name: Verify Docker (Testcontainers)
+        run: docker info
+
       - name: Restore
         run: dotnet restore backend.slnx
 
