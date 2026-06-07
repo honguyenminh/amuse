@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Amuse.Worker.Transcoder;
 
-internal sealed class LoudnormAnalyzer(
+internal sealed partial class LoudnormAnalyzer(
     Func<string, Guid, Guid, CancellationToken, Task<FfmpegRunResult>> runFfmpegAsync,
     ILogger<LoudnormAnalyzer> logger)
 {
@@ -30,12 +30,7 @@ internal sealed class LoudnormAnalyzer(
         var analysis = LoudnormJsonParser.Parse(result.Stdout, result.Stderr);
 
         if (!string.Equals(analysis.NormalizationType, "linear", StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning(
-                "loudnorm analyze predicted dynamic normalization for track {TrackId} (job {JobId}); storing TP-capped linear gain.",
-                trackId,
-                jobId);
-        }
+            LogDynamicNormalizationPredicted(trackId, jobId);
 
         return TrackLoudnessProfile.FromAnalysis(
             analysis.IntegratedLufs,
