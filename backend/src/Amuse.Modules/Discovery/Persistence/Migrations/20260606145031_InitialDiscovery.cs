@@ -8,6 +8,12 @@ namespace Amuse.Modules.Discovery.Persistence.Migrations
     /// <inheritdoc />
     public partial class InitialDiscovery : Migration
     {
+        private static readonly string[] LibraryEntryListenerKindColumns = ["listener_profile_id", "kind"];
+        private static readonly string[] LibraryEntryListenerKindTargetColumns = ["listener_profile_id", "kind", "target_id"];
+        private static readonly string[] PlaylistVisibilityTitleColumns = ["visibility", "title"];
+        private static readonly string[] PlaylistItemPlaylistPositionColumns = ["playlist_id", "position"];
+        private static readonly string[] PlaylistItemPlaylistTrackColumns = ["playlist_id", "track_id"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -129,13 +135,13 @@ namespace Amuse.Modules.Discovery.Persistence.Migrations
                 name: "IX_library_entry_listener_profile_id_kind",
                 schema: "discovery",
                 table: "library_entry",
-                columns: new[] { "listener_profile_id", "kind" });
+                columns: LibraryEntryListenerKindColumns);
 
             migrationBuilder.CreateIndex(
                 name: "IX_library_entry_listener_profile_id_kind_target_id",
                 schema: "discovery",
                 table: "library_entry",
-                columns: new[] { "listener_profile_id", "kind", "target_id" },
+                columns: LibraryEntryListenerKindTargetColumns,
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -148,7 +154,7 @@ namespace Amuse.Modules.Discovery.Persistence.Migrations
                 name: "IX_playlist_visibility_title",
                 schema: "discovery",
                 table: "playlist",
-                columns: new[] { "visibility", "title" });
+                columns: PlaylistVisibilityTitleColumns);
 
             migrationBuilder.CreateIndex(
                 name: "IX_playlist_follow_playlist_id",
@@ -160,14 +166,14 @@ namespace Amuse.Modules.Discovery.Persistence.Migrations
                 name: "IX_playlist_item_playlist_id_position",
                 schema: "discovery",
                 table: "playlist_item",
-                columns: new[] { "playlist_id", "position" },
+                columns: PlaylistItemPlaylistPositionColumns,
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_playlist_item_playlist_id_track_id",
                 schema: "discovery",
                 table: "playlist_item",
-                columns: new[] { "playlist_id", "track_id" },
+                columns: PlaylistItemPlaylistTrackColumns,
                 unique: true);
         }
 

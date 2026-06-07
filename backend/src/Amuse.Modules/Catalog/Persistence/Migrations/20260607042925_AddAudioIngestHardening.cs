@@ -8,6 +8,9 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
     /// <inheritdoc />
     public partial class AddAudioIngestHardening : Migration
     {
+        private static readonly string[] AudioMasterUploadIntentTrackConsumedAtColumns = ["track_id", "consumed_at"];
+        private static readonly string[] OutboxMessageProcessedAtCreatedAtColumns = ["processed_at", "created_at"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -65,13 +68,13 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_audio_master_upload_intent_track_id_consumed_at",
                 schema: "catalog",
                 table: "audio_master_upload_intent",
-                columns: new[] { "track_id", "consumed_at" });
+                columns: AudioMasterUploadIntentTrackConsumedAtColumns);
 
             migrationBuilder.CreateIndex(
                 name: "IX_outbox_message_processed_at_created_at",
                 schema: "catalog",
                 table: "outbox_message",
-                columns: new[] { "processed_at", "created_at" },
+                columns: OutboxMessageProcessedAtCreatedAtColumns,
                 filter: "processed_at IS NULL");
         }
 

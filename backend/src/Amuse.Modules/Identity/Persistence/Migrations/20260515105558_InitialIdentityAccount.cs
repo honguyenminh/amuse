@@ -8,6 +8,8 @@ namespace Amuse.Modules.Identity.Persistence.Migrations
     /// <inheritdoc />
     public partial class InitialIdentityAccount : Migration
     {
+        private static readonly string[] ExternalLoginIdpIssuerSubjectColumns = ["idp_issuer", "idp_subject"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -33,7 +35,7 @@ namespace Amuse.Modules.Identity.Persistence.Migrations
                 name: "IX_account_idp_issuer_idp_subject",
                 schema: "identity",
                 table: "account",
-                columns: new[] { "idp_issuer", "idp_subject" },
+                columns: ExternalLoginIdpIssuerSubjectColumns,
                 unique: true);
         }
 

@@ -8,6 +8,8 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
     /// <inheritdoc />
     public partial class AddReleaseCollaborators : Migration
     {
+        private static readonly string[] ReleaseCollaboratorReleaseDisplayOrderColumns = ["release_id", "display_order"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -63,7 +65,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_release_collaborator_release_id_display_order",
                 schema: "catalog",
                 table: "release_collaborator",
-                columns: new[] { "release_id", "display_order" });
+                columns: ReleaseCollaboratorReleaseDisplayOrderColumns);
         }
 
         /// <inheritdoc />

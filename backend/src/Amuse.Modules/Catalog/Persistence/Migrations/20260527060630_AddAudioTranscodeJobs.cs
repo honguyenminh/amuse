@@ -8,6 +8,8 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
     /// <inheritdoc />
     public partial class AddAudioTranscodeJobs : Migration
     {
+        private static readonly string[] AudioTranscodeJobStatusCreatedAtColumns = ["status", "created_at"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -48,7 +50,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_audio_transcode_job_status_created_at",
                 schema: "catalog",
                 table: "audio_transcode_job",
-                columns: new[] { "status", "created_at" });
+                columns: AudioTranscodeJobStatusCreatedAtColumns);
 
             migrationBuilder.CreateIndex(
                 name: "IX_audio_transcode_job_track_id",

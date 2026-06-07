@@ -9,6 +9,10 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
     /// <inheritdoc />
     public partial class AddCatalogManagementModel : Migration
     {
+        private static readonly string[] TrackOrganizationLifecycleStatusColumns = ["organization_id", "lifecycle_status"];
+        private static readonly string[] ReleaseOrganizationLifecycleStatusReleaseDateColumns = ["organization_id", "lifecycle_status", "release_date"];
+        private static readonly string[] ReleaseGroupOrganizationSlugColumns = ["organization_id", "slug"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -120,13 +124,13 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_track_organization_id_lifecycle_status",
                 schema: "catalog",
                 table: "track",
-                columns: new[] { "organization_id", "lifecycle_status" });
+                columns: TrackOrganizationLifecycleStatusColumns);
 
             migrationBuilder.CreateIndex(
                 name: "IX_release_organization_id_lifecycle_status_release_date",
                 schema: "catalog",
                 table: "release",
-                columns: new[] { "organization_id", "lifecycle_status", "release_date" });
+                columns: ReleaseOrganizationLifecycleStatusReleaseDateColumns);
 
             migrationBuilder.CreateIndex(
                 name: "IX_release_release_group_id",
@@ -144,7 +148,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_release_group_organization_id_slug",
                 schema: "catalog",
                 table: "release_group",
-                columns: new[] { "organization_id", "slug" },
+                columns: ReleaseGroupOrganizationSlugColumns,
                 unique: true);
 
             migrationBuilder.Sql("""

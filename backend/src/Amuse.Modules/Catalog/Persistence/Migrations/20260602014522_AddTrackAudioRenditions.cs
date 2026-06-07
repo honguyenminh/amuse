@@ -9,6 +9,8 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
     /// <inheritdoc />
     public partial class AddTrackAudioRenditions : Migration
     {
+        private static readonly string[] TrackAudioRenditionTrackCodecBitrateColumns = ["track_id", "codec", "bitrate_kbps"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -59,7 +61,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_track_audio_rendition_track_id_codec_bitrate_kbps",
                 schema: "catalog",
                 table: "track_audio_rendition",
-                columns: new[] { "track_id", "codec", "bitrate_kbps" },
+                columns: TrackAudioRenditionTrackCodecBitrateColumns,
                 unique: true);
         }
 

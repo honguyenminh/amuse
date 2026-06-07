@@ -8,6 +8,9 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
     /// <inheritdoc />
     public partial class AddArtistScopedReleaseGroups : Migration
     {
+        private static readonly string[] ReleaseGroupArtistSlugColumns = ["artist_id", "slug"];
+        private static readonly string[] ReleaseGroupOrganizationSlugColumns = ["organization_id", "slug"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -55,7 +58,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_release_group_artist_id_slug",
                 schema: "catalog",
                 table: "release_group",
-                columns: new[] { "artist_id", "slug" },
+                columns: ReleaseGroupArtistSlugColumns,
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -102,7 +105,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_release_group_organization_id_slug",
                 schema: "catalog",
                 table: "release_group",
-                columns: new[] { "organization_id", "slug" },
+                columns: ReleaseGroupOrganizationSlugColumns,
                 unique: true);
         }
     }

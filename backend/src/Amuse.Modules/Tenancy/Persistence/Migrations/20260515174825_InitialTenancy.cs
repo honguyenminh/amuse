@@ -8,6 +8,8 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
     /// <inheritdoc />
     public partial class InitialTenancy : Migration
     {
+        private static readonly string[] OrganizationMemberOrgAccountColumns = ["organization_id", "account_id"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -42,7 +44,7 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
                 name: "IX_organization_member_organization_id_account_id",
                 schema: "tenancy",
                 table: "organization_member",
-                columns: new[] { "organization_id", "account_id" },
+                columns: OrganizationMemberOrgAccountColumns,
                 unique: true);
         }
 

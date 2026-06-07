@@ -8,6 +8,8 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
     /// <inheritdoc />
     public partial class AddOrganizationInvitesAndMigrateClaims : Migration
     {
+        private static readonly string[] OrganizationInviteOrgEmailStatusColumns = ["organization_id", "email", "status"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -45,7 +47,7 @@ namespace Amuse.Modules.Tenancy.Persistence.Migrations
                 name: "IX_organization_invite_organization_id_email_status",
                 schema: "tenancy",
                 table: "organization_invite",
-                columns: new[] { "organization_id", "email", "status" },
+                columns: OrganizationInviteOrgEmailStatusColumns,
                 unique: true,
                 filter: "status = 'Pending'");
 

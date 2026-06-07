@@ -9,6 +9,9 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
     /// <inheritdoc />
     public partial class InitialCatalog : Migration
     {
+        private static readonly string[] ReleaseArtistSlugColumns = ["artist_id", "slug"];
+        private static readonly string[] TrackReleaseTrackNumberColumns = ["release_id", "track_number"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -90,7 +93,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_release_artist_id_slug",
                 schema: "catalog",
                 table: "release",
-                columns: new[] { "artist_id", "slug" },
+                columns: ReleaseArtistSlugColumns,
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -103,7 +106,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                 name: "IX_track_release_id_track_number",
                 schema: "catalog",
                 table: "track",
-                columns: new[] { "release_id", "track_number" },
+                columns: TrackReleaseTrackNumberColumns,
                 unique: true);
         }
 
