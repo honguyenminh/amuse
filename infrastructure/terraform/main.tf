@@ -116,6 +116,10 @@ module "argocd" {
 module "agc_controller" {
   source = "./modules/agc-controller"
 
+  providers = {
+    kubectl = kubectl
+  }
+
   namespace          = var.agc_controller_namespace
   alb_id             = module.app-gw.alb_id
   frontend_name      = var.agc_frontend_name

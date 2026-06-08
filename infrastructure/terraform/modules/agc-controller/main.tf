@@ -4,17 +4,29 @@ resource "kubernetes_namespace_v1" "this" {
   }
 }
 
-resource "helm_release" "gateway_api_crds" {
-  name       = "gateway-api"
-  repository = "https://kubernetes-sigs.github.io/gateway-api"
-  chart      = "gateway-api"
-  version    = var.gateway_api_chart_version
-  namespace  = "gateway-system"
+# Official Gateway API standard channel (no Helm chart index — upstream recommends kubectl).
+data "http" "gateway_api_standard_install" {
+  url = "https://github.com/kubernetes-sigs/gateway-api/releases/download/v${var.gateway_api_version}/standard-install.yaml"
 
-  create_namespace = true
-  atomic           = true
-  timeout          = var.timeout
-  wait             = true
+  lifecycle {
+    postcondition {
+      condition     = self.status_code == 200
+      error_message = "Gateway API standard-install.yaml not found for version ${var.gateway_api_version} (HTTP ${self.status_code})."
+    }
+  }
+}
+
+data "kubectl_file_documents" "gateway_api_crds" {
+  content = data.http.gateway_api_standard_install.response_body
+}
+
+resource "kubectl_manifest" "gateway_api_crds" {
+  for_each = toset(data.kubectl_file_documents.gateway_api_crds.documents)
+
+  yaml_body         = each.value
+  server_side_apply = true
+
+  depends_on = [kubernetes_namespace_v1.this]
 }
 
 resource "helm_release" "alb_controller" {
@@ -30,12 +42,14 @@ resource "helm_release" "alb_controller" {
 
   depends_on = [
     kubernetes_namespace_v1.this,
-    helm_release.gateway_api_crds,
+    kubectl_manifest.gateway_api_crds,
   ]
 }
 
-resource "kubernetes_manifest" "application_load_balancer" {
-  manifest = {
+# kubectl_manifest applies at runtime (no plan-time CRD lookup). kubernetes_manifest
+# fails when CRDs are installed in the same apply — see hashicorp/terraform-provider-kubernetes#1917.
+resource "kubectl_manifest" "application_load_balancer" {
+  yaml_body = yamlencode({
     apiVersion = "alb.networking.azure.io/v1"
     kind       = "ApplicationLoadBalancer"
     metadata = {
@@ -49,13 +63,16 @@ resource "kubernetes_manifest" "application_load_balancer" {
         }
       ]
     }
-  }
+  })
 
-  depends_on = [helm_release.alb_controller]
+  depends_on = [
+    kubectl_manifest.gateway_api_crds,
+    helm_release.alb_controller,
+  ]
 }
 
-resource "kubernetes_manifest" "gateway_class" {
-  manifest = {
+resource "kubectl_manifest" "gateway_class" {
+  yaml_body = yamlencode({
     apiVersion = "gateway.networking.k8s.io/v1"
     kind       = "GatewayClass"
     metadata = {
@@ -64,7 +81,10 @@ resource "kubernetes_manifest" "gateway_class" {
     spec = {
       controllerName = "alb.networking.azure.io/alb-controller"
     }
-  }
+  })
 
-  depends_on = [helm_release.alb_controller]
+  depends_on = [
+    kubectl_manifest.gateway_api_crds,
+    helm_release.alb_controller,
+  ]
 }

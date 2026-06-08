@@ -15,12 +15,11 @@ locals {
 resource "azurerm_federated_identity_credential" "amuse_keyvault" {
   for_each = local.amuse_workload_identities
 
-  name                = "${var.resource_prefix}-amuse-${each.key}-kv-fic"
-  resource_group_name = local.rg_name
-  parent_id           = module.key_vault.access_identity_id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = module.aks.oidc_issuer_url
-  subject             = "system:serviceaccount:${var.amuse_namespace}:${each.value.service_account}"
+  name                         = "${var.resource_prefix}-amuse-${each.key}-kv-fic"
+  user_assigned_identity_id    = module.key_vault.access_identity_id
+  audience                     = ["api://AzureADTokenExchange"]
+  issuer                       = module.aks.oidc_issuer_url
+  subject                      = "system:serviceaccount:${var.amuse_namespace}:${each.value.service_account}"
 
   depends_on = [
     module.aks,

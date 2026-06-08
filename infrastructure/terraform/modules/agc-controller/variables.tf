@@ -13,9 +13,10 @@ variable "chart_version" {
   default = "1.2.9"
 }
 
-variable "gateway_api_chart_version" {
-  type    = string
-  default = "1.2.1"
+variable "gateway_api_version" {
+  description = "Gateway API release tag (standard-install.yaml), e.g. 1.2.1 — see kubernetes-sigs/gateway-api releases."
+  type        = string
+  default     = "1.2.1"
 }
 
 variable "timeout" {

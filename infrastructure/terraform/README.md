@@ -38,6 +38,10 @@ Application images are built and published to **GHCR** by GitHub Actions — not
 
 **AKS `maxSurge and maxUnavailable cannot both be 0`** — Keep `aks_node_upgrade_max_surge = "1"` (default). Do not set it to `"0"` unless the azurerm provider gains `max_unavailable` support.
 
+**AGC `no matches for kind "ApplicationLoadBalancer"` / `GatewayClass` (CRD may not be installed)** — The AGC module uses `kubectl_manifest` (not `kubernetes_manifest`) for ALB/GatewayClass. Gateway API CRDs come from the official `standard-install.yaml` release manifest (there is no stable Helm repo at `kubernetes-sigs.github.io/gateway-api`). Re-run `terraform apply` if a prior run partially succeeded.
+
+**Gateway API Helm `404` on index.yaml** — Expected; use the pinned `gateway_api_version` (default `1.2.1`) HTTP install instead.
+
 ## Prerequisites
 
 - Azure CLI + Terraform >= 1.11

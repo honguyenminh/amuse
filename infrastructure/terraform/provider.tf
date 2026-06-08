@@ -22,6 +22,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.36"
     }
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = "~> 2.1.3"
+    }
   }
 
   # Configure remote state before first team apply (see README.md).
@@ -57,4 +61,12 @@ provider "helm" {
     client_key             = base64decode(module.aks.kube_config_client_key)
     cluster_ca_certificate = base64decode(module.aks.kube_config_cluster_ca_certificate)
   }
+}
+
+provider "kubectl" {
+  host                   = module.aks.kube_config_host
+  client_certificate     = base64decode(module.aks.kube_config_client_certificate)
+  client_key             = base64decode(module.aks.kube_config_client_key)
+  cluster_ca_certificate = base64decode(module.aks.kube_config_cluster_ca_certificate)
+  load_config_file       = false
 }
