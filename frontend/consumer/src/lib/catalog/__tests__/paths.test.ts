@@ -34,11 +34,14 @@ describe("catalogReleasePathFromSummary", () => {
       catalogReleasePathFromSummary({
         id: "rel-1",
         slug: "midnight-drive",
+        artistId: "artist-1",
+        artistName: "Aurora Lights",
         artistSlug: "aurora-lights",
         title: "Midnight Drive",
         releaseType: "album",
         releaseDate: "2024-01-01T00:00:00Z",
         coverArtUrl: null,
+        trustTier: "platformVerified",
       }),
     ).toContain("title=Midnight+Drive");
   });
