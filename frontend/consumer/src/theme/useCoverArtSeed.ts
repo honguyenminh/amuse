@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { deterministicSeedFromString, extractSeedFromImage } from "./extractSeedFromImage";
 import type { ColorSeed } from "./types";
 
@@ -12,35 +12,40 @@ type UseCoverArtSeedOptions = {
 /**
  * Resolve a `ColorSeed` from a cover art URL.
  *
- * When `initialSeed` is provided (SSR pages), it is used immediately with no
- * client-side re-extraction to avoid palette flashes after hydration.
+ * When `initialSeed` is provided (SSR pages), it is returned synchronously with
+ * no client-side re-extraction to avoid palette flashes after hydration.
  *
- * Otherwise waits for canvas extraction and falls back to a deterministic hash
- * of the URL only when extraction fails.
+ * Otherwise uses a deterministic hash immediately (legacy behavior), then
+ * replaces it when canvas extraction succeeds.
  */
 export function useCoverArtSeed(
   url: string | null | undefined,
   options: UseCoverArtSeedOptions = {},
 ): ColorSeed | null {
   const { initialSeed = null } = options;
-  const [seed, setSeed] = useState<ColorSeed | null>(initialSeed);
+  const [extractedSeed, setExtractedSeed] = useState<ColorSeed | null>(null);
+  const hashSeed = useMemo(
+    () => (url ? deterministicSeedFromString(url) : null),
+    [url],
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (initialSeed) {
-      setSeed(initialSeed);
+      setExtractedSeed(null);
       return;
     }
 
     if (!url) {
-      setSeed(null);
+      setExtractedSeed(null);
       return;
     }
 
     let cancelled = false;
+    setExtractedSeed(null);
 
     void extractSeedFromImage(url).then((extracted) => {
       if (cancelled) return;
-      setSeed(extracted ?? deterministicSeedFromString(url));
+      setExtractedSeed(extracted ?? deterministicSeedFromString(url));
     });
 
     return () => {
@@ -48,5 +53,13 @@ export function useCoverArtSeed(
     };
   }, [url, initialSeed]);
 
-  return seed;
+  if (initialSeed) {
+    return initialSeed;
+  }
+
+  if (!url) {
+    return null;
+  }
+
+  return extractedSeed ?? hashSeed;
 }

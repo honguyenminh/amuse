@@ -9,10 +9,11 @@ import { Text } from "@/components/ui/Text";
 import { ReleaseTile } from "@/components/playback/ReleaseTile";
 import { getCatalogArtist } from "@/lib/api/catalogClient";
 import type { GetArtistDetailResponse, ReleaseType } from "@/lib/api/types";
+import { useServerSyncedDetail } from "@/lib/react/useServerSyncedDetail";
 import type { ColorSeed } from "@/theme/types";
 import { usePageSeed } from "@/theme/ThemeProvider";
 import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 
 const releaseTypeLabel: Record<ReleaseType, string> = {
   single: "Single",
@@ -32,39 +33,16 @@ export function ArtistPageClient({
   initialArtist,
   initialColorSeed = null,
 }: ArtistPageClientProps) {
-  const [artist, setArtist] = useState<GetArtistDetailResponse | null>(initialArtist ?? null);
-  const [error, setError] = useState<string | null>(null);
-  const [resolvedKey, setResolvedKey] = useState<string | null>(
-    initialArtist ? artistKey : null,
+  const fetchArtist = useCallback(
+    () => getCatalogArtist(artistKey),
+    [artistKey],
   );
+  const { detail: artist, pending, error } = useServerSyncedDetail({
+    routeKey: artistKey,
+    initialDetail: initialArtist,
+    fetchDetail: fetchArtist,
+  });
 
-  useEffect(() => {
-    if (initialArtist && resolvedKey === artistKey) {
-      return;
-    }
-
-    let cancelled = false;
-    setError(null);
-    if (!initialArtist || resolvedKey !== artistKey) {
-      setArtist(null);
-    }
-
-    getCatalogArtist(artistKey)
-      .then((response) => {
-        if (!cancelled) {
-          setArtist(response);
-          setResolvedKey(artistKey);
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [artistKey, initialArtist, resolvedKey]);
-
-  const pending = resolvedKey !== artistKey;
   const seed = useCoverArtSeed(artist?.coverUrl ?? artist?.avatarUrl, {
     initialSeed: initialColorSeed,
   });

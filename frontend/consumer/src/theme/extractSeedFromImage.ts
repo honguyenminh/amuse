@@ -1,4 +1,5 @@
 import { clampColorSeed, colorSeedFromWeightedRgba } from "./sampleColorSeed";
+import { isAllowedCoverArtUrl } from "./allowedCoverArtUrl";
 import type { ColorSeed } from "./types";
 
 /**
@@ -16,6 +17,9 @@ import type { ColorSeed } from "./types";
  */
 export async function extractSeedFromImage(url: string): Promise<ColorSeed | null> {
   if (typeof window === "undefined") return null;
+  if (!isAllowedCoverArtUrl(url)) {
+    return deterministicSeedFromString(url);
+  }
   try {
     const img = await loadImage(url);
     return sampleColorSeedFromImage(img);

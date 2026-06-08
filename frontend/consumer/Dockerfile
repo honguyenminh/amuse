@@ -27,8 +27,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs \
-    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+RUN apk add --no-cache vips \
+  && addgroup -S nodejs && adduser -S nextjs -G nodejs \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=builder /app/consumer/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/consumer/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/consumer/.next/static ./.next/static

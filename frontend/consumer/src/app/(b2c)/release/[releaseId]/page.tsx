@@ -1,9 +1,11 @@
+import { ReleasePageView } from "@/components/catalog/ReleasePageView";
 import { isNotFoundError } from "@/lib/api/errors";
 import { getCachedCatalogRelease } from "@/lib/api/catalogServer";
-import { catalogReleasePath } from "@/lib/catalog/paths";
+import { getCachedCoverArtColorSeed } from "@/lib/theme/colorSeedServer";
 import { releaseMetadata } from "@/lib/seo/metadata";
+import { ThemeSeedStyles } from "@/theme/ThemeSeedStyles";
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 export const revalidate = 3600;
 
@@ -27,7 +29,19 @@ export default async function ReleaseByIdPage({ params }: ReleaseByIdPageProps) 
 
   try {
     const release = await getCachedCatalogRelease(releaseId);
-    permanentRedirect(catalogReleasePath(release.artistSlug, release.slug));
+    const colorSeed = release.coverArtUrl
+      ? await getCachedCoverArtColorSeed(release.coverArtUrl)
+      : null;
+    return (
+      <>
+        {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
+        <ReleasePageView
+          releaseId={releaseId}
+          initialRelease={release}
+          initialColorSeed={colorSeed}
+        />
+      </>
+    );
   } catch (error) {
     if (isNotFoundError(error)) notFound();
     throw error;

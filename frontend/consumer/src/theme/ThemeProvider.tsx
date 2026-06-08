@@ -75,8 +75,10 @@ export function useTheme(): ThemeContextValue {
 
 export function usePageSeed(seed: ColorSeed | null): void {
   const { setPageSeed } = useTheme();
+  const seedKey =
+    seed === null ? null : `${seed.l.toFixed(4)}:${seed.c.toFixed(4)}:${seed.h.toFixed(4)}`;
   useLayoutEffect(() => {
     setPageSeed(seed);
     return () => setPageSeed(null);
-  }, [seed, setPageSeed]);
+  }, [seedKey, seed, setPageSeed]);
 }
