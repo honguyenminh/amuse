@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Amuse.Modules.Billing.Services;
 
-internal sealed class StripeWithdrawalExecutionService(
+internal sealed partial class StripeWithdrawalExecutionService(
     BillingDbContext billingDb,
     IGlobalPayoutProvider payoutProvider,
     ILogger<StripeWithdrawalExecutionService> logger)
@@ -48,10 +48,7 @@ internal sealed class StripeWithdrawalExecutionService(
             }
 
             await billingDb.SaveChangesAsync(cancellationToken);
-            logger.LogWarning(
-                "Stripe outbound payout failed for withdrawal {WithdrawalId}: {ErrorCode}",
-                withdrawal.Id.Value,
-                paymentResult.Error?.Code);
+            LogStripeOutboundPayoutFailed(withdrawal.Id.Value, paymentResult.Error?.Code);
             return Result.Failure(paymentResult.Error!);
         }
 

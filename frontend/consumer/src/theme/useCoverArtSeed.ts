@@ -9,6 +9,11 @@ type UseCoverArtSeedOptions = {
   initialSeed?: ColorSeed | null;
 };
 
+type ExtractionState = {
+  url: string;
+  seed: ColorSeed;
+};
+
 /**
  * Resolve a `ColorSeed` from a cover art URL.
  *
@@ -23,29 +28,27 @@ export function useCoverArtSeed(
   options: UseCoverArtSeedOptions = {},
 ): ColorSeed | null {
   const { initialSeed = null } = options;
-  const [extractedSeed, setExtractedSeed] = useState<ColorSeed | null>(null);
+  const [extraction, setExtraction] = useState<ExtractionState | null>(null);
   const hashSeed = useMemo(
     () => (url ? deterministicSeedFromString(url) : null),
     [url],
   );
 
   useLayoutEffect(() => {
-    if (initialSeed) {
-      setExtractedSeed(null);
-      return;
-    }
-
-    if (!url) {
-      setExtractedSeed(null);
+    if (initialSeed || !url) {
       return;
     }
 
     let cancelled = false;
-    setExtractedSeed(null);
 
     void extractSeedFromImage(url).then((extracted) => {
-      if (cancelled) return;
-      setExtractedSeed(extracted ?? deterministicSeedFromString(url));
+      if (cancelled) {
+        return;
+      }
+      setExtraction({
+        url,
+        seed: extracted ?? deterministicSeedFromString(url),
+      });
     });
 
     return () => {
@@ -61,5 +64,5 @@ export function useCoverArtSeed(
     return null;
   }
 
-  return extractedSeed ?? hashSeed;
+  return extraction?.url === url ? extraction.seed : hashSeed;
 }

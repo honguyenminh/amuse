@@ -4,11 +4,10 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   type Dispatch,
-  type MutableRefObject,
   type ReactNode,
   type SetStateAction,
 } from "react";
@@ -22,7 +21,6 @@ type ThemeContextValue = {
   defaultSeed: ColorSeed;
   playingSeed: ColorSeed | null;
   pageSeed: ColorSeed | null;
-  pageSeedRef: MutableRefObject<ColorSeed | null>;
   isPaused: boolean;
   setPlayingSeed: (seed: ColorSeed | null) => void;
   setPageSeed: Dispatch<SetStateAction<ColorSeed | null>>;
@@ -33,7 +31,6 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const pageSeedRef = useRef<ColorSeed | null>(null);
   const [playingSeed, setPlayingSeed] = useState<ColorSeed | null>(null);
   const [pageSeed, setPageSeed] = useState<ColorSeed | null>(null);
   const [isPaused, setPaused] = useState(false);
@@ -42,7 +39,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () =>
       resolveThemeSeed({
         pageSeed,
-        pageSeedRef,
         playingSeed,
         defaultSeed: DEFAULT_APP_SEED,
       }),
@@ -54,7 +50,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       seedToPalette(
         resolveThemeSeed({
           pageSeed,
-          pageSeedRef,
           playingSeed,
           defaultSeed: DEFAULT_APP_SEED,
         }),
@@ -68,7 +63,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       defaultSeed: DEFAULT_APP_SEED,
       playingSeed,
       pageSeed,
-      pageSeedRef,
       isPaused,
       setPlayingSeed,
       setPageSeed,
@@ -92,19 +86,12 @@ export function useTheme(): ThemeContextValue {
 }
 
 export function usePageSeed(seed: ColorSeed | null): void {
-  const { pageSeedRef, setPageSeed } = useTheme();
+  const { setPageSeed } = useTheme();
 
-  // Ref updates during render are safe and visible to ThemeProvider's effect in
-  // the same commit, avoiding a default-palette flash over SSR ThemeSeedStyles.
-  pageSeedRef.current = seed;
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     setPageSeed(seed);
     return () => {
-      if (pageSeedRef.current === seed) {
-        pageSeedRef.current = null;
-      }
       setPageSeed((current) => pageSeedAfterOwnerUnmount(current, seed));
     };
-  }, [pageSeedRef, seed, setPageSeed]);
+  }, [seed, setPageSeed]);
 }

@@ -27,23 +27,26 @@ export async function generateMetadata({ params }: ReleaseGroupPageProps): Promi
 export default async function ReleaseGroupPage({ params }: ReleaseGroupPageProps) {
   const { artistKey, groupSlug } = await params;
 
+  let group;
+  let colorSeed = null;
   try {
-    const group = await getCachedCatalogReleaseGroupBySlugs(artistKey, groupSlug);
+    group = await getCachedCatalogReleaseGroupBySlugs(artistKey, groupSlug);
     const coverUrl = group.releases.find((edition) => edition.coverArtUrl)?.coverArtUrl ?? null;
-    const colorSeed = coverUrl ? await getCachedCoverArtColorSeed(coverUrl) : null;
-    return (
-      <>
-        {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
-        <ReleaseGroupPageClient
-          artistKey={artistKey}
-          groupSlug={groupSlug}
-          initialGroup={group}
-          initialColorSeed={colorSeed}
-        />
-      </>
-    );
+    colorSeed = coverUrl ? await getCachedCoverArtColorSeed(coverUrl) : null;
   } catch (error) {
     if (isNotFoundError(error)) notFound();
     throw error;
   }
+
+  return (
+    <>
+      {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
+      <ReleaseGroupPageClient
+        artistKey={artistKey}
+        groupSlug={groupSlug}
+        initialGroup={group}
+        initialColorSeed={colorSeed}
+      />
+    </>
+  );
 }

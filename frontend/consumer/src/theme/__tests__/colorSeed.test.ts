@@ -49,17 +49,15 @@ describe("pageSeedAfterOwnerUnmount", () => {
 });
 
 describe("resolveThemeSeed", () => {
-  it("prefers the render-time page seed ref over stale pageSeed state", () => {
-    const refSeed = { l: 0.55, c: 0.3, h: 180 };
-    const pageSeedRef = { current: refSeed };
+  it("prefers page seed over playing and default seeds", () => {
+    const pageSeed = { l: 0.55, c: 0.3, h: 180 };
 
     expect(
       resolveThemeSeed({
-        pageSeed: null,
-        pageSeedRef,
-        playingSeed: null,
+        pageSeed,
+        playingSeed: { l: 0.4, c: 0.2, h: 90 },
         defaultSeed: DEFAULT_APP_SEED,
       }),
-    ).toEqual(refSeed);
+    ).toEqual(pageSeed);
   });
 });

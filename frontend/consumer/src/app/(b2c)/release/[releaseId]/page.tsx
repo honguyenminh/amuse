@@ -27,23 +27,26 @@ export async function generateMetadata({ params }: ReleaseByIdPageProps): Promis
 export default async function ReleaseByIdPage({ params }: ReleaseByIdPageProps) {
   const { releaseId } = await params;
 
+  let release;
+  let colorSeed = null;
   try {
-    const release = await getCachedCatalogRelease(releaseId);
-    const colorSeed = release.coverArtUrl
+    release = await getCachedCatalogRelease(releaseId);
+    colorSeed = release.coverArtUrl
       ? await getCachedCoverArtColorSeed(release.coverArtUrl)
       : null;
-    return (
-      <>
-        {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
-        <ReleasePageView
-          releaseId={releaseId}
-          initialRelease={release}
-          initialColorSeed={colorSeed}
-        />
-      </>
-    );
   } catch (error) {
     if (isNotFoundError(error)) notFound();
     throw error;
   }
+
+  return (
+    <>
+      {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
+      <ReleasePageView
+        releaseId={releaseId}
+        initialRelease={release}
+        initialColorSeed={colorSeed}
+      />
+    </>
+  );
 }

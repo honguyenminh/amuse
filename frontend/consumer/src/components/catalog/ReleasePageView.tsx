@@ -109,7 +109,7 @@ export function ReleasePageView({
     return () => {
       cancelled = true;
     };
-  }, [authReady, isAuthenticated, release?.id]);
+  }, [authReady, isAuthenticated, release]);
 
   const handleAcquireFree = useCallback(async () => {
     if (!release) return;

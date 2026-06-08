@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Amuse.Modules.Billing.Services;
 
-internal sealed class PendingToAvailableWorker(
+internal sealed partial class PendingToAvailableWorker(
     IServiceScopeFactory scopeFactory,
     IOptions<BillingSchedulerOptions> options,
     ILogger<PendingToAvailableWorker> logger) : BackgroundService
@@ -28,7 +28,7 @@ internal sealed class PendingToAvailableWorker(
             }
             catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
             {
-                logger.LogError(ex, "Pending-to-available worker iteration failed");
+                LogIterationFailed(ex);
             }
 
             try
@@ -107,10 +107,7 @@ internal sealed class PendingToAvailableWorker(
 
             if (!journalResult.IsSuccess)
             {
-                logger.LogWarning(
-                    "Skipping hold release for purchase {PurchaseId}: {ErrorCode}",
-                    due.ReferenceId,
-                    journalResult.Error?.Code);
+                LogHoldReleaseSkipped(due.ReferenceId, journalResult.Error?.Code);
                 continue;
             }
 
@@ -120,7 +117,7 @@ internal sealed class PendingToAvailableWorker(
         }
 
         if (released > 0)
-            logger.LogInformation("Released pending seller credits for {Count} purchases", released);
+            LogReleasedPendingCredits(released);
 
         return released;
     }

@@ -8,7 +8,7 @@ using Stripe.Checkout;
 
 namespace Amuse.Modules.Billing.Services;
 
-internal sealed class StripeCheckoutProvider(
+internal sealed partial class StripeCheckoutProvider(
     IOptions<StripeConfig> stripeOptions,
     ILogger<StripeCheckoutProvider> logger) : ICheckoutProvider
 {
@@ -64,7 +64,7 @@ internal sealed class StripeCheckoutProvider(
         }
         catch (StripeException ex)
         {
-            logger.LogError(ex, "Stripe checkout session creation failed for purchase {PurchaseId}", request.PurchaseId);
+            LogSessionCreationFailed(ex, request.PurchaseId);
             return Result<CheckoutSessionResult>.Failure(BillingErrors.CheckoutNotConfigured);
         }
     }
@@ -110,7 +110,7 @@ internal sealed class StripeCheckoutProvider(
         }
         catch (StripeException ex)
         {
-            logger.LogError(ex, "Stripe checkout session lookup failed for session {SessionId}", checkoutSessionId);
+            LogSessionLookupFailed(ex, checkoutSessionId);
             return Result<CompletedCheckoutPayment>.Failure(BillingErrors.CheckoutSessionNotFound);
         }
     }
@@ -144,7 +144,7 @@ internal sealed class StripeCheckoutProvider(
         }
         catch (StripeException ex)
         {
-            logger.LogError(ex, "Stripe refund failed for charge {ChargeId}", chargeId);
+            LogRefundFailed(ex, chargeId);
             return Result<RefundChargeResult>.Failure(BillingErrors.RefundProviderFailed);
         }
     }

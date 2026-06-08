@@ -27,23 +27,26 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const { artistKey } = await params;
 
+  let artist;
+  let colorSeed = null;
   try {
-    const artist = await getCachedCatalogArtist(artistKey);
+    artist = await getCachedCatalogArtist(artistKey);
     const coverUrl = artist.coverUrl ?? artist.avatarUrl;
-    const colorSeed = coverUrl ? await getCachedCoverArtColorSeed(coverUrl) : null;
-    return (
-      <>
-        {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
-        <ArtistPageClient
-          key={artistKey}
-          artistKey={artistKey}
-          initialArtist={artist}
-          initialColorSeed={colorSeed}
-        />
-      </>
-    );
+    colorSeed = coverUrl ? await getCachedCoverArtColorSeed(coverUrl) : null;
   } catch (error) {
     if (isNotFoundError(error)) notFound();
     throw error;
   }
+
+  return (
+    <>
+      {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
+      <ArtistPageClient
+        key={artistKey}
+        artistKey={artistKey}
+        initialArtist={artist}
+        initialColorSeed={colorSeed}
+      />
+    </>
+  );
 }

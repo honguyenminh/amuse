@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Amuse.Modules.Billing.Services;
 
-internal sealed class EcbFxRateImporter(
+internal sealed partial class EcbFxRateImporter(
     BillingDbContext billingDb,
     IHttpClientFactory httpClientFactory,
     IOptions<FxRateImportConfig> options,
@@ -36,7 +36,7 @@ internal sealed class EcbFxRateImporter(
 
         if (!cubes.TryGetValue("USD", out var eurToUsd) || eurToUsd <= 0)
         {
-            logger.LogWarning("ECB daily feed missing USD rate; skipping import");
+            LogUsdRateMissing();
             return 0;
         }
 
@@ -66,7 +66,7 @@ internal sealed class EcbFxRateImporter(
 
             if (!cubes.TryGetValue(quoteCurrency, out var eurToQuote) || eurToQuote <= 0)
             {
-                logger.LogDebug("ECB daily feed missing {Currency}; skipping pair", quoteCurrency);
+                LogCurrencyRateMissing(quoteCurrency);
                 continue;
             }
 

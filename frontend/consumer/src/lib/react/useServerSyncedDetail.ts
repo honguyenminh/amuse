@@ -14,6 +14,13 @@ type UseServerSyncedDetailResult<T> = {
   error: string | null;
 };
 
+type FetchState<T> = {
+  routeKey: string;
+  detail: T | null;
+  error: string | null;
+  status: "loading" | "done" | "error";
+};
+
 export function resolveServerSyncedDisplay<T>({
   routeKey,
   resolvedKey,
@@ -40,51 +47,57 @@ export function useServerSyncedDetail<T>({
   initialDetail,
   fetchDetail,
 }: UseServerSyncedDetailOptions<T>): UseServerSyncedDetailResult<T> {
-  const [detail, setDetail] = useState<T | null>(initialDetail ?? null);
-  const [resolvedKey, setResolvedKey] = useState<string | null>(
-    initialDetail ? routeKey : null,
-  );
-  const [error, setError] = useState<string | null>(null);
+  const [fetchState, setFetchState] = useState<FetchState<T> | null>(null);
+
+  const needsFetch = initialDetail == null;
 
   useEffect(() => {
-    setError(null);
-
-    if (initialDetail) {
-      setDetail(initialDetail);
-      setResolvedKey(routeKey);
+    if (!needsFetch) {
       return;
     }
 
     let cancelled = false;
-    setDetail(null);
-    setResolvedKey(null);
 
     void fetchDetail()
       .then((response) => {
         if (!cancelled) {
-          setDetail(response);
-          setResolvedKey(routeKey);
+          setFetchState({
+            routeKey,
+            detail: response,
+            error: null,
+            status: "done",
+          });
         }
       })
       .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
+        if (!cancelled) {
+          setFetchState({
+            routeKey,
+            detail: null,
+            error: err.message,
+            status: "error",
+          });
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [routeKey, initialDetail, fetchDetail]);
+  }, [routeKey, needsFetch, fetchDetail]);
 
-  const { displayDetail, pending } = resolveServerSyncedDisplay({
-    routeKey,
-    resolvedKey,
-    detail,
-    initialDetail,
-  });
+  if (initialDetail != null) {
+    return { detail: initialDetail, pending: false, error: null };
+  }
+
+  const synced = fetchState?.routeKey === routeKey;
+  const pending =
+    fetchState == null || !synced || fetchState.status === "loading";
 
   return {
-    detail: displayDetail,
+    detail:
+      synced && fetchState?.status === "done" ? fetchState.detail : null,
     pending,
-    error,
+    error:
+      synced && fetchState?.status === "error" ? fetchState.error : null,
   };
 }

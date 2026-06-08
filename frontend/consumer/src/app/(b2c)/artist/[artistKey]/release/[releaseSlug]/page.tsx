@@ -34,26 +34,29 @@ export default async function ReleaseBySlugPage({
   const titleHint =
     typeof resolvedSearchParams.title === "string" ? resolvedSearchParams.title : undefined;
 
+  let release;
+  let colorSeed = null;
   try {
-    const release = await getCachedCatalogReleaseBySlugs(artistKey, releaseSlug);
-    const colorSeed = release.coverArtUrl
+    release = await getCachedCatalogReleaseBySlugs(artistKey, releaseSlug);
+    colorSeed = release.coverArtUrl
       ? await getCachedCoverArtColorSeed(release.coverArtUrl)
       : null;
-    return (
-      <>
-        {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
-        <ReleasePageView
-          key={`${artistKey}/${releaseSlug}`}
-          artistKey={artistKey}
-          releaseSlug={releaseSlug}
-          initialRelease={release}
-          initialColorSeed={colorSeed}
-          titleHint={titleHint}
-        />
-      </>
-    );
   } catch (error) {
     if (isNotFoundError(error)) notFound();
     throw error;
   }
+
+  return (
+    <>
+      {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
+      <ReleasePageView
+        key={`${artistKey}/${releaseSlug}`}
+        artistKey={artistKey}
+        releaseSlug={releaseSlug}
+        initialRelease={release}
+        initialColorSeed={colorSeed}
+        titleHint={titleHint}
+      />
+    </>
+  );
 }

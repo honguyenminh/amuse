@@ -11,7 +11,7 @@ using Stripe;
 
 namespace Amuse.Modules.Billing.Features.StripeWebhook;
 
-internal sealed class StripeWebhookHandler(
+internal sealed partial class StripeWebhookHandler(
     BillingDbContext billingDb,
     ICheckoutProvider checkoutProvider,
     PaidPurchaseCompletionService completionService,
@@ -35,7 +35,7 @@ internal sealed class StripeWebhookHandler(
         }
         catch (StripeException ex)
         {
-            logger.LogWarning(ex, "Stripe webhook signature validation failed");
+            LogSignatureValidationFailed(ex);
             return Result.Failure(BillingErrors.WebhookInvalid);
         }
 
@@ -167,11 +167,7 @@ internal sealed class StripeWebhookHandler(
         if (stripeEvent.Data.Object is not Dispute dispute)
             return Result.Failure(BillingErrors.WebhookInvalid);
 
-        logger.LogInformation(
-            "Stripe charge dispute closed: {DisputeId} status={Status} charge={ChargeId}",
-            dispute.Id,
-            dispute.Status,
-            dispute.ChargeId);
+        LogDisputeClosed(dispute.Id, dispute.Status, dispute.ChargeId);
 
         return Result.Success();
     }

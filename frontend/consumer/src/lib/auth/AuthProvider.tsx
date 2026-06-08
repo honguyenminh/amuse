@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<CurrentAccountResponse | null>(null);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
-  const loadSessionDetails = useCallback(async (token: string) => {
+  const loadSessionDetails = useCallback(async (_token: string) => {
     const listenerContextRequest = listenerContext();
     const refreshed = await refreshTokens(listenerContextRequest);
     setAccessToken(refreshed.accessToken);

@@ -2,6 +2,7 @@
 
 import { avatarAccentClass, resolveInitials } from "@/lib/account/avatarAccent";
 import { cn } from "@/lib/cn";
+import Image from "next/image";
 
 type UserAvatarProps = {
   displayName?: string | null;
@@ -18,6 +19,12 @@ const sizeClasses = {
   lg: "size-14 text-base leading-none tracking-normal",
 } as const;
 
+const sizePx = {
+  sm: 32,
+  md: 40,
+  lg: 56,
+} as const;
+
 export function UserAvatar({
   displayName,
   email,
@@ -27,10 +34,14 @@ export function UserAvatar({
   className,
 }: UserAvatarProps) {
   if (avatarUrl) {
+    const px = sizePx[size];
     return (
-      <img
+      <Image
         src={avatarUrl}
         alt=""
+        width={px}
+        height={px}
+        unoptimized
         className={cn(
           "inline-flex shrink-0 rounded-full object-cover",
           sizeClasses[size],

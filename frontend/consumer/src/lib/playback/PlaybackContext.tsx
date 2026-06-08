@@ -702,7 +702,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           if (isPlayingRef.current) {
             await outputRef.current?.playSmooth();
           }
-        } catch (error) {
+        } catch {
           if (isStaleLoad()) return;
           dispatch({ type: "pause" });
           isPlayingRef.current = false;
@@ -710,7 +710,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         }
       });
   }, [
-    currentTrack?.id,
+    currentTrack,
     auth.isReady,
     auth.isAuthenticated,
     resetDashSession,
@@ -803,7 +803,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       audio?.removeEventListener("seeked", onSeeked);
       window.clearInterval(intervalId);
     };
-  }, [currentTrack?.id, applyAutoRenditionIfNeeded, handlePlaybackStall]);
+  }, [currentTrack, applyAutoRenditionIfNeeded]);
 
   const syncPositionFromAudio = useCallback(() => {
     const audio = audioRef.current;
@@ -1191,7 +1191,7 @@ export function usePlaybackPosition(): number {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [audioRef, state.isPlaying, state.currentIndex]);
+  }, [audioRef, state.isPlaying, state.currentIndex, state.positionMs]);
 
   return state.isPlaying ? playheadMs : state.positionMs;
 }

@@ -9,7 +9,6 @@ import { browseCatalogHome } from "@/lib/api/catalogClient";
 import type {
   ArtistSummary,
   BrowseHomeResponse,
-  ReleaseSummary,
   ReleaseType,
 } from "@/lib/api/types";
 import { ReleaseTile } from "@/components/playback/ReleaseTile";

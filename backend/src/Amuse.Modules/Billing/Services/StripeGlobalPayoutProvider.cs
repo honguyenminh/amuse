@@ -7,7 +7,7 @@ using Stripe;
 
 namespace Amuse.Modules.Billing.Services;
 
-internal sealed class StripeGlobalPayoutProvider(
+internal sealed partial class StripeGlobalPayoutProvider(
     IOptions<StripeConfig> stripeOptions,
     ILogger<StripeGlobalPayoutProvider> logger) : IGlobalPayoutProvider
 {
@@ -47,7 +47,7 @@ internal sealed class StripeGlobalPayoutProvider(
         }
         catch (StripeException ex)
         {
-            logger.LogError(ex, "Stripe recipient creation failed for org {OrganizationId}", request.OrganizationId);
+            LogRecipientCreationFailed(ex, request.OrganizationId);
             return Result<StripeRecipientResult>.Failure(BillingErrors.PayoutNotConfigured);
         }
     }
@@ -83,7 +83,7 @@ internal sealed class StripeGlobalPayoutProvider(
         }
         catch (StripeException ex)
         {
-            logger.LogError(ex, "Stripe account link creation failed for recipient {RecipientId}", request.RecipientId);
+            LogAccountLinkCreationFailed(ex, request.RecipientId);
             return Result<AccountLinkResult>.Failure(BillingErrors.PayoutNotConfigured);
         }
     }
@@ -118,10 +118,7 @@ internal sealed class StripeGlobalPayoutProvider(
         }
         catch (StripeException ex)
         {
-            logger.LogError(
-                ex,
-                "Stripe outbound transfer failed for withdrawal {WithdrawalId}",
-                request.WithdrawalId);
+            LogOutboundTransferFailed(ex, request.WithdrawalId);
             return Result<OutboundPaymentResult>.Failure(BillingErrors.PayoutOutboundFailed);
         }
     }

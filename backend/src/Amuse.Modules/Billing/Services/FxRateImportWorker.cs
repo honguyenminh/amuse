@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Amuse.Modules.Billing.Services;
 
-internal sealed class FxRateImportWorker(
+internal sealed partial class FxRateImportWorker(
     IServiceScopeFactory scopeFactory,
     IOptions<FxRateImportConfig> options,
     ILogger<FxRateImportWorker> logger) : BackgroundService
@@ -24,7 +24,7 @@ internal sealed class FxRateImportWorker(
             }
             catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
             {
-                logger.LogError(ex, "FX rate import worker iteration failed");
+                LogIterationFailed(ex);
             }
 
             try
@@ -46,7 +46,7 @@ internal sealed class FxRateImportWorker(
         var imported = await importer.ImportLatestAsync(clock.UtcNow, cancellationToken);
 
         if (imported > 0)
-            logger.LogInformation("Imported {Count} ECB FX rates", imported);
+            LogImportedFxRates(imported);
 
         return imported;
     }

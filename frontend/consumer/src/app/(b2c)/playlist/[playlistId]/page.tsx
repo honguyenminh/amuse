@@ -31,14 +31,24 @@ export async function generateMetadata({ params }: PlaylistPageProps): Promise<M
 export default async function PlaylistPage({ params }: PlaylistPageProps) {
   const { playlistId } = await params;
 
+  let clientFallback = false;
+  let playlist;
   try {
-    const playlist = await getCachedPlaylist(playlistId);
-    return <PlaylistDetailView playlistId={playlistId} initialPlaylist={playlist} />;
+    playlist = await getCachedPlaylist(playlistId);
   } catch (error) {
     if (isNotFoundError(error)) notFound();
     if (shouldFallbackToClientFetch(error)) {
-      return <PlaylistDetailView playlistId={playlistId} />;
+      clientFallback = true;
+    } else {
+      throw error;
     }
-    throw error;
   }
+
+  if (clientFallback) {
+    return <PlaylistDetailView playlistId={playlistId} />;
+  }
+
+  return (
+    <PlaylistDetailView playlistId={playlistId} initialPlaylist={playlist} />
+  );
 }

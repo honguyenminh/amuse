@@ -222,9 +222,7 @@ export function useTrackContextMenu(
     [
       track,
       hasAudio,
-      options?.isLiked,
-      options?.inQueue,
-      options?.remove,
+      options,
       auth.isAuthenticated,
       addToQueue,
       playNext,
