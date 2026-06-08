@@ -327,6 +327,79 @@ describe("playbackReducer", () => {
     });
   });
 
+  describe("removeFromQueue", () => {
+    it("removes an upcoming track without changing the current track", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      const next = playbackReducer(seeded, { type: "removeFromQueue", trackId: "c" });
+      expect(next.queue.map((track) => track.id)).toEqual(["a", "b"]);
+      expect(next.playOrder).toEqual([0, 1]);
+      expect(next.playOrderIndex).toBe(0);
+      expect(next.currentIndex).toBe(0);
+      expect(next.isPlaying).toBe(true);
+    });
+
+    it("removes the current track and plays the next one", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      const next = playbackReducer(seeded, { type: "removeFromQueue", trackId: "a" });
+      expect(next.queue.map((track) => track.id)).toEqual(["b", "c"]);
+      expect(next.playOrder).toEqual([0, 1]);
+      expect(next.playOrderIndex).toBe(0);
+      expect(next.currentIndex).toBe(0);
+      expect(next.queue[next.currentIndex]?.id).toBe("b");
+      expect(next.isPlaying).toBe(true);
+    });
+
+    it("removes the current last track and pauses on the previous track", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 2,
+      });
+      const next = playbackReducer(seeded, { type: "removeFromQueue", trackId: "c" });
+      expect(next.queue.map((track) => track.id)).toEqual(["a", "b"]);
+      expect(next.playOrder).toEqual([0, 1]);
+      expect(next.playOrderIndex).toBe(1);
+      expect(next.currentIndex).toBe(1);
+      expect(next.queue[next.currentIndex]?.id).toBe("b");
+      expect(next.isPlaying).toBe(false);
+    });
+
+    it("removes a played track and keeps the current track", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a"), T("b", 2), T("c", 3)],
+        startIndex: 0,
+      });
+      const advanced = playbackReducer(seeded, { type: "next" });
+      const next = playbackReducer(advanced, { type: "removeFromQueue", trackId: "a" });
+      expect(next.queue.map((track) => track.id)).toEqual(["b", "c"]);
+      expect(next.playOrder).toEqual([0, 1]);
+      expect(next.playOrderIndex).toBe(0);
+      expect(next.currentIndex).toBe(0);
+      expect(next.queue[next.currentIndex]?.id).toBe("b");
+    });
+
+    it("clears the queue when the last track is removed", () => {
+      const seeded = playbackReducer(initialPlaybackState, {
+        type: "playQueue",
+        tracks: [T("a")],
+        startIndex: 0,
+      });
+      const next = playbackReducer(seeded, { type: "removeFromQueue", trackId: "a" });
+      expect(next.queue).toEqual([]);
+      expect(next.currentIndex).toBe(-1);
+      expect(next.isPlaying).toBe(false);
+    });
+  });
+
   describe("restoreState", () => {
     it("restores queue fields and applies caller-controlled isPlaying", () => {
       const next = playbackReducer(initialPlaybackState, {

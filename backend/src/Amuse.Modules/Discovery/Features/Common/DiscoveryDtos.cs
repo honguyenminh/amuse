@@ -2,6 +2,8 @@ namespace Amuse.Modules.Discovery.Features.Common;
 
 public sealed record CreatePlaylistRequest(string Title, string Visibility, string? Description);
 
+public sealed record ForkPlaylistRequest(string Title);
+
 public sealed record UpdatePlaylistRequest(string? Title, string? Description, string? Visibility);
 
 public sealed record AddPlaylistItemRequest(Guid TrackId);

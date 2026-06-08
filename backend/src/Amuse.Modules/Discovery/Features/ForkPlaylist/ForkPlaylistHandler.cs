@@ -21,6 +21,7 @@ internal sealed class ForkPlaylistHandler(
 {
     public async Task<Result<PlaylistDetailDto>> HandleAsync(
         Guid playlistId,
+        ForkPlaylistRequest request,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -43,7 +44,11 @@ internal sealed class ForkPlaylistHandler(
             cancellationToken);
 
         var now = clock.UtcNow;
-        var forkResult = source.ForkFor(listenerResult.Value.ListenerProfileId, viewContext, now);
+        var forkResult = source.ForkFor(
+            listenerResult.Value.ListenerProfileId,
+            request.Title,
+            viewContext,
+            now);
         if (!forkResult.IsSuccess)
             return Result<PlaylistDetailDto>.Failure(forkResult.Error!);
 

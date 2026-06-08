@@ -236,6 +236,84 @@ export function playbackReducer(state: PlaybackState, action: PlaybackAction): P
       };
     }
 
+    case "removeFromQueue": {
+      if (state.currentIndex < 0 || state.playOrder.length === 0) return state;
+
+      let fromPlayOrderIndex = -1;
+      for (let i = 0; i < state.playOrder.length; i++) {
+        const queueIndex = state.playOrder[i]!;
+        if (state.queue[queueIndex]?.id === action.trackId) {
+          fromPlayOrderIndex = i;
+          break;
+        }
+      }
+      if (fromPlayOrderIndex < 0) return state;
+
+      const queueIndexToRemove = state.playOrder[fromPlayOrderIndex]!;
+      const isRemovingCurrent = fromPlayOrderIndex === state.playOrderIndex;
+      const playOrder = state.playOrder.filter((_, i) => i !== fromPlayOrderIndex);
+      const queue = state.queue.filter((_, i) => i !== queueIndexToRemove);
+      const adjustedPlayOrder = playOrder.map((idx) =>
+        idx > queueIndexToRemove ? idx - 1 : idx,
+      );
+
+      if (adjustedPlayOrder.length === 0) {
+        return emptyQueueState(state);
+      }
+
+      if (isRemovingCurrent) {
+        if (fromPlayOrderIndex >= adjustedPlayOrder.length) {
+          const newPlayOrderIndex = adjustedPlayOrder.length - 1;
+          const newCurrentIndex = adjustedPlayOrder[newPlayOrderIndex]!;
+          const track = queue[newCurrentIndex]!;
+          return {
+            ...state,
+            queue,
+            playOrder: adjustedPlayOrder,
+            playOrderIndex: newPlayOrderIndex,
+            currentIndex: newCurrentIndex,
+            positionMs: 0,
+            durationMs: track.durationMs,
+            isPlaying: false,
+            shuffle: false,
+          };
+        }
+
+        const newCurrentIndex = adjustedPlayOrder[fromPlayOrderIndex]!;
+        const track = queue[newCurrentIndex]!;
+        return {
+          ...state,
+          queue,
+          playOrder: adjustedPlayOrder,
+          playOrderIndex: fromPlayOrderIndex,
+          currentIndex: newCurrentIndex,
+          positionMs: 0,
+          durationMs: track.durationMs,
+          isPlaying: state.isPlaying,
+          shuffle: false,
+        };
+      }
+
+      let newPlayOrderIndex = state.playOrderIndex;
+      if (fromPlayOrderIndex < state.playOrderIndex) {
+        newPlayOrderIndex -= 1;
+      }
+
+      let newCurrentIndex = state.currentIndex;
+      if (queueIndexToRemove < state.currentIndex) {
+        newCurrentIndex -= 1;
+      }
+
+      return {
+        ...state,
+        queue,
+        playOrder: adjustedPlayOrder,
+        playOrderIndex: newPlayOrderIndex,
+        currentIndex: newCurrentIndex,
+        shuffle: false,
+      };
+    }
+
     case "restoreState": {
       const { snapshot, isPlaying } = action;
       if (snapshot.queue.length === 0) return emptyQueueState(state);

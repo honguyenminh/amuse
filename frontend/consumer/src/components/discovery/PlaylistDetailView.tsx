@@ -20,6 +20,7 @@ import {
   getLikedPlayableTracks,
   getPlaylist,
   getPlaylistPlayableTracks,
+  removeReleaseFromPlaylist,
   removeTrackFromPlaylist,
   reorderPlaylistItems,
   replacePlaylistShares,
@@ -32,6 +33,8 @@ import {
 import type { PlaylistDetailDto, PlayableTrackDto } from "@/lib/api/types";
 import { ApiError } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { shouldClientRefreshPlaylistDetail } from "@/components/discovery/playlistDetailLoading";
+import { defaultForkPlaylistTitle } from "@/lib/discovery/defaultForkPlaylistTitle";
 import { playlistPath } from "@/lib/discovery/paths";
 import {
   computeReorderTargetIndex,
@@ -46,12 +49,27 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 const EMPTY_PLAYLIST_ID = "00000000-0000-0000-0000-000000000000";
 
+function playablesToMap(
+  tracks: PlayableTrackDto[] | undefined,
+): Map<string, PlayableTrackDto> {
+  if (!tracks?.length) return new Map();
+  return new Map(tracks.map((track) => [track.trackId, track]));
+}
+
+/** Stable across SSR and hydration; does not depend on async playable expansion. */
+export function playlistHasPlayableItems(
+  items: PlaylistDetailDto["items"] | undefined,
+): boolean {
+  return items?.some((item) => item.hasAudio) ?? false;
+}
+
 type PlaylistDetailViewProps = {
   playlistId?: string;
   mode?: "playlist" | "liked";
   /** When true, omits AppShell (e.g. inside library layout). */
   embedded?: boolean;
   initialPlaylist?: PlaylistDetailDto;
+  initialPlayableTracks?: PlayableTrackDto[];
 };
 
 export function PlaylistDetailView({
@@ -59,6 +77,7 @@ export function PlaylistDetailView({
   mode = "playlist",
   embedded = false,
   initialPlaylist,
+  initialPlayableTracks,
 }: PlaylistDetailViewProps) {
   const isLikedMode = mode === "liked";
   const auth = useAuth();
@@ -68,9 +87,9 @@ export function PlaylistDetailView({
   const [playlist, setPlaylist] = useState<PlaylistDetailDto | null>(
     initialPlaylist ?? null,
   );
-  const [playableByTrackId, setPlayableByTrackId] = useState<
-    Map<string, PlayableTrackDto>
-  >(new Map());
+  const [playableByTrackId, setPlayableByTrackId] = useState(() =>
+    playablesToMap(initialPlayableTracks),
+  );
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,6 +97,7 @@ export function PlaylistDetailView({
   const [makePrivateDialogOpen, setMakePrivateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
+  const [forkDialogOpen, setForkDialogOpen] = useState(false);
   const [editShares, setEditShares] = useState(false);
   const [sharesDraft, setSharesDraft] = useState("");
   const [reorderMode, setReorderMode] = useState(false);
@@ -103,15 +123,30 @@ export function PlaylistDetailView({
   }, [isLikedMode, playlistId]);
 
   useEffect(() => {
+    if (!auth.isReady) return;
+
     let cancelled = false;
     setError(null);
 
     const hasInitialDetail =
       initialPlaylist && !isLikedMode && initialPlaylist.id === playlistId;
 
+    // SSR cannot see the browser session, so initialPlaylist.isOwned is always false.
+    // After a playlist becomes public, Next may revalidate and pass that snapshot here —
+    // always client-fetch when logged in so owner controls stay available.
+    if (shouldClientRefreshPlaylistDetail(auth.isAuthenticated, isLikedMode)) {
+      void load().catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (hasInitialDetail) {
       setPlaylist(initialPlaylist);
       setSharesDraft((initialPlaylist.shareEmails ?? []).join("\n"));
+      setPlayableByTrackId(playablesToMap(initialPlayableTracks));
       void loadPlayables().catch((err: Error) => {
         if (!cancelled) setError(err.message);
       });
@@ -126,7 +161,16 @@ export function PlaylistDetailView({
     return () => {
       cancelled = true;
     };
-  }, [load, loadPlayables, isLikedMode, initialPlaylist, playlistId]);
+  }, [
+    load,
+    loadPlayables,
+    isLikedMode,
+    initialPlaylist,
+    initialPlayableTracks,
+    playlistId,
+    auth.isReady,
+    auth.isAuthenticated,
+  ]);
 
   useEffect(() => {
     setReorderMode(false);
@@ -193,10 +237,23 @@ export function PlaylistDetailView({
     [canEditTracks, runAction, isLikedMode, activePlaylistId],
   );
 
+  const removeRelease = useCallback(
+    (releaseId: string) => {
+      if (!canEditTracks || isLikedMode) return;
+      void runAction(async () => {
+        await removeReleaseFromPlaylist(activePlaylistId, releaseId);
+      });
+    },
+    [canEditTracks, isLikedMode, runAction, activePlaylistId],
+  );
+
   const playbackTracks = useMemo(
     () => playableTracksFromDtos([...playableByTrackId.values()]),
     [playableByTrackId],
   );
+
+  const canPlayAll =
+    playbackTracks.length > 0 || playlistHasPlayableItems(playlist?.items);
 
   const playAll = useCallback(() => {
     if (playbackTracks.length > 0) playQueue(playbackTracks, 0);
@@ -216,11 +273,20 @@ export function PlaylistDetailView({
     playlist !== null &&
     playlist.items.some((item) => item.trackId === currentTrack.id);
 
-  const onFork = () => {
-    void runAction(async () => {
-      const forked = await forkPlaylist(playlistId!);
-      router.push(playlistPath(forked.id));
-    });
+  const onConfirmFork = ({ title }: { title: string; description: string }) => {
+    setForkDialogOpen(false);
+    setBusy(true);
+    setActionError(null);
+    void forkPlaylist(activePlaylistId, { title })
+      .then((forked) => {
+        router.push(playlistPath(forked.id));
+      })
+      .catch((err: unknown) => {
+        setActionError(err instanceof ApiError ? err.message : "Could not fork playlist");
+      })
+      .finally(() => {
+        setBusy(false);
+      });
   };
 
   const onToggleSave = () => {
@@ -365,7 +431,7 @@ export function PlaylistDetailView({
                       type="button"
                       variant="primary"
                       onClick={isPlayingThisPlaylist && state.isPlaying ? toggle : playAll}
-                      disabled={playbackTracks.length === 0}
+                      disabled={!canPlayAll}
                     >
                       {isPlayingThisPlaylist && state.isPlaying ? "Pause" : "Play all"}
                     </Button>
@@ -394,7 +460,7 @@ export function PlaylistDetailView({
                           type="button"
                           variant="outlined"
                           disabled={busy}
-                          onClick={onFork}
+                          onClick={() => setForkDialogOpen(true)}
                         >
                           Fork
                         </Button>
@@ -463,6 +529,7 @@ export function PlaylistDetailView({
                   isPlaying={state.isPlaying}
                   onReorder={handleReorder}
                   onRemove={removeTrack}
+                  onRemoveRelease={removeRelease}
                   onPlayTrack={playFromTrack}
                   onToggle={toggle}
                 />
@@ -527,6 +594,16 @@ export function PlaylistDetailView({
         confirmDisabled={busy}
         onClose={() => setEditDetailsOpen(false)}
         onConfirm={onConfirmEditDetails}
+      />
+      <PlaylistFormDialog
+        open={forkDialogOpen}
+        title="Fork playlist"
+        initialTitle={playlist ? defaultForkPlaylistTitle(playlist.title) : ""}
+        confirmLabel="Fork"
+        confirmDisabled={busy}
+        showDescription={false}
+        onClose={() => setForkDialogOpen(false)}
+        onConfirm={onConfirmFork}
       />
     </>
   );

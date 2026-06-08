@@ -13,6 +13,7 @@ using Amuse.Modules.Discovery.Features.ListLibraryLiked;
 using Amuse.Modules.Discovery.Features.ListLibraryPlaylists;
 using Amuse.Modules.Discovery.Features.ListLibraryReleases;
 using Amuse.Modules.Discovery.Features.ListMyPlaylists;
+using Amuse.Modules.Discovery.Features.RemoveReleaseFromPlaylist;
 using Amuse.Modules.Discovery.Features.RemoveTrackFromPlaylist;
 using Amuse.Modules.Discovery.Features.ReorderPlaylistItems;
 using Amuse.Modules.Discovery.Features.ReplacePlaylistShares;
@@ -70,6 +71,7 @@ public static class DiscoveryModule
         services.AddScoped<DeletePlaylistHandler>();
         services.AddScoped<AddTrackToPlaylistHandler>();
         services.AddScoped<RemoveTrackFromPlaylistHandler>();
+        services.AddScoped<RemoveReleaseFromPlaylistHandler>();
         services.AddScoped<ReorderPlaylistItemsHandler>();
         services.AddScoped<ReplacePlaylistSharesHandler>();
         services.AddScoped<ForkPlaylistHandler>();
@@ -104,6 +106,7 @@ public static class DiscoveryModule
         endpoints.MapDeletePlaylistEndpoint();
         endpoints.MapAddTrackToPlaylistEndpoint();
         endpoints.MapRemoveTrackFromPlaylistEndpoint();
+        endpoints.MapRemoveReleaseFromPlaylistEndpoint();
         endpoints.MapReorderPlaylistItemsEndpoint();
         endpoints.MapReplacePlaylistSharesEndpoint();
         endpoints.MapForkPlaylistEndpoint();

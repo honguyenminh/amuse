@@ -12,6 +12,7 @@ import {
   useTrackDragReorder,
 } from "@/lib/discovery/useTrackDragReorder";
 import { cn } from "@/lib/cn";
+import { formatTrackSubtitle } from "@/lib/discovery/formatTrackSubtitle";
 import { TrackDropIndicator } from "@/components/ui/TrackDropIndicator";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import { useTrackContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
@@ -377,7 +378,7 @@ function QueueTrackRow({
                 currentTextTone ?? "text-on-surface-variant",
               )}
             >
-              {track.artistName}
+              {formatTrackSubtitle(track.artistName, track.releaseTitle)}
             </Text>
           </div>
         </div>

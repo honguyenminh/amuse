@@ -74,6 +74,36 @@ public sealed class PlaylistTests
     }
 
     [Fact]
+    public void RemoveTracks_removes_multiple_items_and_compacts_positions()
+    {
+        var track3 = TrackId.New();
+        var playlist = Playlist.CreateOwned(Owner, "List", PlaylistVisibility.Private, Now).Value!;
+        var first = playlist.AddTrack(Track1, Now).Value!;
+        var second = playlist.AddTrack(Track2, Now).Value!;
+        var third = playlist.AddTrack(track3, Now).Value!;
+
+        var result = playlist.RemoveTracks([first.Id, third.Id], Now);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value);
+        Assert.Single(playlist.Items);
+        Assert.Equal(Track2, playlist.Items[0].TrackId);
+        Assert.Equal(1, playlist.Items[0].Position);
+    }
+
+    [Fact]
+    public void RemoveTracks_fails_when_no_items_match()
+    {
+        var playlist = Playlist.CreateOwned(Owner, "List", PlaylistVisibility.Private, Now).Value!;
+        Assert.True(playlist.AddTrack(Track1, Now).IsSuccess);
+
+        var result = playlist.RemoveTracks([PlaylistItemId.New()], Now);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(DiscoveryErrors.PlaylistItemNotFound.Code, result.Error!.Code);
+    }
+
+    [Fact]
     public void Reorder_maintains_contiguous_positions()
     {
         var playlist = Playlist.CreateOwned(Owner, "List", PlaylistVisibility.Private, Now).Value!;
@@ -104,11 +134,12 @@ public sealed class PlaylistTests
         Assert.True(source.AddTrack(Track1, Now).IsSuccess);
         Assert.True(source.AddTrack(Track2, Now).IsSuccess);
 
-        var forkResult = source.ForkFor(Other, new PlaylistViewContext(Other, null), Now);
+        var forkResult = source.ForkFor(Other, "My Fork", new PlaylistViewContext(Other, null), Now);
 
         Assert.True(forkResult.IsSuccess);
         var fork = forkResult.Value!;
         Assert.Equal(Other, fork.OwnerListenerProfileId);
+        Assert.Equal("My Fork", fork.Title);
         Assert.Equal(source.Id, fork.ForkedFromPlaylistId);
         Assert.Equal(2, fork.Items.Count);
         Assert.Equal(PlaylistVisibility.Private, fork.Visibility);
@@ -119,7 +150,7 @@ public sealed class PlaylistTests
     {
         var source = Playlist.CreateOwned(Owner, "Private", PlaylistVisibility.Private, Now).Value!;
 
-        var forkResult = source.ForkFor(Other, new PlaylistViewContext(Other, null), Now);
+        var forkResult = source.ForkFor(Other, "Fork", new PlaylistViewContext(Other, null), Now);
 
         Assert.False(forkResult.IsSuccess);
         Assert.Equal(DiscoveryErrors.CannotForkPrivatePlaylist.Code, forkResult.Error!.Code);

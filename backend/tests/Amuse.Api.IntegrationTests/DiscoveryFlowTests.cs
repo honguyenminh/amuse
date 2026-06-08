@@ -53,11 +53,15 @@ public sealed class DiscoveryFlowTests(AmuseApiFixture fixture)
         var saveRelease = await client.PutAsync($"/api/v1/discovery/library/releases/{releaseId}", null);
         Assert.Equal(HttpStatusCode.NoContent, saveRelease.StatusCode);
 
-        var fork = await client.PostAsync($"/api/v1/discovery/playlists/{playlistId}/fork", null);
+        var fork = await client.PostAsJsonAsync(
+            $"/api/v1/discovery/playlists/{playlistId}/fork",
+            new { title = "Integration Playlist (fork)" },
+            JsonOptions);
         Assert.Equal(HttpStatusCode.Created, fork.StatusCode);
         var forked = await fork.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var forkId = forked.GetProperty("id").GetGuid();
         Assert.Equal(playlistId, forked.GetProperty("forkedFromPlaylistId").GetGuid());
+        Assert.Equal("Integration Playlist (fork)", forked.GetProperty("title").GetString());
 
         var makePrivate = await client.PatchAsJsonAsync(
             $"/api/v1/discovery/playlists/{playlistId}",
@@ -85,6 +89,55 @@ public sealed class DiscoveryFlowTests(AmuseApiFixture fixture)
 
         var search = await client.GetAsync($"/api/v1/discovery/search?q=Integration&pageSize=10");
         Assert.Equal(HttpStatusCode.OK, search.StatusCode);
+    }
+
+    [Fact]
+    public async Task Remove_release_from_playlist_removes_all_tracks_from_that_release()
+    {
+        using var client = fixture.CreateClient();
+        var email = $"playlist-release-{Guid.CreateVersion7():N}@amuse.test";
+        const string password = "Password1234!";
+
+        await RegisterConfirmAndLoginListenerAsync(fixture, client, email, password);
+        await CompleteOnboardingAsync(client);
+
+        var seededTracks = await GetSeededTracksFromSameReleaseAsync(minCount: 2);
+        var releaseId = seededTracks[0].ReleaseId;
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/discovery/playlists",
+            new { title = "Release Removal Playlist", visibility = "private" },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var playlist = await create.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        var playlistId = playlist.GetProperty("id").GetGuid();
+
+        foreach (var track in seededTracks)
+        {
+            var addTrack = await client.PostAsJsonAsync(
+                $"/api/v1/discovery/playlists/{playlistId}/items",
+                new { trackId = track.TrackId },
+                JsonOptions);
+            Assert.Equal(HttpStatusCode.OK, addTrack.StatusCode);
+        }
+
+        var otherReleaseTrack = await GetSeededTrackFromDifferentReleaseAsync(releaseId);
+        var addOther = await client.PostAsJsonAsync(
+            $"/api/v1/discovery/playlists/{playlistId}/items",
+            new { trackId = otherReleaseTrack },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, addOther.StatusCode);
+
+        var removeRelease = await client.DeleteAsync(
+            $"/api/v1/discovery/playlists/{playlistId}/releases/{releaseId}");
+        Assert.Equal(HttpStatusCode.NoContent, removeRelease.StatusCode);
+
+        var detail = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/discovery/playlists/{playlistId}",
+            JsonOptions);
+        var items = detail.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Single(items);
+        Assert.Equal(otherReleaseTrack, items[0].GetProperty("trackId").GetGuid());
     }
 
     [Fact]
@@ -148,16 +201,50 @@ public sealed class DiscoveryFlowTests(AmuseApiFixture fixture)
 
     private async Task<(Guid TrackId, Guid ReleaseId)> GetSeededTrackAndReleaseAsync()
     {
+        var tracks = await GetSeededTracksFromSameReleaseAsync(minCount: 1);
+        return (tracks[0].TrackId, tracks[0].ReleaseId);
+    }
+
+    private async Task<IReadOnlyList<(Guid TrackId, Guid ReleaseId)>> GetSeededTracksFromSameReleaseAsync(
+        int minCount)
+    {
         await using var scope = fixture.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-        var row = await db.Tracks.AsNoTracking()
+        var releaseId = await db.Tracks.AsNoTracking()
             .Where(t =>
                 t.LifecycleStatus == TrackLifecycleStatus.Published
                 && t.AudioMasterKey != null
                 && t.AudioMasterKey != "")
-            .Select(t => new { TrackId = t.Id.Value, ReleaseId = t.ReleaseId.Value })
+            .GroupBy(t => t.ReleaseId)
+            .Where(g => g.Count() >= minCount)
+            .Select(g => g.Key)
             .FirstAsync();
 
-        return (row.TrackId, row.ReleaseId);
+        var tracks = await db.Tracks.AsNoTracking()
+            .Where(t =>
+                t.ReleaseId == releaseId
+                && t.LifecycleStatus == TrackLifecycleStatus.Published
+                && t.AudioMasterKey != null
+                && t.AudioMasterKey != "")
+            .OrderBy(t => t.TrackNumber)
+            .Take(minCount)
+            .Select(t => new { TrackId = t.Id.Value, ReleaseId = t.ReleaseId.Value })
+            .ToListAsync();
+
+        return tracks.Select(t => (t.TrackId, t.ReleaseId)).ToArray();
+    }
+
+    private async Task<Guid> GetSeededTrackFromDifferentReleaseAsync(Guid excludedReleaseId)
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        return await db.Tracks.AsNoTracking()
+            .Where(t =>
+                t.ReleaseId != ReleaseId.From(excludedReleaseId)
+                && t.LifecycleStatus == TrackLifecycleStatus.Published
+                && t.AudioMasterKey != null
+                && t.AudioMasterKey != "")
+            .Select(t => t.Id.Value)
+            .FirstAsync();
     }
 }

@@ -3,7 +3,10 @@ import {
   isNotFoundError,
   shouldFallbackToClientFetch,
 } from "@/lib/api/errors";
-import { getCachedPlaylist } from "@/lib/api/discoveryServer";
+import {
+  getCachedPlaylist,
+  getCachedPlaylistPlayableTracks,
+} from "@/lib/api/discoveryServer";
 import { playlistMetadata } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -33,8 +36,12 @@ export default async function PlaylistPage({ params }: PlaylistPageProps) {
 
   let clientFallback = false;
   let playlist;
+  let initialPlayableTracks;
   try {
-    playlist = await getCachedPlaylist(playlistId);
+    [playlist, { tracks: initialPlayableTracks }] = await Promise.all([
+      getCachedPlaylist(playlistId),
+      getCachedPlaylistPlayableTracks(playlistId),
+    ]);
   } catch (error) {
     if (isNotFoundError(error)) notFound();
     if (shouldFallbackToClientFetch(error)) {
@@ -49,6 +56,10 @@ export default async function PlaylistPage({ params }: PlaylistPageProps) {
   }
 
   return (
-    <PlaylistDetailView playlistId={playlistId} initialPlaylist={playlist} />
+    <PlaylistDetailView
+      playlistId={playlistId}
+      initialPlaylist={playlist}
+      initialPlayableTracks={initialPlayableTracks}
+    />
   );
 }

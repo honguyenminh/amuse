@@ -1,4 +1,5 @@
 using Amuse.Modules.Common.Authorization;
+using Amuse.Modules.Common.Endpoints;
 using Amuse.Modules.Discovery.Features.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -12,19 +13,22 @@ public static class ForkPlaylistEndpoint
     {
         endpoints.MapPost("/api/v1/discovery/playlists/{id:guid}/fork", async (
                 Guid id,
+                ForkPlaylistRequest request,
                 ForkPlaylistHandler handler,
                 HttpContext httpContext,
                 CancellationToken cancellationToken) =>
             {
-                var result = await handler.HandleAsync(id, httpContext.User, cancellationToken);
+                var result = await handler.HandleAsync(id, request, httpContext.User, cancellationToken);
                 return result.ToDiscoveryResult(response => Results.Created(
                     $"/api/v1/discovery/playlists/{response.Id}",
                     response));
             })
             .RequireAuthorization(PersonaPolicies.RequireListenerPersona)
+            .WithRequestValidation()
             .WithName("ForkPlaylist")
             .WithSummary("Fork an accessible playlist into a new private playlist owned by the listener.")
             .Produces<PlaylistDetailDto>(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);

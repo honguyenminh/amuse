@@ -21,6 +21,7 @@ type PlaylistTrackListProps = {
   isPlaying: boolean;
   onReorder: (draggedItemId: string, insertBeforeId: string) => void;
   onRemove: (item: PlaylistItemDto) => void;
+  onRemoveRelease: (releaseId: string) => void;
   onPlayTrack: (trackId: string) => void;
   onToggle: () => void;
 };
@@ -35,6 +36,7 @@ export function PlaylistTrackList({
   isPlaying,
   onReorder,
   onRemove,
+  onRemoveRelease,
   onPlayTrack,
   onToggle,
 }: PlaylistTrackListProps) {
@@ -42,6 +44,14 @@ export function PlaylistTrackList({
     () => [...items].sort((a, b) => a.position - b.position),
     [items],
   );
+
+  const releaseTrackCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      counts.set(item.releaseId, (counts.get(item.releaseId) ?? 0) + 1);
+    }
+    return counts;
+  }, [items]);
 
   const dragEnabled = reorderMode && canEdit;
   const { activeId, insertBeforeId, getItemProps, isDragging } = useTrackDragReorder(
@@ -79,6 +89,11 @@ export function PlaylistTrackList({
           isDragging &&
           insertBeforeId === item.itemId &&
           activeId !== item.itemId;
+        const releaseTrackCount = releaseTrackCounts.get(item.releaseId) ?? 1;
+        const removeReleaseLabel =
+          releaseTrackCount > 1
+            ? `Remove "${item.releaseTitle}" from playlist`
+            : "Remove release from playlist";
 
         return (
           <Fragment key={item.itemId}>
@@ -93,6 +108,7 @@ export function PlaylistTrackList({
                 position: item.position,
               }}
               removeLabel={isLikedMode ? "Remove from liked" : "Remove from playlist"}
+              removeReleaseLabel={isLikedMode ? undefined : removeReleaseLabel}
               playbackTrack={playbackTrack}
               isCurrent={isCurrent}
               isPlaying={isPlaying}
@@ -102,6 +118,9 @@ export function PlaylistTrackList({
               itemProps={itemProps}
               canRemove={canEdit}
               onRemove={() => onRemove(item)}
+              onRemoveRelease={
+                isLikedMode ? undefined : () => onRemoveRelease(item.releaseId)
+              }
               onPlay={() => onPlayTrack(item.trackId)}
               onToggle={onToggle}
             />

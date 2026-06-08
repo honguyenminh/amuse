@@ -5,6 +5,7 @@ import { OverflowMenuButton } from "@/components/ui/OverflowMenuButton";
 import { PauseIcon, PlayIcon } from "@/components/ui/PlaybackIcons";
 import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
+import { formatTrackSubtitle } from "@/lib/discovery/formatTrackSubtitle";
 import { formatDuration } from "@/lib/playback/formatDuration";
 import { usePlayableClick } from "@/lib/playback/useAltClickAddToQueue";
 import { useTrackContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
@@ -30,8 +31,10 @@ type TrackRowProps = {
   isDragging?: boolean;
   canRemove?: boolean;
   removeLabel?: string;
+  removeReleaseLabel?: string;
   itemProps?: HTMLAttributes<HTMLLIElement>;
   onRemove?: () => void;
+  onRemoveRelease?: () => void;
   onPlay: () => void;
   onToggle: () => void;
 };
@@ -66,8 +69,10 @@ export function TrackRow({
   isDragging,
   canRemove,
   removeLabel = "Remove from playlist",
+  removeReleaseLabel,
   itemProps,
   onRemove,
+  onRemoveRelease,
   onPlay,
   onToggle,
 }: TrackRowProps) {
@@ -75,10 +80,15 @@ export function TrackRow({
     canRemove && onRemove
       ? { label: removeLabel, onSelect: onRemove }
       : undefined;
+  const removeReleaseAction =
+    canRemove && onRemoveRelease && removeReleaseLabel
+      ? { label: removeReleaseLabel, onSelect: onRemoveRelease }
+      : undefined;
 
   const { onContextMenu, openMenuAt } = useTrackContextMenu(playbackTrack, track.hasAudio, {
     isLiked,
     remove: removeAction,
+    removeRelease: removeReleaseAction,
   });
   const { onClick, queueAddPulsing } = usePlayableClick({
     tracks: [playbackTrack],
@@ -130,11 +140,17 @@ export function TrackRow({
         <Text variant="body-medium" className="truncate">
           {track.title}
         </Text>
-        {track.artistName ? (
-          <Text variant="label-medium" className="truncate text-on-surface-variant">
-            {track.artistName}
-          </Text>
-        ) : null}
+        {(() => {
+          const subtitle = formatTrackSubtitle(
+            playbackTrack.artistName,
+            playbackTrack.releaseTitle,
+          );
+          return subtitle ? (
+            <Text variant="label-medium" className="truncate text-on-surface-variant">
+              {subtitle}
+            </Text>
+          ) : null;
+        })()}
       </button>
       <div className="flex items-center gap-2">
         <OverflowMenuButton

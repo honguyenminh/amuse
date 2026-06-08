@@ -248,6 +248,21 @@ public sealed class Playlist
         return Result.Success();
     }
 
+    public Result<int> RemoveTracks(IReadOnlyCollection<PlaylistItemId> itemIds, DateTimeOffset now)
+    {
+        if (itemIds.Count == 0)
+            return Result<int>.Failure(DiscoveryErrors.PlaylistItemNotFound);
+
+        var idSet = itemIds.ToHashSet();
+        var removed = _items.RemoveAll(i => idSet.Contains(i.Id));
+        if (removed == 0)
+            return Result<int>.Failure(DiscoveryErrors.PlaylistItemNotFound);
+
+        CompactPositions();
+        UpdatedAt = now;
+        return Result<int>.Success(removed);
+    }
+
     public Result RemoveTrackByTrackId(TrackId trackId, DateTimeOffset now)
     {
         var item = _items.FirstOrDefault(i => i.TrackId == trackId);
@@ -291,7 +306,11 @@ public sealed class Playlist
         return false;
     }
 
-    public Result<Playlist> ForkFor(ListenerProfileId listenerId, PlaylistViewContext context, DateTimeOffset now)
+    public Result<Playlist> ForkFor(
+        ListenerProfileId listenerId,
+        string title,
+        PlaylistViewContext context,
+        DateTimeOffset now)
     {
         if (IsLikedCollection)
             return Result<Playlist>.Failure(DiscoveryErrors.CannotForkLikedPlaylist);
@@ -299,7 +318,7 @@ public sealed class Playlist
         if (!CanBeViewedBy(context))
             return Result<Playlist>.Failure(DiscoveryErrors.CannotForkPrivatePlaylist);
 
-        var forkResult = CreateOwned(listenerId, Title, PlaylistVisibility.Private, now);
+        var forkResult = CreateOwned(listenerId, title, PlaylistVisibility.Private, now);
         if (!forkResult.IsSuccess)
             return forkResult;
 

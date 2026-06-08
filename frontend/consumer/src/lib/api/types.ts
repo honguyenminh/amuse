@@ -338,6 +338,10 @@ export type CreatePlaylistRequest = {
   description?: string;
 };
 
+export type ForkPlaylistRequest = {
+  title: string;
+};
+
 export type UpdatePlaylistRequest = {
   title?: string;
   description?: string;

@@ -4,6 +4,7 @@ import type {
   AddPlaylistItemRequest,
   AddPlaylistItemResponse,
   CreatePlaylistRequest,
+  ForkPlaylistRequest,
   LikedTracksResponse,
   PlayableTracksResponse,
   PlaylistDetailDto,
@@ -113,6 +114,16 @@ export function removeTrackFromPlaylist(playlistId: string, itemId: string): Pro
   });
 }
 
+export function removeReleaseFromPlaylist(
+  playlistId: string,
+  releaseId: string,
+): Promise<void> {
+  return authFetch<void>(
+    `${BASE}/playlists/${enc(playlistId)}/releases/${enc(releaseId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export function reorderPlaylistItems(
   playlistId: string,
   request: ReorderPlaylistItemsRequest,
@@ -133,9 +144,13 @@ export function replacePlaylistShares(
   });
 }
 
-export function forkPlaylist(playlistId: string): Promise<PlaylistDetailDto> {
+export function forkPlaylist(
+  playlistId: string,
+  request: ForkPlaylistRequest,
+): Promise<PlaylistDetailDto> {
   return authFetch<PlaylistDetailDto>(`${BASE}/playlists/${enc(playlistId)}/fork`, {
     method: "POST",
+    body: JSON.stringify(request),
   });
 }
 

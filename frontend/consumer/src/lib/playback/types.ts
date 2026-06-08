@@ -62,4 +62,5 @@ export type PlaybackAction =
   | { type: "jumpToPlayOrderIndex"; playOrderIndex: number }
   | { type: "reorderPlayOrder"; fromPlayOrderIndex: number; toPlayOrderIndex: number }
   | { type: "moveToPlayNext"; trackId: string }
+  | { type: "removeFromQueue"; trackId: string }
   | { type: "restoreState"; snapshot: PersistedQueueSnapshot; isPlaying: boolean };

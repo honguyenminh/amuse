@@ -100,6 +100,7 @@ type PlaybackContextValue = {
   addToQueue: (tracks: PlaybackTrack[]) => void;
   playNext: (tracks: PlaybackTrack[]) => void;
   moveToPlayNext: (trackId: string) => void;
+  removeFromQueue: (trackId: string) => void;
   clearQueue: () => void;
   jumpToPlayOrderIndex: (playOrderIndex: number) => void;
   reorderPlayOrder: (fromPlayOrderIndex: number, toPlayOrderIndex: number) => void;
@@ -984,6 +985,14 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     [requireAuthForQueue, schedulePersistQueue],
   );
 
+  const removeFromQueue = useCallback(
+    (trackId: string) => {
+      dispatch({ type: "removeFromQueue", trackId });
+      schedulePersistQueue(false);
+    },
+    [schedulePersistQueue],
+  );
+
   const clearQueue = useCallback(() => {
     syncPositionFromAudio();
     isPlayingRef.current = false;
@@ -1081,6 +1090,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       addToQueue,
       playNext,
       moveToPlayNext,
+      removeFromQueue,
       clearQueue,
       jumpToPlayOrderIndex,
       reorderPlayOrder,
@@ -1111,6 +1121,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       addToQueue,
       playNext,
       moveToPlayNext,
+      removeFromQueue,
       clearQueue,
       jumpToPlayOrderIndex,
       reorderPlayOrder,
