@@ -9,12 +9,13 @@ import { Text } from "@/components/ui/Text";
 import { ReleaseTile } from "@/components/playback/ReleaseTile";
 import { getCatalogReleaseGroupBySlugs } from "@/lib/api/catalogClient";
 import type { GetReleaseGroupDetailResponse, ReleaseType } from "@/lib/api/types";
+import { useServerSyncedDetail } from "@/lib/react/useServerSyncedDetail";
 import type { ColorSeed } from "@/theme/types";
 import { catalogArtistPath } from "@/lib/catalog/paths";
 import { usePageSeed } from "@/theme/ThemeProvider";
 import { useCoverArtSeed } from "@/theme/useCoverArtSeed";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 
 const releaseTypeLabel: Record<ReleaseType, string> = {
   single: "Single",
@@ -37,38 +38,16 @@ export function ReleaseGroupPageClient({
   initialColorSeed = null,
 }: ReleaseGroupPageClientProps) {
   const loadKey = `${artistKey}/${groupSlug}`;
-  const [group, setGroup] = useState<GetReleaseGroupDetailResponse | null>(initialGroup ?? null);
-  const [resolvedKey, setResolvedKey] = useState<string | null>(initialGroup ? loadKey : null);
-  const [error, setError] = useState<string | null>(null);
+  const fetchGroup = useCallback(
+    () => getCatalogReleaseGroupBySlugs(artistKey, groupSlug),
+    [artistKey, groupSlug],
+  );
+  const { detail: group, pending, error } = useServerSyncedDetail({
+    routeKey: loadKey,
+    initialDetail: initialGroup,
+    fetchDetail: fetchGroup,
+  });
 
-  useEffect(() => {
-    if (initialGroup && resolvedKey === loadKey) {
-      return;
-    }
-
-    let cancelled = false;
-    setError(null);
-    if (!initialGroup || resolvedKey !== loadKey) {
-      setGroup(null);
-    }
-
-    getCatalogReleaseGroupBySlugs(artistKey, groupSlug)
-      .then((response) => {
-        if (!cancelled) {
-          setGroup(response);
-          setResolvedKey(loadKey);
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [artistKey, groupSlug, initialGroup, loadKey, resolvedKey]);
-
-  const pending = resolvedKey !== loadKey;
   const coverUrl = group?.releases.find((edition) => edition.coverArtUrl)?.coverArtUrl ?? null;
   const seed = useCoverArtSeed(coverUrl, { initialSeed: initialColorSeed });
   usePageSeed(seed);

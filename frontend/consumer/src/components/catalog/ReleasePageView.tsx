@@ -13,7 +13,7 @@ import { OverflowMenuButton } from "@/components/ui/OverflowMenuButton";
 import { PauseIcon, PlayIcon } from "@/components/ui/PlaybackIcons";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
-import { getCatalogReleaseBySlugs } from "@/lib/api/catalogClient";
+import { getCatalogRelease, getCatalogReleaseBySlugs } from "@/lib/api/catalogClient";
 import { TrackDownloadButton } from "@/components/finance/TrackDownloadButton";
 import { acquireFree, checkReleaseOwnership, createCheckoutSession } from "@/lib/api/financeClient";
 import type { GetReleaseDetailResponse, ReleaseType, TrackResponse } from "@/lib/api/types";
@@ -24,6 +24,7 @@ import {
   isPaidOnly,
   defaultCheckoutAmountMinor,
 } from "@/lib/finance/pricingDisplay";
+import { useServerSyncedDetail } from "@/lib/react/useServerSyncedDetail";
 import type { ColorSeed } from "@/theme/types";
 import {
   catalogArtistPath,
@@ -55,8 +56,9 @@ const releaseTypeLabel: Record<ReleaseType, string> = {
 };
 
 type ReleasePageViewProps = {
-  artistKey: string;
-  releaseSlug: string;
+  artistKey?: string;
+  releaseSlug?: string;
+  releaseId?: string;
   initialRelease?: GetReleaseDetailResponse;
   initialColorSeed?: ColorSeed | null;
   /** From `?title=` while release detail is still loading on client navigation. */
@@ -66,60 +68,28 @@ type ReleasePageViewProps = {
 export function ReleasePageView({
   artistKey,
   releaseSlug,
+  releaseId,
   initialRelease,
   initialColorSeed = null,
   titleHint,
 }: ReleasePageViewProps) {
-  const loadKey = `${artistKey}/${releaseSlug}`;
-  const load = useCallback(
-    () => getCatalogReleaseBySlugs(artistKey, releaseSlug),
-    [artistKey, releaseSlug],
-  );
-  const [release, setRelease] = useState<GetReleaseDetailResponse | null>(
-    initialRelease ?? null,
-  );
-  const [resolvedKey, setResolvedKey] = useState<string | null>(
-    initialRelease ? loadKey : null,
-  );
-  const [error, setError] = useState<string | null>(null);
+  const loadKey = releaseId ?? `${artistKey}/${releaseSlug}`;
+  const fetchRelease = useCallback(() => {
+    if (releaseId) {
+      return getCatalogRelease(releaseId);
+    }
+    return getCatalogReleaseBySlugs(artistKey!, releaseSlug!);
+  }, [releaseId, artistKey, releaseSlug]);
+  const { detail: release, pending, error } = useServerSyncedDetail({
+    routeKey: loadKey,
+    initialDetail: initialRelease,
+    fetchDetail: fetchRelease,
+  });
   const [ownsRelease, setOwnsRelease] = useState(false);
   const [acquiring, setAcquiring] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [acquireError, setAcquireError] = useState<string | null>(null);
   const { isAuthenticated, isReady: authReady } = useAuth();
-
-  useEffect(() => {
-    if (initialRelease && resolvedKey === loadKey) {
-      return;
-    }
-
-    let cancelled = false;
-    setError(null);
-
-    if (initialRelease) {
-      setRelease(initialRelease);
-      setResolvedKey(loadKey);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setRelease(null);
-
-    load()
-      .then((response) => {
-        if (!cancelled) {
-          setRelease(response);
-          setResolvedKey(loadKey);
-        }
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [loadKey, load, initialRelease, resolvedKey]);
 
   useEffect(() => {
     if (!authReady || !isAuthenticated || !release) {
@@ -171,7 +141,6 @@ export function ReleasePageView({
     }
   }, [release]);
 
-  const pending = resolvedKey !== loadKey;
   const { state, currentTrack, playQueue, toggle } = usePlayback();
 
   const seed = useCoverArtSeed(release?.coverArtUrl, { initialSeed: initialColorSeed });

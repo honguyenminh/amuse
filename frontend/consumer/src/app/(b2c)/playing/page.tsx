@@ -24,7 +24,7 @@ import {
   repeatButtonVariant,
   repeatModeLabel,
 } from "@/lib/playback/repeatMode";
-import { mainScrollPaddingClass, shellContentPaddingClass } from "@/lib/ui/pageLayout";
+import { playingPageContentPaddingClass, shellContentPaddingClass } from "@/lib/ui/pageLayout";
 import {
   usePlayback,
   usePlaybackBufferedEnd,
@@ -75,6 +75,12 @@ export default function PlayingPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [helpOpen, router]);
 
+  const max = Math.max(state.durationMs, 1);
+  const { displayMs, sliderProps } = useScrubPosition(smoothMs, max, {
+    beginScrub,
+    endScrub,
+  });
+
   if (!isQueueHydrated || !currentTrack) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background p-6">
@@ -86,11 +92,6 @@ export default function PlayingPage() {
   }
 
   const nextRepeat = nextRepeatMode(state.repeat);
-  const max = Math.max(state.durationMs, 1);
-  const { displayMs, sliderProps } = useScrubPosition(smoothMs, max, {
-    beginScrub,
-    endScrub,
-  });
   const canNext =
     state.playOrderIndex < state.playOrder.length - 1 || state.repeat === "queue";
 
@@ -232,8 +233,8 @@ export default function PlayingPage() {
 
       <div
         className={cn(
-          "flex flex-1 min-h-0 flex-col gap-6 overflow-y-auto",
-          mainScrollPaddingClass,
+          "flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto",
+          playingPageContentPaddingClass,
           queueExpanded
             ? "md:flex-row md:items-stretch md:overflow-hidden"
             : "md:flex-row md:items-center md:justify-center",
@@ -242,7 +243,9 @@ export default function PlayingPage() {
         <div
           className={cn(
             "flex w-full flex-col items-center justify-center gap-6",
-            queueExpanded ? "md:min-w-0 md:flex-1 md:self-stretch" : "md:flex-1",
+            queueExpanded
+              ? "min-h-0 md:min-w-0 md:flex-1 md:self-stretch md:overflow-y-auto"
+              : "md:flex-1",
           )}
         >
           {coverArt}
@@ -259,7 +262,7 @@ export default function PlayingPage() {
           className={cn(
             "flex w-full min-h-0 flex-col items-center gap-6",
             queueExpanded
-              ? "md:w-full md:max-w-md md:shrink-0 md:items-stretch md:self-stretch lg:max-w-lg xl:max-w-xl"
+              ? "min-h-0 md:w-full md:max-w-md md:shrink-0 md:items-stretch md:self-stretch md:overflow-hidden lg:max-w-lg xl:max-w-xl"
               : "md:flex-1 md:justify-center",
           )}
         >
@@ -274,7 +277,10 @@ export default function PlayingPage() {
           <PlayingQueuePanel
             expanded={queueExpanded}
             onExpandedChange={setQueueExpanded}
-            className={cn("w-full max-w-md", queueExpanded && "min-h-0 flex-1")}
+            className={cn(
+              "w-full max-w-md",
+              queueExpanded && "h-full min-h-0 flex-1",
+            )}
           />
         </div>
       </div>

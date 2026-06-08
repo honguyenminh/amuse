@@ -110,6 +110,7 @@ export function PlaylistDetailView({
       initialPlaylist && !isLikedMode && initialPlaylist.id === playlistId;
 
     if (hasInitialDetail) {
+      setPlaylist(initialPlaylist);
       setSharesDraft((initialPlaylist.shareEmails ?? []).join("\n"));
       void loadPlayables().catch((err: Error) => {
         if (!cancelled) setError(err.message);

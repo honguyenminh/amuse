@@ -30,7 +30,7 @@ export function B2cGate({ children }: { children: ReactNode }) {
     if (!auth.isReady || !auth.isAuthenticated || !auth.needsListenerOnboarding) {
       return;
     }
-    if (isAllowlisted(pathname)) {
+    if (isAllowlisted(pathname) || publicBrowse) {
       return;
     }
     const next = encodeURIComponent(pathname);
@@ -41,6 +41,7 @@ export function B2cGate({ children }: { children: ReactNode }) {
     auth.needsListenerOnboarding,
     pathname,
     router,
+    publicBrowse,
   ]);
 
   if (!auth.isReady) {

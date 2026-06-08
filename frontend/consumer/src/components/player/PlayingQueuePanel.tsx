@@ -134,8 +134,8 @@ export function PlayingQueuePanel({
     <>
       <section
         className={cn(
-          "flex min-h-0 flex-col gap-2",
-          expanded && "flex-1",
+          "flex min-h-0 flex-col gap-2 overflow-hidden",
+          expanded && "h-full min-h-0 flex-1",
           className,
         )}
       >
@@ -173,7 +173,7 @@ export function PlayingQueuePanel({
         <div
           className={cn(
             "flex min-h-0 flex-col overflow-y-auto rounded-lg border border-outline/50",
-            expanded ? "flex-1" : "max-h-60",
+            expanded ? "min-h-0 flex-1" : "max-h-60",
           )}
         >
           {expanded ? (
@@ -242,13 +242,13 @@ export function PlayingQueuePanel({
         </div>
 
         {played.length > 0 ? (
-          <details className="group rounded-lg border border-outline/50">
+          <details className="group max-h-40 shrink-0 overflow-hidden rounded-lg border border-outline/50">
             <summary className="cursor-pointer list-none px-3 py-2 marker:content-none">
               <Text variant="label-medium" className="text-on-surface-variant">
                 Played ({played.length})
               </Text>
             </summary>
-            <ol className="flex max-h-48 flex-col overflow-y-auto border-t border-outline/50">
+            <ol className="flex max-h-28 flex-col overflow-y-auto border-t border-outline/50">
               {played.map((track, index) => (
                 <QueueTrackRow
                   key={`played-${track.id}-${track.trackNumber}`}
