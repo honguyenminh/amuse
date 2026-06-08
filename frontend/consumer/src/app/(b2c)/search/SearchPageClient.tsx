@@ -3,12 +3,21 @@
 import { SearchResults } from "@/components/discovery/SearchResults";
 import { AppShell } from "@/components/ui/AppShell";
 import { Card } from "@/components/ui/Card";
+import { FilterChip } from "@/components/ui/FilterChip";
 import { PageContent } from "@/components/ui/PageContent";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { searchDiscovery } from "@/lib/api/discoveryClient";
 import type { SearchResponse } from "@/lib/api/types";
 import { searchPath } from "@/lib/discovery/paths";
+import {
+  DEFAULT_SEARCH_KINDS,
+  SEARCH_KINDS,
+  SEARCH_KIND_LABELS,
+  searchKindsForRequest,
+  toggleSearchKind,
+  type SearchKind,
+} from "@/lib/discovery/searchKinds";
 import { useKeyboardShortcuts } from "@/lib/keyboard/KeyboardShortcutsContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
@@ -27,6 +36,7 @@ export function SearchPageClient() {
   };
 
   const [input, setInput] = useState(query);
+  const [selectedKinds, setSelectedKinds] = useState<SearchKind[]>(DEFAULT_SEARCH_KINDS);
   const [data, setData] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,7 +66,7 @@ export function SearchPageClient() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    searchDiscovery(query)
+    searchDiscovery(query, { kinds: searchKindsForRequest(selectedKinds) })
       .then((response) => {
         if (!cancelled) setData(response);
       })
@@ -70,11 +80,15 @@ export function SearchPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [query]);
+  }, [query, selectedKinds]);
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     router.push(searchPath(input));
+  };
+
+  const onToggleKind = (kind: SearchKind) => {
+    setSelectedKinds((current) => toggleSearchKind(current, kind));
   };
 
   return (
@@ -97,6 +111,20 @@ export function SearchPageClient() {
             Search
           </button>
         </form>
+
+        {query ? (
+          <div className="flex flex-wrap gap-2" aria-label="Search filters">
+            {SEARCH_KINDS.map((kind) => (
+              <FilterChip
+                key={kind}
+                selected={selectedKinds.includes(kind)}
+                onClick={() => onToggleKind(kind)}
+              >
+                {SEARCH_KIND_LABELS[kind]}
+              </FilterChip>
+            ))}
+          </div>
+        ) : null}
 
         {!query ? (
           <Card>
@@ -122,7 +150,9 @@ export function SearchPageClient() {
           </Card>
         ) : null}
 
-        {data && query ? <SearchResults data={data} query={query} /> : null}
+        {data && query ? (
+          <SearchResults data={data} query={query} selectedKinds={selectedKinds} />
+        ) : null}
       </PageContent>
     </AppShell>
   );

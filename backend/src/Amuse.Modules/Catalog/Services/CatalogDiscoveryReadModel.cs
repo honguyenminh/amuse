@@ -42,77 +42,27 @@ internal sealed class CatalogDiscoveryReadModel(
 
     public async Task<CatalogSearchResult> SearchAsync(
         string query,
-        int limit,
+        int candidateLimit,
+        IReadOnlySet<string>? kinds,
         CancellationToken cancellationToken)
     {
-        var take = Math.Clamp(limit, 1, MaxSearchLimit);
+        var take = Math.Clamp(candidateLimit, 1, MaxSearchLimit);
         var pattern = $"%{query.Trim()}%";
+        var includeArtist = kinds is null || kinds.Contains("artist");
+        var includeRelease = kinds is null || kinds.Contains("release");
+        var includeTrack = kinds is null || kinds.Contains("track");
 
-        var artistRows = await db.Artists.AsNoTracking()
-            .Where(a => EF.Functions.ILike(a.Name, pattern)
-                        && db.Releases.Any(r =>
-                            r.ArtistId == a.Id && r.LifecycleStatus == ReleaseLifecycleStatus.Published))
-            .OrderBy(a => a.Name)
-            .Take(take)
-            .Select(a => new
-            {
-                a.Id,
-                a.Name,
-                a.Slug,
-                a.ManagingOrganizationId,
-            })
-            .ToListAsync(cancellationToken);
+        var artistRows = includeArtist
+            ? await SearchArtistsAsync(pattern, take, cancellationToken)
+            : [];
 
-        var releaseRows = await db.Releases.AsNoTracking()
-            .Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published
-                        && EF.Functions.ILike(r.Title, pattern))
-            .Join(
-                db.Artists.AsNoTracking(),
-                release => release.ArtistId,
-                artist => artist.Id,
-                (release, artist) => new
-                {
-                    ReleaseId = release.Id,
-                    release.Title,
-                    release.Slug,
-                    release.CoverArtKey,
-                    release.OrganizationId,
-                    ArtistId = artist.Id,
-                    ArtistName = artist.Name,
-                    ArtistSlug = artist.Slug,
-                })
-            .OrderBy(r => r.Title)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        var releaseRows = includeRelease
+            ? await SearchReleasesAsync(pattern, take, cancellationToken)
+            : [];
 
-        var trackRows = await db.Tracks.AsNoTracking()
-            .Where(t => t.LifecycleStatus == TrackLifecycleStatus.Published
-                        && EF.Functions.ILike(t.Title, pattern))
-            .Join(
-                db.Releases.AsNoTracking().Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published),
-                track => track.ReleaseId,
-                release => release.Id,
-                (track, release) => new { track, release })
-            .Join(
-                db.Artists.AsNoTracking(),
-                x => x.release.ArtistId,
-                artist => artist.Id,
-                (x, artist) => new
-                {
-                    TrackId = x.track.Id,
-                    TrackTitle = x.track.Title,
-                    ReleaseId = x.release.Id,
-                    ReleaseTitle = x.release.Title,
-                    ReleaseSlug = x.release.Slug,
-                    ReleaseCover = x.release.CoverArtKey,
-                    x.release.OrganizationId,
-                    ArtistId = artist.Id,
-                    ArtistName = artist.Name,
-                    ArtistSlug = artist.Slug,
-                })
-            .OrderBy(t => t.TrackTitle)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        var trackRows = includeTrack
+            ? await SearchTracksAsync(pattern, take, cancellationToken)
+            : [];
 
         var organizationIds = artistRows
             .Where(row => row.ManagingOrganizationId is not null)
@@ -183,7 +133,7 @@ internal sealed class CatalogDiscoveryReadModel(
                 CatalogOrganizationTrustResolver.IsPlatformVerified(trustTier)));
         }
 
-        return CatalogDiscoverySearchRanking.RankAndPartition(items, take);
+        return new CatalogSearchResult(items);
     }
 
     public async Task<IReadOnlyList<CatalogTrackPlayableRow>> GetPlayableTracksForReleaseAsync(
@@ -305,4 +255,221 @@ internal sealed class CatalogDiscoveryReadModel(
                 t.Title))
             .FirstOrDefaultAsync(cancellationToken);
 
+    private async Task<IReadOnlyList<ArtistSearchRow>> SearchArtistsAsync(
+        string pattern,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var publishedReleases = db.Releases.IgnoreQueryFilters().AsNoTracking()
+            .Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published);
+
+        var artistsByName = await db.Artists.IgnoreQueryFilters().AsNoTracking()
+            .Where(a => EF.Functions.ILike(a.Name, pattern))
+            .Where(a => publishedReleases.Any(r => r.ArtistId == a.Id))
+            .OrderBy(a => a.Name)
+            .Take(take)
+            .Select(a => new ArtistSearchRow(
+                a.Id,
+                a.Name,
+                a.Slug,
+                a.ManagingOrganizationId))
+            .ToListAsync(cancellationToken);
+
+        var artistIdsBySlug = await db.Database.SqlQuery<Guid>($"""
+            SELECT DISTINCT a.id
+            FROM catalog.artist AS a
+            INNER JOIN catalog.release AS r ON r.artist_id = a.id
+            WHERE r.lifecycle_status = 'published'::catalog.release_lifecycle_status
+              AND a.slug ILIKE {pattern}
+            LIMIT {take}
+            """).ToListAsync(cancellationToken);
+
+        var artistsBySlug = await LoadArtistSearchRowsAsync(artistIdsBySlug, cancellationToken);
+
+        return artistsByName
+            .Concat(artistsBySlug)
+            .DistinctBy(row => row.Id)
+            .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(take)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<ReleaseSearchRow>> SearchReleasesAsync(
+        string pattern,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var releasesByTitle = await db.Releases.IgnoreQueryFilters().AsNoTracking()
+            .Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published)
+            .Where(r => EF.Functions.ILike(r.Title, pattern))
+            .OrderBy(r => r.Title)
+            .Take(take)
+            .Join(
+                db.Artists.IgnoreQueryFilters().AsNoTracking(),
+                release => release.ArtistId,
+                artist => artist.Id,
+                (release, artist) => new ReleaseSearchRow(
+                    release.Id,
+                    release.Title,
+                    release.Slug,
+                    release.CoverArtKey,
+                    release.OrganizationId,
+                    artist.Id,
+                    artist.Name,
+                    artist.Slug))
+            .ToListAsync(cancellationToken);
+
+        var releaseIdsBySlug = await db.Database.SqlQuery<Guid>($"""
+            SELECT r.id
+            FROM catalog.release AS r
+            WHERE r.lifecycle_status = 'published'::catalog.release_lifecycle_status
+              AND r.slug ILIKE {pattern}
+            LIMIT {take}
+            """).ToListAsync(cancellationToken);
+
+        var releasesBySlug = await LoadReleaseSearchRowsAsync(releaseIdsBySlug, cancellationToken);
+
+        return releasesByTitle
+            .Concat(releasesBySlug)
+            .DistinctBy(row => row.ReleaseId)
+            .OrderBy(row => row.Title, StringComparer.OrdinalIgnoreCase)
+            .Take(take)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<TrackSearchRow>> SearchTracksAsync(
+        string pattern,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var trackIdsByTitle = await db.Tracks.IgnoreQueryFilters().AsNoTracking()
+            .Where(t => t.LifecycleStatus == TrackLifecycleStatus.Published)
+            .Where(t => EF.Functions.ILike(t.Title, pattern))
+            .OrderBy(t => t.Title)
+            .Take(take)
+            .Select(t => t.Id.Value)
+            .ToListAsync(cancellationToken);
+
+        var trackIdsBySlug = await db.Database.SqlQuery<Guid>($"""
+            SELECT DISTINCT t.id
+            FROM catalog.track AS t
+            INNER JOIN catalog.release AS r ON r.id = t.release_id
+            INNER JOIN catalog.artist AS a ON a.id = r.artist_id
+            WHERE t.lifecycle_status = 'published'::catalog.track_lifecycle_status
+              AND r.lifecycle_status = 'published'::catalog.release_lifecycle_status
+              AND (r.slug ILIKE {pattern} OR a.slug ILIKE {pattern})
+            LIMIT {take}
+            """).ToListAsync(cancellationToken);
+
+        var matchingTrackIds = trackIdsByTitle
+            .Concat(trackIdsBySlug)
+            .Distinct()
+            .Take(take)
+            .Select(TrackId.From)
+            .ToArray();
+
+        if (matchingTrackIds.Length == 0)
+            return [];
+
+        return await db.Tracks.IgnoreQueryFilters().AsNoTracking()
+            .Where(t => matchingTrackIds.Contains(t.Id))
+            .OrderBy(t => t.Title)
+            .Take(take)
+            .Join(
+                db.Releases.IgnoreQueryFilters().AsNoTracking()
+                    .Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published),
+                track => track.ReleaseId,
+                release => release.Id,
+                (track, release) => new { track, release })
+            .Join(
+                db.Artists.IgnoreQueryFilters().AsNoTracking(),
+                x => x.release.ArtistId,
+                artist => artist.Id,
+                (x, artist) => new TrackSearchRow(
+                    x.track.Id,
+                    x.track.Title,
+                    x.release.Id,
+                    x.release.Title,
+                    x.release.Slug,
+                    x.release.CoverArtKey,
+                    x.release.OrganizationId,
+                    artist.Id,
+                    artist.Name,
+                    artist.Slug))
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<ArtistSearchRow>> LoadArtistSearchRowsAsync(
+        IReadOnlyList<Guid> artistIds,
+        CancellationToken cancellationToken)
+    {
+        if (artistIds.Count == 0)
+            return [];
+
+        var typedIds = artistIds.Select(ArtistId.From).ToArray();
+
+        return await db.Artists.IgnoreQueryFilters().AsNoTracking()
+            .Where(a => typedIds.Contains(a.Id))
+            .Select(a => new ArtistSearchRow(
+                a.Id,
+                a.Name,
+                a.Slug,
+                a.ManagingOrganizationId))
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<ReleaseSearchRow>> LoadReleaseSearchRowsAsync(
+        IReadOnlyList<Guid> releaseIds,
+        CancellationToken cancellationToken)
+    {
+        if (releaseIds.Count == 0)
+            return [];
+
+        var typedIds = releaseIds.Select(ReleaseId.From).ToArray();
+
+        return await db.Releases.IgnoreQueryFilters().AsNoTracking()
+            .Where(r => typedIds.Contains(r.Id))
+            .Join(
+                db.Artists.IgnoreQueryFilters().AsNoTracking(),
+                release => release.ArtistId,
+                artist => artist.Id,
+                (release, artist) => new ReleaseSearchRow(
+                    release.Id,
+                    release.Title,
+                    release.Slug,
+                    release.CoverArtKey,
+                    release.OrganizationId,
+                    artist.Id,
+                    artist.Name,
+                    artist.Slug))
+            .ToListAsync(cancellationToken);
+    }
+
+    private sealed record ArtistSearchRow(
+        ArtistId Id,
+        string Name,
+        Slug Slug,
+        OrganizationId? ManagingOrganizationId);
+
+    private sealed record ReleaseSearchRow(
+        ReleaseId ReleaseId,
+        string Title,
+        Slug Slug,
+        string? CoverArtKey,
+        OrganizationId OrganizationId,
+        ArtistId ArtistId,
+        string ArtistName,
+        Slug ArtistSlug);
+
+    private sealed record TrackSearchRow(
+        TrackId TrackId,
+        string TrackTitle,
+        ReleaseId ReleaseId,
+        string ReleaseTitle,
+        Slug ReleaseSlug,
+        string? ReleaseCover,
+        OrganizationId OrganizationId,
+        ArtistId ArtistId,
+        string ArtistName,
+        Slug ArtistSlug);
 }

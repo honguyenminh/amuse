@@ -104,7 +104,9 @@ internal static class DiscoveryMapper
             row.ArtistName);
     }
 
-    public static SearchItemDto ToSearchItem(CatalogSearchItem item, IMediaPublicUrlBuilder mediaUrls) =>
+    public static SearchResultItemDto ToSearchResultItem(
+        CatalogSearchItem item,
+        IMediaPublicUrlBuilder mediaUrls) =>
         new(
             item.Kind.ToString().ToLowerInvariant(),
             item.Id,
@@ -116,20 +118,34 @@ internal static class DiscoveryMapper
             item.ReleaseId,
             CoverArtUrlFor(mediaUrls, item.CoverArtKey),
             item.TrustTier,
-            item.IsVerified);
+            item.IsVerified,
+            null,
+            null,
+            null,
+            null,
+            null);
 
-    public static PublicPlaylistSearchCardDto ToPublicPlaylistSearchCard(
+    public static SearchResultItemDto ToSearchResultItem(
         Playlist playlist,
         PlaylistOwnerDto owner,
-        IReadOnlyList<string>? coverArtUrls = null) =>
+        IReadOnlyList<string>? coverArtUrls) =>
         new(
+            "playlist",
             playlist.Id.Value,
             playlist.Title,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             playlist.Description,
             playlist.Items.Count,
             owner,
-            playlist.UpdatedAt,
-            coverArtUrls ?? []);
+            coverArtUrls ?? [],
+            playlist.UpdatedAt);
 
     public static PlayableTrackDto ToPlayableTrack(
         CatalogTrackPlayableRow row,

@@ -254,7 +254,7 @@ export type PlaylistListResponse = {
   playlists: PlaylistSummaryDto[];
 };
 
-export type SearchItemDto = {
+export type SearchResultItem = {
   kind: string;
   id: string;
   title: string;
@@ -264,24 +264,17 @@ export type SearchItemDto = {
   artistId: string | null;
   releaseId: string | null;
   coverArtUrl: string | null;
-  trustTier: OrganizationTrustTier;
-  isVerified: boolean;
-};
-
-export type PublicPlaylistSearchCardDto = {
-  id: string;
-  title: string;
+  trustTier: OrganizationTrustTier | null;
+  isVerified: boolean | null;
   description: string | null;
-  trackCount: number;
-  owner: PlaylistOwnerDto;
-  updatedAt: string;
-  coverArtUrls: string[];
+  trackCount: number | null;
+  owner: PlaylistOwnerDto | null;
+  coverArtUrls: string[] | null;
+  updatedAt: string | null;
 };
 
 export type SearchResponse = {
-  verified: SearchItemDto[];
-  unverified: SearchItemDto[];
-  publicPlaylists: PublicPlaylistSearchCardDto[];
+  items: SearchResultItem[];
 };
 
 export type LikedTrackRowDto = {

@@ -1,116 +1,88 @@
 "use client";
 
 import { PlaylistCoverArt } from "@/components/discovery/PlaylistCoverArt";
+import { UnverifiedSellerBadge } from "@/components/catalog/UnverifiedSellerBadge";
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
-import type {
-  PublicPlaylistSearchCardDto,
-  SearchItemDto,
-  SearchResponse,
-} from "@/lib/api/types";
+import type { SearchResponse, SearchResultItem } from "@/lib/api/types";
 import {
   catalogArtistPath,
   catalogReleaseByIdHref,
   catalogReleaseHref,
 } from "@/lib/catalog/paths";
-import { playlistPath } from "@/lib/discovery/paths";
 import {
   formatPlaylistSearchSubtitle,
   formatSearchItemSubtitle,
 } from "@/lib/discovery/formatSearchResultSubtitle";
+import { playlistPath } from "@/lib/discovery/paths";
+import {
+  filteredKindsSummary,
+  isAllSearchKindsSelected,
+  type SearchKind,
+} from "@/lib/discovery/searchKinds";
 import {
   usePlaylistContextMenu,
   useReleaseContextMenu,
 } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import Link from "next/link";
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 
 type SearchResultsProps = {
   data: SearchResponse;
   query: string;
+  selectedKinds: SearchKind[];
 };
 
-export function SearchResults({ data, query }: SearchResultsProps) {
-  const hasResults =
-    data.verified.length > 0 ||
-    data.unverified.length > 0 ||
-    data.publicPlaylists.length > 0;
+export function SearchResults({ data, query, selectedKinds }: SearchResultsProps) {
+  const hasResults = data.items.length > 0;
+  const filtersActive = !isAllSearchKindsSelected(selectedKinds);
 
   if (!hasResults) {
     return (
       <Card>
         <Text variant="title-large">No results</Text>
         <Text variant="label-medium" className="text-on-surface-variant">
-          Nothing matched &ldquo;{query}&rdquo;. Try another search.
+          {filtersActive
+            ? `Nothing matched "${query}" for ${filteredKindsSummary(selectedKinds).toLowerCase()}. Try other filters or another search.`
+            : `Nothing matched "${query}". Try another search.`}
         </Text>
       </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      {data.verified.length > 0 ? (
-        <SearchSection title="Verified">
-          {data.verified.map((item) => (
-            <SearchItemRow key={`verified-${item.kind}-${item.id}`} item={item} />
-          ))}
-        </SearchSection>
-      ) : null}
-
-      {data.unverified.length > 0 ? (
-        <SearchSection title="Unverified">
-          {data.unverified.map((item) => (
-            <SearchItemRow key={`unverified-${item.kind}-${item.id}`} item={item} />
-          ))}
-        </SearchSection>
-      ) : null}
-
-      {data.publicPlaylists.length > 0 ? (
-        <SearchSection title="Public playlists">
-          {data.publicPlaylists.map((playlist) => (
-            <PublicPlaylistRow key={playlist.id} playlist={playlist} />
-          ))}
-        </SearchSection>
-      ) : null}
-    </div>
+    <Card className="px-4 py-0">
+      <ul className="flex flex-col divide-y divide-outline/40">
+        {data.items.map((item) => (
+          <SearchResultRow key={`${item.kind}-${item.id}`} item={item} />
+        ))}
+      </ul>
+    </Card>
   );
 }
 
-function SearchSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-3">
-      <Text variant="title-large">{title}</Text>
-      <Card className="px-4 py-0">
-        <ul className="flex flex-col divide-y divide-outline/40">{children}</ul>
-      </Card>
-    </section>
-  );
-}
+function SearchResultRow({ item }: { item: SearchResultItem }) {
+  if (item.kind === "playlist") {
+    return <SearchPlaylistRow item={item} />;
+  }
 
-function SearchItemRow({ item }: { item: SearchItemDto }) {
   if (item.kind === "release") {
     return <SearchReleaseRow item={item} />;
   }
 
-  return <SearchItemRowLink item={item} />;
+  return <SearchCatalogRow item={item} />;
 }
 
-function SearchReleaseRow({ item }: { item: SearchItemDto }) {
+function SearchReleaseRow({ item }: { item: SearchResultItem }) {
   const onContextMenu = useReleaseContextMenu(item.id);
-  return <SearchItemRowLink item={item} onContextMenu={onContextMenu} />;
+  return <SearchCatalogRow item={item} onContextMenu={onContextMenu} />;
 }
 
-function SearchItemRowLink({
+function SearchCatalogRow({
   item,
   onContextMenu,
 }: {
-  item: SearchItemDto;
+  item: SearchResultItem;
   onContextMenu?: (event: MouseEvent) => void;
 }) {
   const href = searchItemHref(item);
@@ -134,9 +106,12 @@ function SearchItemRowLink({
           <div className="size-12 rounded bg-surface-container-high" />
         )}
         <div className="min-w-0 flex-1">
-          <Text variant="body-medium" className="truncate">
-            {item.title}
-          </Text>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Text variant="body-medium" className="truncate">
+              {item.title}
+            </Text>
+            <UnverifiedSellerBadge trustTier={item.trustTier} />
+          </div>
           <Text variant="label-medium" className="truncate text-on-surface-variant">
             {subtitle}
           </Text>
@@ -146,29 +121,30 @@ function SearchItemRowLink({
   );
 }
 
-function PublicPlaylistRow({ playlist }: { playlist: PublicPlaylistSearchCardDto }) {
-  const ownerName = playlist.owner.displayName ?? "Unknown listener";
-  const onContextMenu = usePlaylistContextMenu(playlist.id);
+function SearchPlaylistRow({ item }: { item: SearchResultItem }) {
+  const onContextMenu = usePlaylistContextMenu(item.id);
+  const ownerName = item.owner?.displayName ?? "Unknown listener";
+  const trackCount = item.trackCount ?? 0;
 
   return (
     <li>
       <Link
-        href={playlistPath(playlist.id)}
+        href={playlistPath(item.id)}
         className="flex items-center gap-3 py-3 transition-colors hover:text-primary"
         onContextMenu={onContextMenu}
       >
-        <PlaylistCoverArt coverArtUrls={playlist.coverArtUrls} variant="row" />
+        <PlaylistCoverArt coverArtUrls={item.coverArtUrls ?? []} variant="row" />
         <div className="min-w-0 flex-1">
           <Text variant="body-medium" className="truncate">
-            {playlist.title}
+            {item.title}
           </Text>
-          {playlist.description ? (
+          {item.description ? (
             <Text variant="body-small" className="line-clamp-1 text-on-surface-variant">
-              {playlist.description}
+              {item.description}
             </Text>
           ) : null}
           <Text variant="label-medium" className="truncate text-on-surface-variant">
-            {formatPlaylistSearchSubtitle(ownerName, playlist.trackCount)}
+            {formatPlaylistSearchSubtitle(ownerName, trackCount)}
           </Text>
         </div>
       </Link>
@@ -176,7 +152,7 @@ function PublicPlaylistRow({ playlist }: { playlist: PublicPlaylistSearchCardDto
   );
 }
 
-function searchItemHref(item: SearchItemDto): string {
+function searchItemHref(item: SearchResultItem): string {
   switch (item.kind) {
     case "artist":
       if (item.artistSlug) return catalogArtistPath(item.artistSlug);

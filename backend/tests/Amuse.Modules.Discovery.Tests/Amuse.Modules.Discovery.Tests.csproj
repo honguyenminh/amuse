@@ -18,4 +18,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Amuse.Domain\Amuse.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Amuse.Modules\Amuse.Modules.csproj" />
+  </ItemGroup>
+
 </Project>

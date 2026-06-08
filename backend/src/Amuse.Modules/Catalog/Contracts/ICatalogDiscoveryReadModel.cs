@@ -22,9 +22,7 @@ public sealed record CatalogSearchItem(
     string TrustTier,
     bool IsVerified);
 
-public sealed record CatalogSearchResult(
-    IReadOnlyList<CatalogSearchItem> Verified,
-    IReadOnlyList<CatalogSearchItem> Unverified);
+public sealed record CatalogSearchResult(IReadOnlyList<CatalogSearchItem> Items);
 
 public sealed record CatalogTrackPlayableRow(
     Guid TrackId,
@@ -54,7 +52,11 @@ public interface ICatalogDiscoveryReadModel
         ReleaseId releaseId,
         CancellationToken cancellationToken);
 
-    Task<CatalogSearchResult> SearchAsync(string query, int limit, CancellationToken cancellationToken);
+    Task<CatalogSearchResult> SearchAsync(
+        string query,
+        int candidateLimit,
+        IReadOnlySet<string>? kinds,
+        CancellationToken cancellationToken);
 
     Task<IReadOnlyList<CatalogTrackPlayableRow>> GetPlayableTracksForReleaseAsync(
         ReleaseId releaseId,

@@ -9,7 +9,7 @@
     <ItemGroup>
       <InternalsVisibleTo Include="Amuse.Modules.Identity.Tests" />
       <InternalsVisibleTo Include="Amuse.Modules.Catalog.Tests" />
-      <InternalsVisibleTo Include="Amuse.Modules.Billing.Tests" />
+      <InternalsVisibleTo Include="Amuse.Modules.Discovery.Tests" />
     </ItemGroup>
 
     <ItemGroup>

@@ -64,7 +64,7 @@ public sealed record PlaylistDetailDto(
 
 public sealed record PlaylistListResponse(IReadOnlyList<PlaylistSummaryDto> Playlists);
 
-public sealed record SearchItemDto(
+public sealed record SearchResultItemDto(
     string Kind,
     Guid Id,
     string Title,
@@ -74,22 +74,15 @@ public sealed record SearchItemDto(
     Guid? ArtistId,
     Guid? ReleaseId,
     string? CoverArtUrl,
-    string TrustTier,
-    bool IsVerified);
-
-public sealed record PublicPlaylistSearchCardDto(
-    Guid Id,
-    string Title,
+    string? TrustTier,
+    bool? IsVerified,
     string? Description,
-    int TrackCount,
-    PlaylistOwnerDto Owner,
-    DateTimeOffset UpdatedAt,
-    IReadOnlyList<string> CoverArtUrls);
+    int? TrackCount,
+    PlaylistOwnerDto? Owner,
+    IReadOnlyList<string>? CoverArtUrls,
+    DateTimeOffset? UpdatedAt);
 
-public sealed record SearchResponse(
-    IReadOnlyList<SearchItemDto> Verified,
-    IReadOnlyList<SearchItemDto> Unverified,
-    IReadOnlyList<PublicPlaylistSearchCardDto> PublicPlaylists);
+public sealed record SearchResponse(IReadOnlyList<SearchResultItemDto> Items);
 
 public sealed record LikedTrackRowDto(
     Guid TrackId,

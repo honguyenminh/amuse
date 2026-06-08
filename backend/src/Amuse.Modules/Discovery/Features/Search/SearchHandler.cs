@@ -20,10 +20,12 @@ internal sealed class SearchHandler(
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 50;
     private const int MinQueryLength = 1;
+    private const int MaxSearchLimit = 50;
 
     public async Task<Result<SearchResponse>> HandleAsync(
         string? query,
         int? pageSize,
+        string[]? kinds,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -32,58 +34,73 @@ internal sealed class SearchHandler(
             return Result<SearchResponse>.Failure(DiscoveryErrors.InvalidSearchQuery);
 
         var limit = Math.Clamp(pageSize ?? DefaultPageSize, 1, MaxPageSize);
+        var kindFilter = DiscoverySearchKinds.Parse(kinds);
+        var candidateLimit = Math.Min(Math.Max(limit * 3, limit), MaxSearchLimit);
+        var allowUnverifiedArtists = await TryLoadPreferenceAsync(principal, cancellationToken);
 
-        var catalogResult = await catalog.SearchAsync(trimmed, limit, cancellationToken);
+        IReadOnlyList<CatalogSearchItem> catalogItems = [];
+        if (DiscoverySearchKinds.IncludesCatalog(kindFilter))
+        {
+            var catalogResult = await catalog.SearchAsync(
+                trimmed,
+                candidateLimit,
+                kindFilter,
+                cancellationToken);
+            catalogItems = catalogResult.Items;
+        }
 
-        var verified = catalogResult.Verified
-            .Select(item => DiscoveryMapper.ToSearchItem(item, mediaUrls))
-            .ToArray();
+        IReadOnlyList<Playlist> publicPlaylists = [];
+        if (DiscoverySearchKinds.IncludesPlaylist(kindFilter))
+        {
+            var pattern = $"%{trimmed}%";
+            publicPlaylists = await db.Playlists.AsNoTracking()
+                .Include(p => p.Items)
+                .Where(p =>
+                    p.Kind == PlaylistKind.User
+                    && p.Visibility == PlaylistVisibility.Public
+                    && EF.Functions.ILike(p.Title, pattern))
+                .OrderBy(p => p.Title)
+                .Take(candidateLimit)
+                .ToListAsync(cancellationToken);
+        }
 
-        var unverified = catalogResult.Unverified
-            .Select(item => DiscoveryMapper.ToSearchItem(item, mediaUrls))
-            .ToArray();
+        var ranked = DiscoverySearchRanker.RankMixed(
+            trimmed,
+            catalogItems,
+            publicPlaylists,
+            allowUnverifiedArtists,
+            kindFilter,
+            limit);
 
-        var pattern = $"%{trimmed}%";
-        var publicPlaylists = await db.Playlists.AsNoTracking()
-            .Include(p => p.Items)
-            .Where(p =>
-                p.Kind == PlaylistKind.User
-                && p.Visibility == PlaylistVisibility.Public
-                && EF.Functions.ILike(p.Title, pattern))
-            .OrderBy(p => p.Title)
-            .Take(limit)
-            .ToListAsync(cancellationToken);
-
+        var playlistPayloads = ranked.OfType<Playlist>().ToArray();
         var owners = await DiscoveryMapper.LoadOwnersAsync(
-            publicPlaylists.Select(p => p.OwnerListenerProfileId),
+            playlistPayloads.Select(p => p.OwnerListenerProfileId),
             presentationReadModel,
             mediaUrls,
             cancellationToken);
 
         var coverArtUrls = await DiscoveryPlaylistCoverArt.LoadAsync(
-            publicPlaylists,
+            playlistPayloads,
             catalog,
             mediaUrls,
             cancellationToken);
 
-        var playlistCards = publicPlaylists
-            .Select(p =>
+        var items = ranked
+            .Select(payload => payload switch
             {
-                owners.TryGetValue(p.OwnerListenerProfileId.Value, out var owner);
-                coverArtUrls.TryGetValue(p.Id.Value, out var covers);
-                return DiscoveryMapper.ToPublicPlaylistSearchCard(
-                    p,
-                    owner ?? new PlaylistOwnerDto(p.OwnerListenerProfileId.Value, null, null),
-                    covers);
+                CatalogSearchItem catalogItem => DiscoveryMapper.ToSearchResultItem(catalogItem, mediaUrls),
+                Playlist playlist =>
+                    DiscoveryMapper.ToSearchResultItem(
+                        playlist,
+                        owners.TryGetValue(playlist.OwnerListenerProfileId.Value, out var owner)
+                            ? owner
+                            : new PlaylistOwnerDto(playlist.OwnerListenerProfileId.Value, null, null),
+                        coverArtUrls.TryGetValue(playlist.Id.Value, out var covers) ? covers : []),
+                _ => throw new InvalidOperationException("Unexpected search payload type."),
             })
             .ToArray();
 
-        _ = await TryLoadPreferenceAsync(principal, cancellationToken);
-
-        return Result<SearchResponse>.Success(new SearchResponse(
-            verified,
-            unverified,
-            playlistCards));
+        return Result<SearchResponse>.Success(new SearchResponse(items));
     }
 
     private async Task<bool?> TryLoadPreferenceAsync(

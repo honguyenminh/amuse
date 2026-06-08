@@ -1,5 +1,7 @@
 import { authFetch } from "@/lib/auth/authFetch";
 import { publicFetch } from "./publicFetch";
+import type { SearchKind } from "@/lib/discovery/searchKinds";
+import { appendSearchKindsParams } from "@/lib/discovery/searchKinds";
 import type {
   AddPlaylistItemRequest,
   AddPlaylistItemResponse,
@@ -23,9 +25,13 @@ function enc(id: string): string {
 }
 
 // Browse / read — anonymous-friendly; auth token sent when present for personalization.
-export function searchDiscovery(q: string, pageSize?: number): Promise<SearchResponse> {
+export function searchDiscovery(
+  q: string,
+  options?: { pageSize?: number; kinds?: SearchKind[] },
+): Promise<SearchResponse> {
   const params = new URLSearchParams({ q });
-  if (pageSize !== undefined) params.set("pageSize", String(pageSize));
+  if (options?.pageSize !== undefined) params.set("pageSize", String(options.pageSize));
+  appendSearchKindsParams(params, options?.kinds);
   return publicFetch<SearchResponse>(`${BASE}/search?${params}`, { method: "GET" });
 }
 

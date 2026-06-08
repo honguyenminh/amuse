@@ -146,6 +146,22 @@ public sealed class DiscoveryFlowTests(AmuseApiFixture fixture)
         using var client = fixture.CreateClient();
         var response = await client.GetAsync("/api/v1/discovery/search?q=test&pageSize=5");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        Assert.True(body.TryGetProperty("items", out var items));
+        Assert.Equal(JsonValueKind.Array, items.ValueKind);
+    }
+
+    [Fact]
+    public async Task Search_kinds_filter_returns_only_requested_kind()
+    {
+        using var client = fixture.CreateClient();
+        var response = await client.GetAsync("/api/v1/discovery/search?q=a&pageSize=20&kinds=playlist");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        var items = body.GetProperty("items").EnumerateArray().ToArray();
+        Assert.All(items, item => Assert.Equal("playlist", item.GetProperty("kind").GetString()));
     }
 
     private static async Task RegisterConfirmAndLoginListenerAsync(

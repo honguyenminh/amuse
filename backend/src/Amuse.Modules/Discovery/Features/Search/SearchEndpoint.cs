@@ -12,16 +12,20 @@ public static class SearchEndpoint
         endpoints.MapGet("/api/v1/discovery/search", async (
                 string? q,
                 int? pageSize,
+                string[]? kinds,
                 SearchHandler handler,
                 HttpContext httpContext,
                 CancellationToken cancellationToken) =>
             {
-                var result = await handler.HandleAsync(q, pageSize, httpContext.User, cancellationToken);
+                var result = await handler.HandleAsync(q, pageSize, kinds, httpContext.User, cancellationToken);
                 return result.ToDiscoveryResult(Results.Ok);
             })
             .AllowAnonymous()
             .WithName("DiscoverySearch")
-            .WithSummary("Search catalog content and public playlists. Optional auth respects listener unverified-artist preference.")
+            .WithSummary(
+                "Search catalog content and public playlists in a single relevance-ranked list. "
+                + "Optional kinds filter (artist, release, track, playlist). "
+                + "Authenticated listeners with Allow unverified artists enabled skip the unverified ranking penalty.")
             .Produces<SearchResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
