@@ -14,8 +14,16 @@ import {
   catalogReleaseHref,
 } from "@/lib/catalog/paths";
 import { playlistPath } from "@/lib/discovery/paths";
+import {
+  formatPlaylistSearchSubtitle,
+  formatSearchItemSubtitle,
+} from "@/lib/discovery/formatSearchResultSubtitle";
+import {
+  usePlaylistContextMenu,
+  useReleaseContextMenu,
+} from "@/lib/playback/usePlaybackContextMenuHandlers";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 type SearchResultsProps = {
   data: SearchResponse;
@@ -78,7 +86,7 @@ function SearchSection({
   return (
     <section className="flex flex-col gap-3">
       <Text variant="title-large">{title}</Text>
-      <Card>
+      <Card className="px-4 py-0">
         <ul className="flex flex-col divide-y divide-outline/40">{children}</ul>
       </Card>
     </section>
@@ -86,14 +94,34 @@ function SearchSection({
 }
 
 function SearchItemRow({ item }: { item: SearchItemDto }) {
+  if (item.kind === "release") {
+    return <SearchReleaseRow item={item} />;
+  }
+
+  return <SearchItemRowLink item={item} />;
+}
+
+function SearchReleaseRow({ item }: { item: SearchItemDto }) {
+  const onContextMenu = useReleaseContextMenu(item.id);
+  return <SearchItemRowLink item={item} onContextMenu={onContextMenu} />;
+}
+
+function SearchItemRowLink({
+  item,
+  onContextMenu,
+}: {
+  item: SearchItemDto;
+  onContextMenu?: (event: MouseEvent) => void;
+}) {
   const href = searchItemHref(item);
-  const subtitle = item.subtitle ?? searchItemKindLabel(item.kind);
+  const subtitle = formatSearchItemSubtitle(item.kind, item.subtitle);
 
   return (
     <li>
       <Link
         href={href}
         className="flex items-center gap-3 py-3 transition-colors hover:text-primary"
+        onContextMenu={onContextMenu}
       >
         {item.coverArtUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -120,12 +148,14 @@ function SearchItemRow({ item }: { item: SearchItemDto }) {
 
 function PublicPlaylistRow({ playlist }: { playlist: PublicPlaylistSearchCardDto }) {
   const ownerName = playlist.owner.displayName ?? "Unknown listener";
+  const onContextMenu = usePlaylistContextMenu(playlist.id);
 
   return (
     <li>
       <Link
         href={playlistPath(playlist.id)}
         className="flex items-center gap-3 py-3 transition-colors hover:text-primary"
+        onContextMenu={onContextMenu}
       >
         <PlaylistCoverArt coverArtUrls={playlist.coverArtUrls} variant="row" />
         <div className="min-w-0 flex-1">
@@ -138,26 +168,12 @@ function PublicPlaylistRow({ playlist }: { playlist: PublicPlaylistSearchCardDto
             </Text>
           ) : null}
           <Text variant="label-medium" className="truncate text-on-surface-variant">
-            {ownerName} · {playlist.trackCount} track
-            {playlist.trackCount === 1 ? "" : "s"}
+            {formatPlaylistSearchSubtitle(ownerName, playlist.trackCount)}
           </Text>
         </div>
       </Link>
     </li>
   );
-}
-
-function searchItemKindLabel(kind: string): string {
-  switch (kind) {
-    case "artist":
-      return "Artist";
-    case "release":
-      return "Release";
-    case "track":
-      return "Track";
-    default:
-      return kind;
-  }
 }
 
 function searchItemHref(item: SearchItemDto): string {

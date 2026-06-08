@@ -7,6 +7,7 @@ import type { PlaylistSummaryDto } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { playlistPath } from "@/lib/discovery/paths";
 import { usePlaylistPlayableClick } from "@/lib/playback/useAltClickAddToQueue";
+import { usePlaylistContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import Link from "next/link";
 
 type PlaylistCardProps = {
@@ -28,12 +29,14 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
     playlistId: playlist.id,
     playlistTitle: playlist.title,
   });
+  const onContextMenu = usePlaylistContextMenu(playlist.id);
 
   return (
     <Link
       href={playlistPath(playlist.id)}
       className="group block"
       onClick={onClick}
+      onContextMenu={onContextMenu}
     >
       <Card className={cn("relative", queueAddPulsing && "queue-add-pulse")}>
         <div className="flex flex-col gap-2">

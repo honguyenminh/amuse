@@ -1,7 +1,13 @@
 "use client";
 
 import { getCatalogRelease } from "@/lib/api/catalogClient";
-import { likeTrack, listMyPlaylists, unlikeTrack } from "@/lib/api/discoveryClient";
+import {
+  getLikedPlayableTracks,
+  getPlaylistPlayableTracks,
+  likeTrack,
+  listMyPlaylists,
+  unlikeTrack,
+} from "@/lib/api/discoveryClient";
 import { ApiError } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { consumeAppContextMenu } from "@/lib/ui/contextMenu";
@@ -10,7 +16,7 @@ import type { PlaybackContextMenuItem } from "./PlaybackContextMenuProvider";
 import { usePlaybackContextMenu } from "./PlaybackContextMenuProvider";
 import { addToLikedMenuItem } from "@/lib/discovery/likedContextMenu";
 import { playlistPickerItems } from "./playlistContextMenu";
-import { playableTracksFromRelease } from "./toPlaybackTrack";
+import { playableTracksFromDtos, playableTracksFromRelease } from "./toPlaybackTrack";
 import type { PlaybackTrack } from "./types";
 import { usePlayback } from "./PlaybackContext";
 
@@ -312,5 +318,67 @@ export function useReleaseContextMenu(releaseId: string) {
       });
     },
     [releaseId, auth.isAuthenticated, addToQueue, playNext, openAt],
+  );
+}
+
+type PlaylistContextMenuOptions = {
+  isLikedMode?: boolean;
+};
+
+export function usePlaylistContextMenu(
+  playlistId: string,
+  options?: PlaylistContextMenuOptions,
+) {
+  const auth = useAuth();
+  const { addToQueue, playNext } = usePlayback();
+  const { openAt } = usePlaybackContextMenu();
+
+  return useCallback(
+    (e: React.MouseEvent) => {
+      consumeAppContextMenu(e, () => {
+        const x = e.clientX;
+        const y = e.clientY;
+        openAt(x, y, loadingItems);
+
+        const tracksPromise = options?.isLikedMode
+          ? getLikedPlayableTracks().then((response) =>
+              playableTracksFromDtos(response.tracks),
+            )
+          : getPlaylistPlayableTracks(playlistId).then((response) =>
+              playableTracksFromDtos(response.tracks),
+            );
+
+        const playlistsPromise = auth.isAuthenticated
+          ? ownedPlaylistsForPicker()
+          : Promise.resolve([]);
+
+        void Promise.all([tracksPromise, playlistsPromise])
+          .then(([tracks, owned]) => {
+            const trackIds = tracks.map((track) => track.id);
+            openAt(
+              x,
+              y,
+              releaseContextMenuItems(
+                tracks,
+                auth.isAuthenticated,
+                addToQueue,
+                playNext,
+                playlistPickerItems(owned, trackIds),
+              ),
+            );
+          })
+          .catch(() => {
+            openAt(x, y, [
+              {
+                id: "error",
+                label: "Could not load playlist",
+                disabled: true,
+                onSelect: () => {},
+              },
+            ]);
+          });
+      });
+    },
+    [playlistId, options?.isLikedMode, auth.isAuthenticated, addToQueue, playNext, openAt],
   );
 }

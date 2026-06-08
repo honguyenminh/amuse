@@ -41,6 +41,7 @@ import {
   INSERT_AFTER_LAST,
 } from "@/lib/discovery/useTrackDragReorder";
 import { usePlayback } from "@/lib/playback/PlaybackContext";
+import { usePlaylistContextMenu } from "@/lib/playback/usePlaybackContextMenuHandlers";
 import { playableTracksFromDtos } from "@/lib/playback/toPlaybackTrack";
 import { usePageSeed } from "@/theme/ThemeProvider";
 import Link from "next/link";
@@ -383,6 +384,7 @@ export function PlaylistDetailView({
 
   const ownerName = playlist?.owner?.displayName ?? "Unknown listener";
   const chromeTitle = isLikedMode ? "Liked" : (playlist?.title ?? "Playlist");
+  const onPlaylistContextMenu = usePlaylistContextMenu(activePlaylistId, { isLikedMode });
 
   const content = (
     <>
@@ -397,7 +399,7 @@ export function PlaylistDetailView({
 
       {playlist ? (
         <>
-          <Card>
+          <Card onContextMenu={onPlaylistContextMenu}>
               <div className="flex items-start gap-2">
                 <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start">
                 <PlaylistCoverArt coverArtUrls={coverArtUrls} variant="hero" />
