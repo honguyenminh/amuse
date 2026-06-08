@@ -9,7 +9,7 @@ GitHub Actions pipelines for the Amuse backend (`backend/**`). Private GHCR pack
 | **PR → `master`** | QA preview before merge | Yes (`:pr-<n>`, `:sha-<short>`) | **Auto** → `development` |
 | **Push → `master`** | Dev integration + QA/QC | Yes (`:master`, `:sha-<short>`) | **Auto** → `development` |
 | **PR → `staging` / `production`** | Release review | No (CI only) | No |
-| **Push → `staging`** | Release candidate | Yes (`:staging`, `:sha-<short>`) | Manual `workflow_dispatch` |
+| **Push → `staging`** | Release candidate | Yes (`:staging`, `:sha-<short>`) | **Auto** → `staging` (per publish workflow); manual all-images bump optional |
 | **Push → `production`** | Live | Yes (`:production`, `:sha-<short>`) | Manual `workflow_dispatch` |
 
 PRs targeting `master` publish and auto-deploy so QA can test changes before merge. PRs targeting `staging` or `production` run CI only.
@@ -34,7 +34,7 @@ Promotion:
 | Frontend Consumer Publish | [`.github/workflows/frontend-consumer-publish.yml`](../../.github/workflows/frontend-consumer-publish.yml) | After Consumer CI, **PR → `master`**, or `workflow_dispatch` |
 | Frontend Business Publish | [`.github/workflows/frontend-business-publish.yml`](../../.github/workflows/frontend-business-publish.yml) | After Business CI, **PR → `master`**, or `workflow_dispatch` |
 | Frontend Dependency Review | [`.github/workflows/frontend-dependency-review.yml`](../../.github/workflows/frontend-dependency-review.yml) | PR only (`frontend/**`) |
-| Deploy | [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml) | Auto after Backend or per-app Frontend Publish (push or PR to `master`); bumps only images from that publish workflow; manual for `staging`/`production` |
+| Deploy | [`.github/workflows/backend-deploy.yml`](../../.github/workflows/backend-deploy.yml) | Auto after publish on `master` → dev, `staging` → stage (per workflow); manual all-images bump for `staging`/`production` |
 
 ### CI jobs (ordered with `needs` blockers)
 

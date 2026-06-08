@@ -37,6 +37,7 @@ jobs:
             --exclude 'images-tags/' \
             --exclude 'secrets.yaml' \
             --exclude 'secrets.example.yaml' \
+            --exclude 'cluster.env' \
             infrastructure/kubernetes/overlays/ \
             amuse-deploy/overlays/
           # Dev secrets are cluster-local; drop any legacy GitOps copies from the deploy repo.

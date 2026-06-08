@@ -10,6 +10,7 @@ on:
       - completed
     branches:
       - master
+      - staging
   workflow_dispatch:
     inputs:
       environment:
@@ -117,6 +118,83 @@ jobs:
             exit 0
           fi
           git commit -m "deploy(dev): bump ${{ steps.images.outputs.names }} to ${{ steps.params.outputs.image_tag }}"
+          git push
+
+  deploy-staging:
+    name: Deploy staging
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      contains(fromJSON('["Backend Publish","Frontend Consumer Publish","Frontend Business Publish"]'), github.event.workflow_run.name) &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Resolve image tag
+        id: params
+        run: |
+          echo "image_tag=staging" >> "$GITHUB_OUTPUT"
+          echo "images_path=overlays/stage/images-tags/kustomization.yaml" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: honguyenminh/amuse-deploy
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+          path: amuse-deploy
+
+      - name: Resolve images to bump
+        id: images
+        env:
+          PUBLISH_WORKFLOW: ${{ github.event.workflow_run.name }}
+        run: |
+          case "${PUBLISH_WORKFLOW}" in
+            "Backend Publish")
+              IMAGES="amuse-api amuse-worker-transcoder amuse-worker-scheduler amuse-migrate"
+              ;;
+            "Frontend Consumer Publish")
+              IMAGES="amuse-consumer"
+              ;;
+            "Frontend Business Publish")
+              IMAGES="amuse-business"
+              ;;
+            *)
+              echo "Unsupported publish workflow: ${PUBLISH_WORKFLOW}" >&2
+              exit 1
+              ;;
+          esac
+          echo "names=${IMAGES}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump image tags in amuse-deploy
+        working-directory: amuse-deploy
+        run: |
+          python3 <<'PY'
+          import os, pathlib, re
+          path = pathlib.Path("${{ steps.params.outputs.images_path }}")
+          tag = "${{ steps.params.outputs.image_tag }}"
+          owner = "${{ github.repository_owner }}"
+          images = "${{ steps.images.outputs.names }}".split()
+          text = path.read_text()
+          for image in images:
+              text = re.sub(
+                  rf"(name: ghcr\.io/{re.escape(owner)}/{re.escape(image)}\n\s+newTag: ).*",
+                  rf"\g<1>{tag}",
+                  text,
+              )
+          path.write_text(text)
+          PY
+
+      - name: Commit and push
+        working-directory: amuse-deploy
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.params.outputs.images_path }}"
+          if git diff --staged --quiet; then
+            echo "No image tag changes to commit."
+            exit 0
+          fi
+          git commit -m "deploy(staging): bump ${{ steps.images.outputs.names }} to ${{ steps.params.outputs.image_tag }}"
           git push
 
   deploy-manual:
