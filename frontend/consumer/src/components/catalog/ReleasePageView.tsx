@@ -471,7 +471,7 @@ function TrackRow({
         {isCurrent ? (
           <IconButton
             label={isPlaying ? "Pause" : "Play"}
-            variant="outlined"
+            variant="tonal"
             size="sm"
             onClick={onToggle}
           >
