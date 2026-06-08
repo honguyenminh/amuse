@@ -1,14 +1,18 @@
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
-using Amuse.Modules.Catalog.Features.Common;
+using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Media;
+using Amuse.Modules.Tenancy.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Features.BrowseHome;
 
-internal sealed class BrowseHomeHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
+internal sealed class BrowseHomeHandler(
+    CatalogDbContext db,
+    IMediaPublicUrlBuilder mediaUrls,
+    ITenancyOrganizationReadModel organizationReadModel)
 {
     private const int RecentReleaseCount = 8;
     private const int FeaturedArtistCount = 6;
@@ -18,8 +22,6 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IMediaPublicUrlBuil
         var recentReleaseRows = await db.Releases
             .AsNoTracking()
             .Where(r => r.LifecycleStatus == ReleaseLifecycleStatus.Published)
-            .OrderByDescending(r => r.ReleaseDate)
-            .Take(RecentReleaseCount)
             .Join(
                 db.Artists.AsNoTracking(),
                 release => release.ArtistId,
@@ -35,20 +37,43 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IMediaPublicUrlBuil
                     release.ReleaseType,
                     release.ReleaseDate,
                     release.CoverArtKey,
+                    release.OrganizationId,
                 })
             .ToListAsync(cancellationToken);
 
+        var releaseOrgIds = recentReleaseRows
+            .Select(row => row.OrganizationId)
+            .Distinct()
+            .ToArray();
+        var releaseTrustTiers = await organizationReadModel.GetTrustTiersAsync(releaseOrgIds, cancellationToken);
+
         var recentReleases = recentReleaseRows
-            .Select(row => new ReleaseSummary(
-                row.ReleaseId,
-                row.ReleaseSlug,
-                row.Title,
-                row.ArtistId,
-                row.ArtistName,
-                row.ArtistSlug,
-                row.ReleaseType,
-                row.ReleaseDate,
-                mediaUrls.BuildCoverArtUrl(row.CoverArtKey)))
+            .Select(row =>
+            {
+                var trustTier = CatalogOrganizationTrustResolver.ResolveTrustTier(
+                    row.OrganizationId,
+                    releaseTrustTiers);
+                return new
+                {
+                    Row = row,
+                    TrustTier = trustTier,
+                    IsVerified = CatalogOrganizationTrustResolver.IsPlatformVerified(trustTier),
+                };
+            })
+            .OrderByDescending(entry => entry.IsVerified)
+            .ThenByDescending(entry => entry.Row.ReleaseDate)
+            .Take(RecentReleaseCount)
+            .Select(entry => new ReleaseSummary(
+                entry.Row.ReleaseId,
+                entry.Row.ReleaseSlug,
+                entry.Row.Title,
+                entry.Row.ArtistId,
+                entry.Row.ArtistName,
+                entry.Row.ArtistSlug,
+                entry.Row.ReleaseType,
+                entry.Row.ReleaseDate,
+                mediaUrls.BuildCoverArtUrl(entry.Row.CoverArtKey),
+                entry.TrustTier))
             .ToArray();
 
         var featuredArtistRows = await db.Artists
@@ -64,23 +89,37 @@ internal sealed class BrowseHomeHandler(CatalogDbContext db, IMediaPublicUrlBuil
                 a.Name,
                 a.AvatarKey,
                 a.CoverKey,
+                a.ManagingOrganizationId,
             })
             .ToListAsync(cancellationToken);
 
+        var artistOrgIds = featuredArtistRows
+            .Where(row => row.ManagingOrganizationId is not null)
+            .Select(row => row.ManagingOrganizationId!.Value)
+            .Distinct()
+            .ToArray();
+        var artistTrustTiers = await organizationReadModel.GetTrustTiersAsync(artistOrgIds, cancellationToken);
+
         var featuredArtists = featuredArtistRows
-            .Select(a => new ArtistSummary(
-                a.Id.Value,
-                a.Slug.Value,
-                a.Name,
-                mediaUrls.BuildCoverArtUrl(a.AvatarKey),
-                mediaUrls.BuildCoverArtUrl(a.CoverKey)))
+            .Select(row =>
+            {
+                var trustTier = CatalogOrganizationTrustResolver.ResolveTrustTier(
+                    row.ManagingOrganizationId,
+                    artistTrustTiers);
+                return new ArtistSummary(
+                    row.Id.Value,
+                    row.Slug.Value,
+                    row.Name,
+                    mediaUrls.BuildCoverArtUrl(row.AvatarKey),
+                    mediaUrls.BuildCoverArtUrl(row.CoverKey),
+                    trustTier);
+            })
             .ToArray();
 
         return Result<BrowseHomeResponse>.Success(new BrowseHomeResponse(
             recentReleases,
             featuredArtists));
     }
-
 }
 
 public sealed record BrowseHomeResponse(

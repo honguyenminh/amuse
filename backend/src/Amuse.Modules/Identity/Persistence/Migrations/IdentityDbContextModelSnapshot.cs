@@ -29,6 +29,10 @@ namespace Amuse.Modules.Identity.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset?>("BannedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("banned_at");
+
                     b.Property<string>("IdpIssuer")
                         .IsRequired()
                         .HasMaxLength(256)

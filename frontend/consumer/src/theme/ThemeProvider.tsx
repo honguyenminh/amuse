@@ -3,14 +3,18 @@
 import {
   createContext,
   useContext,
-  useLayoutEffect,
+  useEffect,
   useMemo,
+  useRef,
   useState,
+  type Dispatch,
+  type MutableRefObject,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import { applyThemeVariables } from "./applyThemeVariables";
 import { DEFAULT_APP_SEED } from "./defaultPalette";
-import { resolveEffectiveSeed } from "./resolveEffectiveSeed";
+import { pageSeedAfterOwnerUnmount, resolveThemeSeed } from "./pageSeedState";
 import { seedToPalette } from "./seedToPalette";
 import type { ColorSeed } from "./types";
 
@@ -18,9 +22,10 @@ type ThemeContextValue = {
   defaultSeed: ColorSeed;
   playingSeed: ColorSeed | null;
   pageSeed: ColorSeed | null;
+  pageSeedRef: MutableRefObject<ColorSeed | null>;
   isPaused: boolean;
   setPlayingSeed: (seed: ColorSeed | null) => void;
-  setPageSeed: (seed: ColorSeed | null) => void;
+  setPageSeed: Dispatch<SetStateAction<ColorSeed | null>>;
   setPaused: (paused: boolean) => void;
   effectiveSeed: ColorSeed;
 };
@@ -28,29 +33,42 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const pageSeedRef = useRef<ColorSeed | null>(null);
   const [playingSeed, setPlayingSeed] = useState<ColorSeed | null>(null);
   const [pageSeed, setPageSeed] = useState<ColorSeed | null>(null);
   const [isPaused, setPaused] = useState(false);
 
   const effectiveSeed = useMemo(
     () =>
-      resolveEffectiveSeed({
+      resolveThemeSeed({
         pageSeed,
+        pageSeedRef,
         playingSeed,
         defaultSeed: DEFAULT_APP_SEED,
       }),
     [pageSeed, playingSeed],
   );
 
-  useLayoutEffect(() => {
-    applyThemeVariables(seedToPalette(effectiveSeed, { paused: isPaused }));
-  }, [effectiveSeed, isPaused]);
+  useEffect(() => {
+    applyThemeVariables(
+      seedToPalette(
+        resolveThemeSeed({
+          pageSeed,
+          pageSeedRef,
+          playingSeed,
+          defaultSeed: DEFAULT_APP_SEED,
+        }),
+        { paused: isPaused },
+      ),
+    );
+  }, [pageSeed, playingSeed, isPaused]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
       defaultSeed: DEFAULT_APP_SEED,
       playingSeed,
       pageSeed,
+      pageSeedRef,
       isPaused,
       setPlayingSeed,
       setPageSeed,
@@ -74,9 +92,19 @@ export function useTheme(): ThemeContextValue {
 }
 
 export function usePageSeed(seed: ColorSeed | null): void {
-  const { setPageSeed } = useTheme();
-  useLayoutEffect(() => {
+  const { pageSeedRef, setPageSeed } = useTheme();
+
+  // Ref updates during render are safe and visible to ThemeProvider's effect in
+  // the same commit, avoiding a default-palette flash over SSR ThemeSeedStyles.
+  pageSeedRef.current = seed;
+
+  useEffect(() => {
     setPageSeed(seed);
-    return () => setPageSeed(null);
-  }, [seed, setPageSeed]);
+    return () => {
+      if (pageSeedRef.current === seed) {
+        pageSeedRef.current = null;
+      }
+      setPageSeed((current) => pageSeedAfterOwnerUnmount(current, seed));
+    };
+  }, [pageSeedRef, seed, setPageSeed]);
 }

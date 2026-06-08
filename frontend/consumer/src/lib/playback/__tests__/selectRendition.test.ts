@@ -188,6 +188,19 @@ describe("selectRendition", () => {
     });
     expect(chosen?.id).toBe("flac-0");
   });
+
+  it("caps non-owner manual lossless to medium tier", () => {
+    const chosen = selectRendition(
+      renditions,
+      {
+        ...defaultPlaybackSettings,
+        qualityMode: "manual",
+        preferredQuality: "lossless",
+      },
+      { isOwner: false },
+    );
+    expect(chosen?.id).toBe("opus-128");
+  });
 });
 
 describe("pickRenditionForThroughputKbps", () => {

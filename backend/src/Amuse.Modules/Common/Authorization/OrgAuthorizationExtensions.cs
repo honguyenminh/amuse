@@ -93,6 +93,51 @@ public static class OrgAuthorizationExtensions
                     [OrgClaim.ScopeWideClaim("publish_public", "catalog")],
                     OrgClaimMatchMode.Any));
             });
+
+            options.AddPolicy(OrgPolicies.ManageCatalogPricing, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeSubClaim("manage", "catalog", "pricing")],
+                    OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.ManagePurchaseRefund, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeSubClaim("manage", "purchase", "refund")],
+                    OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.ReadPayout, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeWideClaim("read", "payout")],
+                    OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.ManagePayoutProfile, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeSubClaim("manage", "payout", "profile")],
+                    OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.ManagePayoutWithdraw, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgClaimRequirement(
+                    [OrgClaim.ScopeSubClaim("manage", "payout", "withdraw")],
+                    OrgClaimMatchMode.Any));
+            });
         });
 
         return services;

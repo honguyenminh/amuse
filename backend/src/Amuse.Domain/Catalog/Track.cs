@@ -29,6 +29,13 @@ public sealed class Track
     public string? AudioMasterKey { get; private set; }
     public string? AudioStreamKey { get; private set; }
     public TrackLoudnessProfile? LoudnessProfile { get; private set; }
+    public bool IsForSale { get; private set; }
+    public long PriceFloorMinor { get; private set; }
+    public long? PriceCeilingMinor { get; private set; }
+    public string? PriceCurrency { get; private set; }
+
+    private readonly List<TrackCollaborator> _collaborators = [];
+    public IReadOnlyList<TrackCollaborator> Collaborators => _collaborators;
 
     private Track()
     {
@@ -276,6 +283,79 @@ public sealed class Track
             return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
 
         LoudnessProfile = null;
+        return Result.Success();
+    }
+
+    public Result SetPricing(
+        bool isForSale,
+        long priceFloorMinor,
+        long? priceCeilingMinor,
+        string? priceCurrency)
+    {
+        var pricingResult = CatalogPricing.TryCreate(
+            isForSale,
+            priceFloorMinor,
+            priceCeilingMinor,
+            priceCurrency);
+
+        if (!pricingResult.IsSuccess)
+            return Result.Failure(pricingResult.Error!);
+
+        var pricing = pricingResult.Value!;
+        IsForSale = pricing.IsForSale;
+        PriceFloorMinor = pricing.PriceFloorMinor;
+        PriceCeilingMinor = pricing.PriceCeilingMinor;
+        PriceCurrency = pricing.PriceCurrency;
+        return Result.Success();
+    }
+
+    public Result ReplaceCollaborators(
+        IReadOnlyList<TrackCollaboratorAssignment> assignments,
+        ArtistId primaryArtistId)
+    {
+        if (LifecycleStatus is TrackLifecycleStatus.Processing or TrackLifecycleStatus.Published)
+            return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
+
+        var linkedArtistIds = new HashSet<ArtistId>();
+        var placeholderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        _collaborators.Clear();
+
+        var order = 1;
+        foreach (var assignment in assignments)
+        {
+            if (assignment.ArtistId is { } artistId)
+            {
+                if (!linkedArtistIds.Add(artistId))
+                    return Result.Failure(CatalogErrors.InvalidCollaborator);
+            }
+            else
+            {
+                var placeholderName = assignment.DisplayName?.Trim();
+                if (string.IsNullOrEmpty(placeholderName)
+                    || placeholderName.Length > TrackCollaborator.MaxDisplayNameLength
+                    || !placeholderNames.Add(placeholderName))
+                {
+                    return Result.Failure(CatalogErrors.InvalidCollaborator);
+                }
+            }
+
+            var createResult = TrackCollaborator.Create(
+                TrackCollaboratorId.New(),
+                Id,
+                assignment.ArtistId,
+                assignment.DisplayName,
+                primaryArtistId,
+                TrackCollaboratorRole.Featured,
+                order);
+
+            if (!createResult.IsSuccess)
+                return Result.Failure(createResult.Error!);
+
+            _collaborators.Add(createResult.Value!);
+            order++;
+        }
+
         return Result.Success();
     }
 

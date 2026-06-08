@@ -38,6 +38,22 @@ internal sealed class ListenerProfileService(ListenerDbContext dbContext, IClock
         return result.Value!;
     }
 
+    public async Task<(ListenerProfile Profile, ListenerPreference? Preference)> GetForAccountForUpdateAsync(
+        AccountId accountId,
+        CancellationToken cancellationToken)
+    {
+        var profile = await dbContext.ListenerProfiles
+            .FirstOrDefaultAsync(p => p.AccountId == accountId, cancellationToken);
+
+        if (profile is null)
+            throw new InvalidOperationException(ListenerErrors.ProfileNotFound.Message);
+
+        var preference = await dbContext.ListenerPreferences
+            .FirstOrDefaultAsync(p => p.AccountId == accountId, cancellationToken);
+
+        return (profile, preference);
+    }
+
     public async Task<ListenerPreference> GetOrCreatePreferenceAsync(
         AccountId accountId,
         CancellationToken cancellationToken)

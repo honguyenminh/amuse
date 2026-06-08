@@ -1,16 +1,20 @@
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
+using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Features.BrowseHome;
-using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Media;
+using Amuse.Modules.Tenancy.Contracts;
 using Microsoft.EntityFrameworkCore;
 using CatalogSlugHelper = Amuse.Modules.Catalog.Features.Common.CatalogSlugHelper;
 
 namespace Amuse.Modules.Catalog.Features.GetArtistDetail;
 
-internal sealed class GetArtistDetailHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
+internal sealed class GetArtistDetailHandler(
+    CatalogDbContext db,
+    IMediaPublicUrlBuilder mediaUrls,
+    ITenancyOrganizationReadModel organizationReadModel)
 {
     public async Task<Result<GetArtistDetailResponse>> HandleAsync(
         Guid artistId,
@@ -32,13 +36,22 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IMediaPublicUr
                 a.Bio,
                 a.AvatarKey,
                 a.CoverKey,
+                a.ManagingOrganizationId,
             })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (artist is null)
             return Result<GetArtistDetailResponse>.Failure(CatalogErrors.ArtistNotFound);
 
-        return await BuildResponseAsync(artist.Id, artist.Slug, artist.Name, artist.Bio, artist.AvatarKey, artist.CoverKey, cancellationToken);
+        return await BuildResponseAsync(
+            artist.Id,
+            artist.Slug,
+            artist.Name,
+            artist.Bio,
+            artist.AvatarKey,
+            artist.CoverKey,
+            artist.ManagingOrganizationId,
+            cancellationToken);
     }
 
     public async Task<Result<GetArtistDetailResponse>> HandleBySlugAsync(
@@ -62,13 +75,22 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IMediaPublicUr
                 a.Bio,
                 a.AvatarKey,
                 a.CoverKey,
+                a.ManagingOrganizationId,
             })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (artist is null)
             return Result<GetArtistDetailResponse>.Failure(CatalogErrors.ArtistNotFound);
 
-        return await BuildResponseAsync(artist.Id, artist.Slug, artist.Name, artist.Bio, artist.AvatarKey, artist.CoverKey, cancellationToken);
+        return await BuildResponseAsync(
+            artist.Id,
+            artist.Slug,
+            artist.Name,
+            artist.Bio,
+            artist.AvatarKey,
+            artist.CoverKey,
+            artist.ManagingOrganizationId,
+            cancellationToken);
     }
 
     private async Task<Result<GetArtistDetailResponse>> BuildResponseAsync(
@@ -78,8 +100,14 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IMediaPublicUr
         string? bio,
         string? avatarKey,
         string? coverKey,
+        OrganizationId? managingOrganizationId,
         CancellationToken cancellationToken)
     {
+        var trustTier = await CatalogOrganizationTrustResolver.ResolveTrustTierAsync(
+            organizationReadModel,
+            managingOrganizationId,
+            cancellationToken);
+
         var releaseRows = await db.Releases
             .AsNoTracking()
             .Where(r => r.ArtistId == typedId && r.LifecycleStatus == ReleaseLifecycleStatus.Published)
@@ -93,20 +121,34 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IMediaPublicUr
                 r.ReleaseType,
                 r.ReleaseDate,
                 r.CoverArtKey,
+                r.OrganizationId,
             })
             .ToListAsync(cancellationToken);
 
+        var releaseOrgIds = releaseRows
+            .Select(row => row.OrganizationId)
+            .Distinct()
+            .ToArray();
+        var releaseTrustTiers = await organizationReadModel.GetTrustTiersAsync(releaseOrgIds, cancellationToken);
+
         var releases = releaseRows
-            .Select(r => new ReleaseSummary(
-                r.ReleaseId,
-                r.ReleaseSlug,
-                r.Title,
-                r.ArtistId,
-                artistName,
-                artistSlug.Value,
-                r.ReleaseType,
-                r.ReleaseDate,
-                mediaUrls.BuildCoverArtUrl(r.CoverArtKey)))
+            .Select(row =>
+            {
+                var releaseTrustTier = CatalogOrganizationTrustResolver.ResolveTrustTier(
+                    row.OrganizationId,
+                    releaseTrustTiers);
+                return new ReleaseSummary(
+                    row.ReleaseId,
+                    row.ReleaseSlug,
+                    row.Title,
+                    row.ArtistId,
+                    artistName,
+                    artistSlug.Value,
+                    row.ReleaseType,
+                    row.ReleaseDate,
+                    mediaUrls.BuildCoverArtUrl(row.CoverArtKey),
+                    releaseTrustTier);
+            })
             .ToArray();
 
         var response = new GetArtistDetailResponse(
@@ -116,6 +158,7 @@ internal sealed class GetArtistDetailHandler(CatalogDbContext db, IMediaPublicUr
             bio,
             mediaUrls.BuildCoverArtUrl(avatarKey),
             mediaUrls.BuildCoverArtUrl(coverKey),
+            trustTier,
             releases);
 
         return Result<GetArtistDetailResponse>.Success(response);
@@ -129,4 +172,5 @@ public sealed record GetArtistDetailResponse(
     string? Bio,
     string? AvatarUrl,
     string? CoverUrl,
+    string TrustTier,
     IReadOnlyList<ReleaseSummary> Releases);

@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.Common;
-using Amuse.Modules.Catalog.Features.Common;
+using Amuse.Modules.Catalog.Features.ManagePricing;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
@@ -70,7 +70,16 @@ internal sealed class CreateTrackHandler(CatalogDbContext db, CatalogAuditWriter
             CatalogAccountAccessor.TryGetAccountId(principal),
             cancellationToken);
 
-        return Result<ManageTrackResponse>.Success(TrackMapper.ToResponse(track));
+        var splits = await RoyaltySplitLoader.LoadForTrackAsync(db, track.Id, cancellationToken);
+        var collaborators = await TrackCollaboratorSync.LoadForTracksAsync(
+            db,
+            [track.Id],
+            cancellationToken);
+        return Result<ManageTrackResponse>.Success(
+            TrackMapper.ToResponse(
+                track,
+                splits,
+                collaborators.TryGetValue(track.Id, out var loaded) ? loaded : []));
     }
 }
 
@@ -134,7 +143,89 @@ internal sealed class UpdateTrackHandler(CatalogDbContext db, IClock clock, Cata
             CatalogAccountAccessor.TryGetAccountId(principal),
             cancellationToken);
 
-        return Result<ManageTrackResponse>.Success(TrackMapper.ToResponse(track));
+        var splits = await RoyaltySplitLoader.LoadForTrackAsync(db, track.Id, cancellationToken);
+        var collaborators = await TrackCollaboratorSync.LoadForTracksAsync(
+            db,
+            [track.Id],
+            cancellationToken);
+        return Result<ManageTrackResponse>.Success(
+            TrackMapper.ToResponse(
+                track,
+                splits,
+                collaborators.TryGetValue(track.Id, out var loaded) ? loaded : []));
+    }
+}
+
+internal sealed class SetTrackCollaboratorsHandler(
+    CatalogDbContext db,
+    IClock clock,
+    CatalogAuditWriter auditWriter)
+{
+    public async Task<Result<ManageTrackResponse>> HandleAsync(
+        Guid trackId,
+        SetTrackCollaboratorsRequest request,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var orgResult = CatalogPersonaAccessor.GetOrganizationId(principal);
+        if (!orgResult.IsSuccess)
+            return Result<ManageTrackResponse>.Failure(orgResult.Error!);
+
+        if (trackId == Guid.Empty)
+            return Result<ManageTrackResponse>.Failure(CatalogErrors.TrackNotFound);
+
+        var typedTrackId = TrackId.From(trackId);
+        var release = await db.Releases
+            .Include(r => r.Tracks)
+            .ThenInclude(t => t.Collaborators)
+            .FirstOrDefaultAsync(
+                r => r.Tracks.Any(t => t.Id == typedTrackId),
+                cancellationToken);
+
+        if (release is null)
+            return Result<ManageTrackResponse>.Failure(CatalogErrors.TrackNotFound);
+
+        var track = release.Tracks.First(t => t.Id == typedTrackId);
+
+        var scopeResult = CatalogScopeGuard.EnsureOrganizationScope(orgResult.Value!, track.OrganizationId);
+        if (!scopeResult.IsSuccess)
+            return Result<ManageTrackResponse>.Failure(scopeResult.Error!);
+
+        var assignmentsResult = await TrackCollaboratorSync.ResolveAssignmentsAsync(
+            db,
+            request.Collaborators,
+            cancellationToken);
+        if (!assignmentsResult.IsSuccess)
+            return Result<ManageTrackResponse>.Failure(assignmentsResult.Error!);
+
+        var before = CatalogAuditSnapshotMapper.FromTrack(track);
+
+        var replaceResult = track.ReplaceCollaborators(assignmentsResult.Value!, release.ArtistId);
+        if (!replaceResult.IsSuccess)
+            return Result<ManageTrackResponse>.Failure(replaceResult.Error!);
+
+        release.MarkUpdated(clock.UtcNow);
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        await auditWriter.WriteUpdateAsync(
+            CatalogAuditTables.Track,
+            track.Id.Value,
+            before,
+            CatalogAuditSnapshotMapper.FromTrack(track),
+            CatalogAccountAccessor.TryGetAccountId(principal),
+            cancellationToken);
+
+        var splits = await RoyaltySplitLoader.LoadForTrackAsync(db, track.Id, cancellationToken);
+        var collaborators = await TrackCollaboratorSync.LoadForTracksAsync(
+            db,
+            [track.Id],
+            cancellationToken);
+        return Result<ManageTrackResponse>.Success(
+            TrackMapper.ToResponse(
+                track,
+                splits,
+                collaborators.TryGetValue(track.Id, out var loaded) ? loaded : []));
     }
 }
 
@@ -197,7 +288,10 @@ internal sealed class DeleteTrackHandler(
 
 internal static class TrackMapper
 {
-    internal static ManageTrackResponse ToResponse(Track track) =>
+    internal static ManageTrackResponse ToResponse(
+        Track track,
+        IReadOnlyList<RoyaltySplit>? royaltySplits = null,
+        IReadOnlyList<ManageTrackCollaboratorResponse>? collaborators = null) =>
         new(
             track.Id.Value,
             track.Title,
@@ -211,5 +305,8 @@ internal static class TrackMapper
             track.ComposerCredits,
             track.LifecycleStatus,
             HasAudioMaster: !string.IsNullOrEmpty(track.AudioMasterKey),
-            HasAudioStream: !string.IsNullOrEmpty(track.AudioStreamKey));
+            HasAudioStream: !string.IsNullOrEmpty(track.AudioStreamKey),
+            CatalogPricingMapper.ToResponse(track),
+            CatalogPricingMapper.ToRoyaltySplitResponses(royaltySplits ?? []),
+            collaborators ?? []);
 }

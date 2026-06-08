@@ -49,6 +49,9 @@ public static class CatalogErrors
     public static readonly DomainError StreamAssetNotFound =
         new("catalog.stream_asset_not_found", "Requested stream asset was not found.");
 
+    public static readonly DomainError StreamPlaybackForbidden =
+        new("catalog.stream_playback_forbidden", "Playback is not available for this track.");
+
     public static readonly DomainError InvalidSlug =
         new("catalog.invalid_slug", "Slug must be lowercase alphanumerics with single hyphens.");
 
@@ -129,4 +132,39 @@ public static class CatalogErrors
 
     public static readonly DomainError SitemapInvalidCursor =
         new("catalog.sitemap_invalid_cursor", "Sitemap cursor is invalid.");
+
+    public static readonly DomainError InvalidPricing =
+        new("catalog.invalid_pricing", "Pricing values are invalid.");
+
+    public static readonly DomainError InvalidPricingBounds =
+        new("catalog.invalid_pricing_bounds", "Price ceiling must be greater than or equal to the floor.");
+
+    public static readonly DomainError InvalidPricingCurrency =
+        new("catalog.invalid_pricing_currency", "Price currency must be a valid ISO 4217 code.");
+
+    public static readonly DomainError PricingChangesBlocked =
+        new("catalog.pricing_changes_blocked", "Pricing cannot be changed while the organization is suspended or closed.");
+
+    public static readonly DomainError InvalidRoyaltySplit =
+        new("catalog.invalid_royalty_split", "Royalty split configuration is invalid.");
+
+    public static readonly DomainError RoyaltySplitSumInvalid =
+        new("catalog.royalty_split_sum_invalid", "Royalty split shares must sum to 100%.");
+
+    public static readonly DomainError DuplicateRoyaltyPayee =
+        new("catalog.duplicate_royalty_payee", "Each payee organization may appear only once per track split.");
+
+    public static readonly DomainError ReleaseFloorExceedsTrackFloors =
+        new("catalog.release_floor_exceeds_track_floors", "Release price floor must not exceed the sum of track floors.");
+
+    public static readonly DomainError ReleaseCeilingExceedsTrackCeilings =
+        new(
+            "catalog.release_ceiling_exceeds_track_ceilings",
+            "Release price ceiling must not exceed the sum of track ceilings when all tracks have ceilings.");
+
+    public static readonly DomainError ReleaseForSaleRequiresSellableTracks =
+        new("catalog.release_for_sale_requires_sellable_tracks", "A release marked for sale must have at least one sellable track.");
+
+    public static readonly DomainError PublishForSaleValidationFailed =
+        new("catalog.publish_for_sale_validation_failed", "Publish-for-sale validation failed.");
 }

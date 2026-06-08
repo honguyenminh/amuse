@@ -21,6 +21,9 @@ internal static class IssueIdentitySession
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
+        if (account.IsBanned)
+            return Result<TokenPair>.Failure(IdentityErrors.AccountBanned);
+
         if (!account.IsEnabled)
             return Result<TokenPair>.Failure(IdentityErrors.AccountDisabled);
 

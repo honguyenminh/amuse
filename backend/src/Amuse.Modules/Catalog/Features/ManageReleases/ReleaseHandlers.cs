@@ -3,7 +3,8 @@ using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.Common;
-using Amuse.Modules.Catalog.Features.Common;
+using Amuse.Modules.Catalog.Features.ManagePricing;
+using Amuse.Modules.Catalog.Features.ManageTracks;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
@@ -93,17 +94,6 @@ internal sealed class CreateReleaseHandler(CatalogDbContext db, IClock clock, Ca
         var release = createResult.Value!;
         db.Releases.Add(release);
 
-        var collaboratorIdsResult = await ReleaseCollaboratorSync.ResolveArtistIdsAsync(
-            db,
-            request.CollaboratorArtistIds,
-            cancellationToken);
-        if (!collaboratorIdsResult.IsSuccess)
-            return Result<ManageReleaseDetailResponse>.Failure(collaboratorIdsResult.Error!);
-
-        var replaceResult = release.ReplaceCollaborators(collaboratorIdsResult.Value!);
-        if (!replaceResult.IsSuccess)
-            return Result<ManageReleaseDetailResponse>.Failure(replaceResult.Error!);
-
         await db.SaveChangesAsync(cancellationToken);
 
         await auditWriter.WriteCreateAsync(
@@ -114,16 +104,24 @@ internal sealed class CreateReleaseHandler(CatalogDbContext db, IClock clock, Ca
             cancellationToken);
 
         var groupDisplay = await ReleaseGroupLookup.LoadDisplayAsync(db, release.ReleaseGroupId, cancellationToken);
-        var collaborators = await ReleaseCollaboratorSync.LoadAsync(db, release.Id, cancellationToken);
+        var trackCollaborators = await TrackCollaboratorSync.LoadForTracksAsync(
+            db,
+            release.Tracks.Select(t => t.Id).ToArray(),
+            cancellationToken);
+        var royaltySplits = await RoyaltySplitLoader.LoadForReleaseTracksAsync(
+            db,
+            release.Tracks,
+            cancellationToken);
 
         return Result<ManageReleaseDetailResponse>.Success(
             ReleaseMapper.ToDetail(
                 release,
                 artist.Name,
                 null,
-                collaborators,
+                trackCollaborators,
                 groupDisplay.Title,
-                groupDisplay.Slug));
+                groupDisplay.Slug,
+                royaltySplits));
     }
 }
 
@@ -232,12 +230,16 @@ internal sealed class GetReleaseHandler(CatalogDbContext db, IMediaPublicUrlBuil
             .Select(a => a.Name)
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
 
-        var collaborators = await ReleaseCollaboratorSync.LoadAsync(
+        var collaborators = await TrackCollaboratorSync.LoadForTracksAsync(
             db,
-            release.Id,
+            release.Tracks.Select(t => t.Id).ToArray(),
             cancellationToken);
 
         var groupDisplay = await ReleaseGroupLookup.LoadDisplayAsync(db, release.ReleaseGroupId, cancellationToken);
+        var royaltySplits = await RoyaltySplitLoader.LoadForReleaseTracksAsync(
+            db,
+            release.Tracks,
+            cancellationToken);
 
         return Result<ManageReleaseDetailResponse>.Success(
             ReleaseMapper.ToDetail(
@@ -246,7 +248,8 @@ internal sealed class GetReleaseHandler(CatalogDbContext db, IMediaPublicUrlBuil
                 mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
                 collaborators,
                 groupDisplay.Title,
-                groupDisplay.Slug));
+                groupDisplay.Slug,
+                royaltySplits));
     }
 }
 
@@ -272,7 +275,6 @@ internal sealed class UpdateReleaseHandler(
         var typedId = ReleaseId.From(releaseId);
         var release = await db.Releases
             .Include(r => r.Tracks)
-            .Include(r => r.Collaborators)
             .FirstOrDefaultAsync(r => r.Id == typedId, cancellationToken);
 
         if (release is null)
@@ -335,17 +337,6 @@ internal sealed class UpdateReleaseHandler(
         if (!updateResult.IsSuccess)
             return Result<ManageReleaseDetailResponse>.Failure(updateResult.Error!);
 
-        var collaboratorIdsResult = await ReleaseCollaboratorSync.ResolveArtistIdsAsync(
-            db,
-            request.CollaboratorArtistIds,
-            cancellationToken);
-        if (!collaboratorIdsResult.IsSuccess)
-            return Result<ManageReleaseDetailResponse>.Failure(collaboratorIdsResult.Error!);
-
-        var replaceResult = release.ReplaceCollaborators(collaboratorIdsResult.Value!);
-        if (!replaceResult.IsSuccess)
-            return Result<ManageReleaseDetailResponse>.Failure(replaceResult.Error!);
-
         await db.SaveChangesAsync(cancellationToken);
 
         await auditWriter.WriteUpdateAsync(
@@ -363,16 +354,24 @@ internal sealed class UpdateReleaseHandler(
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
 
         var groupDisplay = await ReleaseGroupLookup.LoadDisplayAsync(db, release.ReleaseGroupId, cancellationToken);
-        var collaborators = await ReleaseCollaboratorSync.LoadAsync(db, release.Id, cancellationToken);
+        var trackCollaborators = await TrackCollaboratorSync.LoadForTracksAsync(
+            db,
+            release.Tracks.Select(t => t.Id).ToArray(),
+            cancellationToken);
+        var royaltySplits = await RoyaltySplitLoader.LoadForReleaseTracksAsync(
+            db,
+            release.Tracks,
+            cancellationToken);
 
         return Result<ManageReleaseDetailResponse>.Success(
             ReleaseMapper.ToDetail(
                 release,
                 artistName,
                 mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
-                collaborators,
+                trackCollaborators,
                 groupDisplay.Title,
-                groupDisplay.Slug));
+                groupDisplay.Slug,
+                royaltySplits));
     }
 }
 
@@ -462,10 +461,13 @@ internal static class ReleaseMapper
         Release release,
         string artistName,
         string? coverArtUrl,
-        IReadOnlyList<ManageReleaseCollaboratorResponse> collaborators,
+        IReadOnlyDictionary<TrackId, IReadOnlyList<ManageTrackCollaboratorResponse>> trackCollaboratorsByTrackId,
         string? releaseGroupTitle = null,
-        string? releaseGroupSlug = null) =>
-        new(
+        string? releaseGroupSlug = null,
+        IReadOnlyList<RoyaltySplit>? royaltySplits = null)
+    {
+        var splits = royaltySplits ?? [];
+        return new ManageReleaseDetailResponse(
             release.Id.Value,
             release.Slug.Value,
             release.Title,
@@ -491,24 +493,17 @@ internal static class ReleaseMapper
             release.PublishedAt,
             release.CreatedAt,
             release.UpdatedAt,
-            collaborators,
+            CatalogPricingMapper.ToResponse(release),
             release.Tracks
                 .OrderBy(t => t.TrackNumber)
-                .Select(t => new ManageTrackResponse(
-                    t.Id.Value,
-                    t.Title,
-                    t.TrackNumber,
-                    t.Duration.Milliseconds,
-                    t.ExplicitFlag,
-                    t.Isrc,
-                    t.Lyrics,
-                    t.LanguageCode,
-                    t.VersionTitle,
-                    t.ComposerCredits,
-                    t.LifecycleStatus,
-                    HasAudioMaster: !string.IsNullOrEmpty(t.AudioMasterKey),
-                    HasAudioStream: !string.IsNullOrEmpty(t.AudioStreamKey)))
+                .Select(track => TrackMapper.ToResponse(
+                    track,
+                    splits.Where(split => split.TrackId == track.Id).ToArray(),
+                    trackCollaboratorsByTrackId.TryGetValue(track.Id, out var collaborators)
+                        ? collaborators
+                        : []))
                 .ToArray());
+    }
 }
 
 internal sealed class CheckReleaseSlugAvailabilityHandler(CatalogDbContext db)

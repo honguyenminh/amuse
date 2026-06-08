@@ -237,7 +237,7 @@ namespace Amuse.Modules.Catalog.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("artist_id");
 
-                    b.Property<ReleaseCollaboratorRole>("Role")
+                    b.Property<TrackCollaboratorRole>("Role")
                         .HasColumnType("catalog.release_collaborator_role")
                         .HasColumnName("role");
 

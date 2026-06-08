@@ -37,10 +37,42 @@ public static class PersonaAuthorizationExtensions
                 policy.RequireClaim("ctx", "platform");
                 policy.Requirements.Add(new PlatformOrganizationManageRequirement());
             });
+
+            options.AddPolicy(PlatformPolicies.RequireAccountingRead, policy =>
+            {
+                policy.RequireClaim("ctx", "platform");
+                policy.Requirements.Add(new PlatformAccountingReadRequirement());
+            });
+
+            options.AddPolicy(PlatformPolicies.RequireAccountingManage, policy =>
+            {
+                policy.RequireClaim("ctx", "platform");
+                policy.Requirements.Add(new PlatformAccountingManageRequirement());
+            });
+
+            options.AddPolicy(PlatformPolicies.RequirePayoutManage, policy =>
+            {
+                policy.RequireClaim("ctx", "platform");
+                policy.Requirements.Add(new PlatformPayoutManageRequirement());
+            });
+
+            options.AddPolicy(PlatformPolicies.RequirePurchaseManage, policy =>
+            {
+                policy.RequireClaim("ctx", "platform");
+                policy.Requirements.Add(new PlatformPurchaseManageRequirement());
+            });
+
+            options.AddPolicy(BillingPolicies.RefundPurchase, policy =>
+                policy.Requirements.Add(new RefundPurchaseRequirement()));
         });
 
         services.AddSingleton<IAuthorizationHandler, PlatformOrganizationReviewHandler>();
         services.AddSingleton<IAuthorizationHandler, PlatformOrganizationManageHandler>();
+        services.AddSingleton<IAuthorizationHandler, PlatformAccountingReadHandler>();
+        services.AddSingleton<IAuthorizationHandler, PlatformAccountingManageHandler>();
+        services.AddSingleton<IAuthorizationHandler, PlatformPayoutManageHandler>();
+        services.AddSingleton<IAuthorizationHandler, PlatformPurchaseManageHandler>();
+        services.AddSingleton<IAuthorizationHandler, RefundPurchaseAuthorizationHandler>();
         services.AddOrgClaimAuthorization();
         return services;
     }

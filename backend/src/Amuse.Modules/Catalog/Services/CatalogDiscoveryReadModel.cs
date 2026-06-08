@@ -1,11 +1,16 @@
 using Amuse.Domain.Catalog;
+using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Contracts;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Persistence;
+using Amuse.Modules.Tenancy.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Amuse.Modules.Catalog.Services;
 
-internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogDiscoveryReadModel
+internal sealed class CatalogDiscoveryReadModel(
+    CatalogDbContext db,
+    ITenancyOrganizationReadModel organizationReadModel) : ICatalogDiscoveryReadModel
 {
     private const int MaxSearchLimit = 50;
 
@@ -54,7 +59,7 @@ internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogD
                 a.Id,
                 a.Name,
                 a.Slug,
-                a.VisibilityTier,
+                a.ManagingOrganizationId,
             })
             .ToListAsync(cancellationToken);
 
@@ -71,10 +76,10 @@ internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogD
                     release.Title,
                     release.Slug,
                     release.CoverArtKey,
+                    release.OrganizationId,
                     ArtistId = artist.Id,
                     ArtistName = artist.Name,
                     ArtistSlug = artist.Slug,
-                    artist.VisibilityTier,
                 })
             .OrderBy(r => r.Title)
             .Take(take)
@@ -100,19 +105,32 @@ internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogD
                     ReleaseTitle = x.release.Title,
                     ReleaseSlug = x.release.Slug,
                     ReleaseCover = x.release.CoverArtKey,
+                    x.release.OrganizationId,
                     ArtistId = artist.Id,
                     ArtistName = artist.Name,
                     ArtistSlug = artist.Slug,
-                    artist.VisibilityTier,
                 })
             .OrderBy(t => t.TrackTitle)
             .Take(take)
             .ToListAsync(cancellationToken);
 
+        var organizationIds = artistRows
+            .Where(row => row.ManagingOrganizationId is not null)
+            .Select(row => row.ManagingOrganizationId!.Value)
+            .Concat(releaseRows.Select(row => row.OrganizationId))
+            .Concat(trackRows.Select(row => row.OrganizationId))
+            .Distinct()
+            .ToArray();
+
+        var trustTiers = await organizationReadModel.GetTrustTiersAsync(organizationIds, cancellationToken);
+
         var items = new List<CatalogSearchItem>();
 
         foreach (var row in artistRows)
         {
+            var trustTier = CatalogOrganizationTrustResolver.ResolveTrustTier(
+                row.ManagingOrganizationId,
+                trustTiers);
             items.Add(new CatalogSearchItem(
                 CatalogSearchItemKind.Artist,
                 row.Id.Value,
@@ -123,11 +141,15 @@ internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogD
                 row.Id.Value,
                 null,
                 null,
-                row.VisibilityTier == ArtistVisibilityTier.PlatformVerified));
+                trustTier,
+                CatalogOrganizationTrustResolver.IsPlatformVerified(trustTier)));
         }
 
         foreach (var row in releaseRows)
         {
+            var trustTier = CatalogOrganizationTrustResolver.ResolveTrustTier(
+                row.OrganizationId,
+                trustTiers);
             items.Add(new CatalogSearchItem(
                 CatalogSearchItemKind.Release,
                 row.ReleaseId.Value,
@@ -138,11 +160,15 @@ internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogD
                 row.ArtistId.Value,
                 row.ReleaseId.Value,
                 row.CoverArtKey,
-                row.VisibilityTier == ArtistVisibilityTier.PlatformVerified));
+                trustTier,
+                CatalogOrganizationTrustResolver.IsPlatformVerified(trustTier)));
         }
 
         foreach (var row in trackRows)
         {
+            var trustTier = CatalogOrganizationTrustResolver.ResolveTrustTier(
+                row.OrganizationId,
+                trustTiers);
             items.Add(new CatalogSearchItem(
                 CatalogSearchItemKind.Track,
                 row.TrackId.Value,
@@ -153,12 +179,11 @@ internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogD
                 row.ArtistId.Value,
                 row.ReleaseId.Value,
                 row.ReleaseCover,
-                row.VisibilityTier == ArtistVisibilityTier.PlatformVerified));
+                trustTier,
+                CatalogOrganizationTrustResolver.IsPlatformVerified(trustTier)));
         }
 
-        var verified = items.Where(i => i.IsVerified).ToList();
-        var unverified = items.Where(i => !i.IsVerified).ToList();
-        return new CatalogSearchResult(verified, unverified);
+        return CatalogDiscoverySearchRanking.RankAndPartition(items, take);
     }
 
     public async Task<IReadOnlyList<CatalogTrackPlayableRow>> GetPlayableTracksForReleaseAsync(
@@ -264,4 +289,20 @@ internal sealed class CatalogDiscoveryReadModel(CatalogDbContext db) : ICatalogD
 
         return rows.ToDictionary(r => r.ReleaseId);
     }
+
+    public async Task<CatalogTrackDownloadRow?> GetTrackDownloadRowAsync(
+        TrackId trackId,
+        CancellationToken cancellationToken) =>
+        await db.Tracks.AsNoTracking()
+            .Where(t =>
+                t.Id == trackId
+                && t.AudioMasterKey != null
+                && t.AudioMasterKey != "")
+            .Select(t => new CatalogTrackDownloadRow(
+                t.Id.Value,
+                t.ReleaseId.Value,
+                t.AudioMasterKey!,
+                t.Title))
+            .FirstOrDefaultAsync(cancellationToken);
+
 }

@@ -167,15 +167,15 @@ function searchItemHref(item: SearchItemDto): string {
       return `/artist/${item.id}`;
     case "release":
       if (item.artistSlug && item.releaseSlug) {
-        return catalogReleaseHref(item.artistSlug, item.releaseSlug);
+        return catalogReleaseHref(item.artistSlug, item.releaseSlug, { title: item.title });
       }
-      return catalogReleaseByIdHref(item.id);
+      return catalogReleaseByIdHref(item.id, { title: item.title });
     case "track":
       if (item.artistSlug && item.releaseSlug) {
-        return catalogReleaseHref(item.artistSlug, item.releaseSlug);
+        return catalogReleaseHref(item.artistSlug, item.releaseSlug, { title: item.title });
       }
       if (item.releaseId) {
-        return catalogReleaseByIdHref(item.releaseId);
+        return catalogReleaseByIdHref(item.releaseId, { title: item.title });
       }
       return "#";
     default:

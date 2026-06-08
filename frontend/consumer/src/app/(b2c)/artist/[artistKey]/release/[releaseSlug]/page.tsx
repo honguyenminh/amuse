@@ -11,6 +11,7 @@ export const revalidate = 3600;
 
 type ReleaseBySlugPageProps = {
   params: Promise<{ artistKey: string; releaseSlug: string }>;
+  searchParams: Promise<{ title?: string | string[] }>;
 };
 
 export async function generateMetadata({ params }: ReleaseBySlugPageProps): Promise<Metadata> {
@@ -24,8 +25,14 @@ export async function generateMetadata({ params }: ReleaseBySlugPageProps): Prom
   }
 }
 
-export default async function ReleaseBySlugPage({ params }: ReleaseBySlugPageProps) {
+export default async function ReleaseBySlugPage({
+  params,
+  searchParams,
+}: ReleaseBySlugPageProps) {
   const { artistKey, releaseSlug } = await params;
+  const resolvedSearchParams = await searchParams;
+  const titleHint =
+    typeof resolvedSearchParams.title === "string" ? resolvedSearchParams.title : undefined;
 
   try {
     const release = await getCachedCatalogReleaseBySlugs(artistKey, releaseSlug);
@@ -36,10 +43,12 @@ export default async function ReleaseBySlugPage({ params }: ReleaseBySlugPagePro
       <>
         {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
         <ReleasePageView
+          key={`${artistKey}/${releaseSlug}`}
           artistKey={artistKey}
           releaseSlug={releaseSlug}
           initialRelease={release}
           initialColorSeed={colorSeed}
+          titleHint={titleHint}
         />
       </>
     );

@@ -248,7 +248,7 @@ public sealed class Organization
                     CanUpload: true,
                     CanWriteDraft: true,
                     CanPublishPublic: true,
-                    CanReadPayout: false),
+                    CanReadPayout: true),
 
             OrganizationClass.BackingOrg when OnboardingStatus == OrganizationOnboardingStatus.PendingReview =>
                 new OrgCapabilities(

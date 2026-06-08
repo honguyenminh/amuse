@@ -115,6 +115,7 @@ internal static class DiscoveryMapper
             item.ArtistId,
             item.ReleaseId,
             CoverArtUrlFor(mediaUrls, item.CoverArtKey),
+            item.TrustTier,
             item.IsVerified);
 
     public static PublicPlaylistSearchCardDto ToPublicPlaylistSearchCard(

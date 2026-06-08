@@ -11,4 +11,9 @@ public static class OrgPolicies
     public const string WriteDraftCatalog = "OrgWriteDraftCatalog";
     public const string UploadCatalog = "OrgUploadCatalog";
     public const string PublishCatalog = "OrgPublishCatalog";
+    public const string ManageCatalogPricing = "OrgManageCatalogPricing";
+    public const string ManagePurchaseRefund = "OrgManagePurchaseRefund";
+    public const string ReadPayout = "OrgReadPayout";
+    public const string ManagePayoutProfile = "OrgManagePayoutProfile";
+    public const string ManagePayoutWithdraw = "OrgManagePayoutWithdraw";
 }

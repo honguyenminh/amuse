@@ -13,6 +13,11 @@ public sealed class OrgClaimTests
     [InlineData("read:org", false)]
     [InlineData("read:unknown:all", false)]
     [InlineData("review:platform:organizations", true)]
+    [InlineData("manage:catalog:pricing:all", true)]
+    [InlineData("manage:purchase:refund:all", true)]
+    [InlineData("manage:payout:profile:all", true)]
+    [InlineData("manage:payout:withdraw:all", true)]
+    [InlineData("read:payout:all", true)]
     public void TryParse_validates_format(string value, bool expected)
     {
         Assert.Equal(expected, OrgClaim.TryParse(value, out _));

@@ -96,9 +96,18 @@ public sealed record OrgCapabilities(
                 "upload" => capabilities.CanUpload,
                 "write_draft" => capabilities.CanWriteDraft,
                 "publish_public" => capabilities.CanPublishPublic,
+                "manage" when parsed.Target == "pricing:all" => capabilities.CanPublishPublic,
                 _ => false,
             },
-            "payout" => parsed.Action == "read" && capabilities.CanReadPayout,
+            "purchase" => parsed.Action == "manage"
+                && parsed.Target == "refund:all"
+                && capabilities.CanReadPayout,
+            "payout" => parsed.Action switch
+            {
+                "read" when parsed.Target == OrgClaim.TargetAll => capabilities.CanReadPayout,
+                "manage" when parsed.Target is "profile:all" or "withdraw:all" => capabilities.CanReadPayout,
+                _ => false,
+            },
             _ => false,
         };
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { CollapsibleFormattedText } from "@/components/catalog/CollapsibleFormattedText";
+import { UnverifiedSellerBadge } from "@/components/catalog/UnverifiedSellerBadge";
 import { AddToPlaylistButton } from "@/components/discovery/AddToPlaylistButton";
 import { SaveToLibraryButton } from "@/components/discovery/SaveToLibraryButton";
 import { AppShell } from "@/components/ui/AppShell";
@@ -13,7 +14,16 @@ import { PauseIcon, PlayIcon } from "@/components/ui/PlaybackIcons";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Text } from "@/components/ui/Text";
 import { getCatalogReleaseBySlugs } from "@/lib/api/catalogClient";
+import { TrackDownloadButton } from "@/components/finance/TrackDownloadButton";
+import { acquireFree, checkReleaseOwnership, createCheckoutSession } from "@/lib/api/financeClient";
 import type { GetReleaseDetailResponse, ReleaseType, TrackResponse } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  formatPricingLabel,
+  isFreeEligible,
+  isPaidOnly,
+  defaultCheckoutAmountMinor,
+} from "@/lib/finance/pricingDisplay";
 import type { ColorSeed } from "@/theme/types";
 import {
   catalogArtistPath,
@@ -49,6 +59,8 @@ type ReleasePageViewProps = {
   releaseSlug: string;
   initialRelease?: GetReleaseDetailResponse;
   initialColorSeed?: ColorSeed | null;
+  /** From `?title=` while release detail is still loading on client navigation. */
+  titleHint?: string;
 };
 
 export function ReleasePageView({
@@ -56,6 +68,7 @@ export function ReleasePageView({
   releaseSlug,
   initialRelease,
   initialColorSeed = null,
+  titleHint,
 }: ReleasePageViewProps) {
   const loadKey = `${artistKey}/${releaseSlug}`;
   const load = useCallback(
@@ -69,6 +82,11 @@ export function ReleasePageView({
     initialRelease ? loadKey : null,
   );
   const [error, setError] = useState<string | null>(null);
+  const [ownsRelease, setOwnsRelease] = useState(false);
+  const [acquiring, setAcquiring] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [acquireError, setAcquireError] = useState<string | null>(null);
+  const { isAuthenticated, isReady: authReady } = useAuth();
 
   useEffect(() => {
     if (initialRelease && resolvedKey === loadKey) {
@@ -77,9 +95,16 @@ export function ReleasePageView({
 
     let cancelled = false;
     setError(null);
-    if (!initialRelease || resolvedKey !== loadKey) {
-      setRelease(null);
+
+    if (initialRelease) {
+      setRelease(initialRelease);
+      setResolvedKey(loadKey);
+      return () => {
+        cancelled = true;
+      };
     }
+
+    setRelease(null);
 
     load()
       .then((response) => {
@@ -95,6 +120,56 @@ export function ReleasePageView({
       cancelled = true;
     };
   }, [loadKey, load, initialRelease, resolvedKey]);
+
+  useEffect(() => {
+    if (!authReady || !isAuthenticated || !release) {
+      setOwnsRelease(false);
+      return;
+    }
+
+    let cancelled = false;
+    checkReleaseOwnership(release.id)
+      .then((response) => {
+        if (!cancelled) setOwnsRelease(response.ownsRelease);
+      })
+      .catch(() => {
+        if (!cancelled) setOwnsRelease(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, isAuthenticated, release?.id]);
+
+  const handleAcquireFree = useCallback(async () => {
+    if (!release) return;
+    setAcquireError(null);
+    setAcquiring(true);
+    try {
+      await acquireFree({ releaseId: release.id });
+      setOwnsRelease(true);
+    } catch (err) {
+      setAcquireError(err instanceof Error ? err.message : "Could not acquire release.");
+    } finally {
+      setAcquiring(false);
+    }
+  }, [release]);
+
+  const handleBuyRelease = useCallback(async () => {
+    if (!release?.pricing) return;
+    const amountMinor = defaultCheckoutAmountMinor(release.pricing);
+    if (amountMinor == null) return;
+
+    setAcquireError(null);
+    setCheckingOut(true);
+    try {
+      const session = await createCheckoutSession({ releaseId: release.id, amountMinor });
+      window.location.assign(session.checkoutUrl);
+    } catch (err) {
+      setAcquireError(err instanceof Error ? err.message : "Could not start checkout.");
+      setCheckingOut(false);
+    }
+  }, [release]);
 
   const pending = resolvedKey !== loadKey;
   const { state, currentTrack, playQueue, toggle } = usePlayback();
@@ -142,7 +217,8 @@ export function ReleasePageView({
     },
   });
 
-  const chromeTitle = release?.title;
+  const chromeTitle =
+    !pending && release ? release.title : (titleHint ?? initialRelease?.title);
 
   return (
     <AppShell title={chromeTitle} activePath="/release">
@@ -178,7 +254,10 @@ export function ReleasePageView({
                   <Text variant="label-medium" className="text-on-surface-variant">
                     {releaseTypeLabel[release.releaseType]}
                   </Text>
-                  <Text variant="headline-medium">{release.title}</Text>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Text variant="headline-medium">{release.title}</Text>
+                    <UnverifiedSellerBadge trustTier={release.trustTier} />
+                  </div>
                   <Link href={catalogArtistPath(release.artistSlug)} className="underline">
                     <Text variant="title-medium">{release.artistName}</Text>
                   </Link>
@@ -186,6 +265,11 @@ export function ReleasePageView({
                     {new Date(release.releaseDate).getFullYear()} ·{" "}
                     {release.tracks.length} track{release.tracks.length === 1 ? "" : "s"}
                   </Text>
+                  {release.pricing?.isForSale ? (
+                    <Text variant="label-medium" className="text-on-surface-variant">
+                      {formatPricingLabel(release.pricing)}
+                    </Text>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Button
                       type="button"
@@ -200,7 +284,43 @@ export function ReleasePageView({
                       disabled={playableTracks.length === 0}
                     />
                     <SaveToLibraryButton releaseId={release.id} />
+                    {ownsRelease ? (
+                      <Text variant="label-medium" className="self-center text-primary">
+                        In your purchases
+                      </Text>
+                    ) : null}
+                    {release.pricing?.isForSale ? (
+                      ownsRelease ? null : isFreeEligible(release.pricing) ? (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          disabled={!isAuthenticated || acquiring}
+                          onClick={() => void handleAcquireFree()}
+                        >
+                          {acquiring ? "Adding…" : "Get for free"}
+                        </Button>
+                      ) : isPaidOnly(release.pricing) ? (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          disabled={!isAuthenticated || checkingOut}
+                          onClick={() => void handleBuyRelease()}
+                        >
+                          {checkingOut ? "Redirecting…" : "Buy"}
+                        </Button>
+                      ) : null
+                    ) : null}
                   </div>
+                  {!isAuthenticated && isFreeEligible(release.pricing) ? (
+                    <Text variant="label-medium" className="text-on-surface-variant">
+                      Sign in to add this release to your purchases.
+                    </Text>
+                  ) : null}
+                  {acquireError ? (
+                    <Text variant="label-medium" className="text-error">
+                      {acquireError}
+                    </Text>
+                  ) : null}
                 </div>
               </div>
             </Card>
@@ -286,6 +406,8 @@ export function ReleasePageView({
                       isPlaying={state.isPlaying}
                       onPlay={() => playFromTrack(track.id)}
                       onToggle={toggle}
+                      isAuthenticated={isAuthenticated}
+                      ownsRelease={ownsRelease}
                     />
                   );
                 })}
@@ -305,6 +427,8 @@ function TrackRow({
   isPlaying,
   onPlay,
   onToggle,
+  isAuthenticated,
+  ownsRelease,
 }: {
   track: TrackResponse;
   release: GetReleaseDetailResponse;
@@ -312,7 +436,51 @@ function TrackRow({
   isPlaying: boolean;
   onPlay: () => void;
   onToggle: () => void;
+  isAuthenticated: boolean;
+  ownsRelease: boolean;
 }) {
+  const [acquiring, setAcquiring] = useState(false);
+  const [owned, setOwned] = useState(false);
+  const [acquireError, setAcquireError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOwned(ownsRelease);
+  }, [ownsRelease]);
+
+  const handleAcquireTrack = async () => {
+    setAcquireError(null);
+    setAcquiring(true);
+    try {
+      const response = await acquireFree({ trackId: track.id });
+      setOwned(true);
+      if (response.releaseEntitlementGranted) {
+        // Parent will refresh ownership on next navigation; local track state is enough here.
+      }
+    } catch (err) {
+      setAcquireError(err instanceof Error ? err.message : "Could not acquire track.");
+    } finally {
+      setAcquiring(false);
+    }
+  };
+
+  const handleBuyTrack = async () => {
+    const amountMinor = defaultCheckoutAmountMinor(track.pricing);
+    if (amountMinor == null) return;
+
+    setAcquireError(null);
+    setAcquiring(true);
+    try {
+      const session = await createCheckoutSession({ trackId: track.id, amountMinor });
+      window.location.assign(session.checkoutUrl);
+    } catch (err) {
+      setAcquireError(err instanceof Error ? err.message : "Could not start checkout.");
+      setAcquiring(false);
+    }
+  };
+
+  const showFreeAcquire =
+    track.pricing?.isForSale && isFreeEligible(track.pricing) && !owned;
+  const showPaidBuy = track.pricing?.isForSale && isPaidOnly(track.pricing) && !owned;
   const playbackTrack = toPlaybackTrack(track, release);
   const { onContextMenu, openMenuAt } = useTrackContextMenu(playbackTrack, track.hasAudio);
   const { onClick, queueAddPulsing } = usePlayableClick({
@@ -334,7 +502,7 @@ function TrackRow({
         {isCurrent ? (
           <IconButton
             label={isPlaying ? "Pause" : "Play"}
-            variant="tonal"
+            variant="outlined"
             size="sm"
             onClick={onToggle}
           >
@@ -360,6 +528,40 @@ function TrackRow({
         </Text>
       </button>
       <div className="flex items-center gap-2">
+        {owned ? (
+          <>
+            <Text variant="label-medium" className="hidden text-primary sm:inline">
+              Owned
+            </Text>
+            <TrackDownloadButton trackId={track.id} variant="text" />
+          </>
+        ) : null}
+        {showFreeAcquire ? (
+          <Button
+            type="button"
+            variant="outlined"
+            disabled={!isAuthenticated || acquiring}
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleAcquireTrack();
+            }}
+          >
+            {acquiring ? "…" : "Free"}
+          </Button>
+        ) : null}
+        {showPaidBuy ? (
+          <Button
+            type="button"
+            variant="outlined"
+            disabled={!isAuthenticated || acquiring}
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleBuyTrack();
+            }}
+          >
+            {acquiring ? "…" : "Buy"}
+          </Button>
+        ) : null}
         <OverflowMenuButton
           label="Track options"
           className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
@@ -371,6 +573,11 @@ function TrackRow({
         />
         <Text variant="label-medium">{formatDuration(track.durationMs)}</Text>
       </div>
+      {acquireError ? (
+        <Text variant="label-medium" className="absolute right-0 bottom-0 text-error">
+          {acquireError}
+        </Text>
+      ) : null}
     </li>
   );
 }

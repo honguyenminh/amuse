@@ -60,6 +60,28 @@ public static class ManageArtistsEndpoint
             .Produces<ManageArtistListResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        endpoints.MapGet("/api/v1/catalog/manage/artists/collaborator-search", async (
+                string? q,
+                int? limit,
+                Guid? excludingArtistId,
+                SearchCollaboratorArtistsHandler handler,
+                HttpContext httpContext,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleAsync(
+                    q,
+                    limit,
+                    excludingArtistId,
+                    httpContext.User,
+                    cancellationToken);
+                return result.ToResult(Results.Ok);
+            })
+            .RequireAuthorization(OrgPolicies.ReadCatalog)
+            .WithName("SearchCatalogCollaboratorArtists")
+            .WithSummary("Search artists across all organizations for track featuring credits.")
+            .Produces<ManageArtistListResponse>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         endpoints.MapGet("/api/v1/catalog/manage/artists/{artistId:guid}", async (
                 Guid artistId,
                 GetArtistHandler handler,

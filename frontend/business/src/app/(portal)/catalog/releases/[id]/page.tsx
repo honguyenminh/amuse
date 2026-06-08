@@ -4,6 +4,8 @@ import { FormattedCatalogText } from "@amuse/catalog-text";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditReleaseMetadataDialog } from "@/components/catalog/EditReleaseMetadataDialog";
 import { EditTrackDialog } from "@/components/catalog/EditTrackDialog";
+import { formatTrackCollaborators } from "@/components/catalog/TrackCollaboratorsEditor";
+import { formatPricingSummary } from "@/components/catalog/ReleasePricingPanel";
 import { ReleaseCoverArtPanel } from "@/components/catalog/ReleaseCoverArtPanel";
 import { ResourceAuditPanel } from "@/components/catalog/ResourceAuditPanel";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,7 @@ import { hasClaim } from "@/lib/auth/jwtClaims";
 import { getAccessToken } from "@/lib/auth/sessionStore";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import {
   formatReleaseDateTime,
   isReleaseDateInFuture,
@@ -75,6 +78,15 @@ function isReleaseDeletable(status: ManageReleaseDetailResponse["lifecycleStatus
   );
 }
 
+function formatReleasePricingOverview(release: ManageReleaseDetailResponse): string {
+  const tracksForSale = release.tracks.filter((track) => track.pricing.isForSale).length;
+  const trackSummary =
+    tracksForSale === 0
+      ? "No individual track sales"
+      : `${tracksForSale} track${tracksForSale === 1 ? "" : "s"} for sale individually`;
+  return `${formatPricingSummary(release.pricing)} · ${trackSummary}`;
+}
+
 type TrackUploadState = {
   uploading: boolean;
   progressLabel: string | null;
@@ -97,6 +109,7 @@ export default function ReleaseDetailPage() {
   const canWrite = hasClaim(token, "write_draft:catalog:all");
   const canUpload = hasClaim(token, "upload:catalog:all");
   const canPublish = hasClaim(token, "publish_public:catalog:all");
+  const canManagePricing = hasClaim(token, "manage:catalog:pricing:all");
 
   const [release, setRelease] = useState<ManageReleaseDetailResponse | null>(null);
   const [ingestionByTrack, setIngestionByTrack] = useState<
@@ -433,9 +446,6 @@ export default function ReleaseDetailPage() {
               {formatLifecycle(release.releaseType)} ·{" "}
               {formatLifecycle(release.lifecycleStatus)} ·{" "}
               {formatReleaseDateTime(release.releaseDate)}
-              {release.collaborators.length > 0
-                ? ` · feat. ${release.collaborators.map((c) => c.artistName).join(", ")}`
-                : ""}
             </p>
           ) : null}
         </div>
@@ -574,6 +584,23 @@ export default function ReleaseDetailPage() {
         </CardContent>
       </Card>
 
+      {canManagePricing && release ? (
+        <Card>
+          <Link
+            href={`/catalog/releases/${release.id}/pricing`}
+            className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:text-primary"
+          >
+            <div>
+              <p className="font-medium">Sales & pricing</p>
+              <p className="text-sm text-muted-foreground">
+                {formatReleasePricingOverview(release)}
+              </p>
+            </div>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </Link>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Tracks</CardTitle>
@@ -599,6 +626,7 @@ export default function ReleaseDetailPage() {
                 const retry = retryState[track.id];
                 const jobStatus = ingestion?.jobStatus;
                 const jobError = ingestion?.jobLastError;
+                const featuring = formatTrackCollaborators(track.collaborators);
                 const canRetryTranscode =
                   canUpload &&
                   release.lifecycleStatus === "draft" &&
@@ -616,6 +644,7 @@ export default function ReleaseDetailPage() {
                           {formatDuration(track.durationMs)}
                           {track.explicitFlag ? " · Explicit" : ""} ·{" "}
                           {formatLifecycle(lifecycleStatus)}
+                          {featuring ? ` · feat. ${featuring}` : ""}
                           {jobStatus ? ` · Job ${formatLifecycle(jobStatus)}` : ""}
                           {track.isrc ? ` · ISRC ${track.isrc}` : ""}
                           {track.versionTitle ? ` · ${track.versionTitle}` : ""}
@@ -784,6 +813,8 @@ export default function ReleaseDetailPage() {
                 }
               }}
               track={editingTrack}
+              primaryArtistId={release.artistId}
+              releaseLifecycleStatus={release.lifecycleStatus}
               onUpdated={(updated) => {
                 setRelease((current) =>
                   current

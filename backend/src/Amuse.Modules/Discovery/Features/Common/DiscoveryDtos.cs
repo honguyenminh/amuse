@@ -72,6 +72,7 @@ public sealed record SearchItemDto(
     Guid? ArtistId,
     Guid? ReleaseId,
     string? CoverArtUrl,
+    string TrustTier,
     bool IsVerified);
 
 public sealed record PublicPlaylistSearchCardDto(

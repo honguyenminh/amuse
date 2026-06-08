@@ -1,6 +1,7 @@
 "use client";
 
 import { FormattedCatalogText } from "@amuse/catalog-text";
+import { UnverifiedSellerBadge } from "@/components/catalog/UnverifiedSellerBadge";
 import { AppShell } from "@/components/ui/AppShell";
 import { PageContent } from "@/components/ui/PageContent";
 import { Card } from "@/components/ui/Card";
@@ -45,9 +46,16 @@ export function ArtistPageClient({
 
     let cancelled = false;
     setError(null);
-    if (!initialArtist || resolvedKey !== artistKey) {
-      setArtist(null);
+
+    if (initialArtist) {
+      setArtist(initialArtist);
+      setResolvedKey(artistKey);
+      return () => {
+        cancelled = true;
+      };
     }
+
+    setArtist(null);
 
     getCatalogArtist(artistKey)
       .then((response) => {
@@ -110,7 +118,10 @@ export function ArtistPageClient({
                   </div>
                 )}
                 <div className="flex flex-col gap-1">
-                  <Text variant="headline-medium">{artist.name}</Text>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Text variant="headline-medium">{artist.name}</Text>
+                    <UnverifiedSellerBadge trustTier={artist.trustTier} />
+                  </div>
                   {artist.bio && (
                     <FormattedCatalogText
                       text={artist.bio}

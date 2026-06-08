@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddCatalogModule(builder.Configuration);
+builder.Services.AddCatalogTranscoderServices(builder.Configuration);
 builder.Services.AddMediaModule(builder.Configuration);
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("RabbitMq"));
 

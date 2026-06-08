@@ -2,10 +2,6 @@
 
 import { CatalogTextEditor } from "@/components/catalog/CatalogTextEditor";
 import {
-  FeaturingArtistsDialog,
-  FeaturingArtistsSummary,
-} from "@/components/catalog/FeaturingArtistsDialog";
-import {
   ReleaseSlugField,
   releaseSlugReadyForSubmit,
   type ReleaseSlugStatus,
@@ -25,9 +21,7 @@ import {
   createRelease,
   createTrack,
   getArtist,
-  listArtists,
   listArtistReleaseGroups,
-  type ManageArtistSummaryResponse,
   type ManageReleaseGroupResponse,
   type ReleaseType,
 } from "@/lib/api/catalogClient";
@@ -53,10 +47,10 @@ import {
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasClaim } from "@/lib/auth/jwtClaims";
 import { getAccessToken } from "@/lib/auth/sessionStore";
-import { Trash2, Upload, Users } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type TrackDraft = {
   key: string;
@@ -110,7 +104,6 @@ export default function NewReleasePage() {
   const [slug, setSlug] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [slugStatus, setSlugStatus] = useState<ReleaseSlugStatus>("idle");
-  const [rosterArtists, setRosterArtists] = useState<ManageArtistSummaryResponse[]>([]);
   const [title, setTitle] = useState("");
   const [releaseType, setReleaseType] = useState<ReleaseType>("single");
   const [releaseTypeManual, setReleaseTypeManual] = useState(false);
@@ -128,8 +121,6 @@ export default function NewReleasePage() {
   const [primaryGenre, setPrimaryGenre] = useState("");
   const [languageCode, setLanguageCode] = useState("");
   const [labelName, setLabelName] = useState("");
-  const [collaboratorArtistIds, setCollaboratorArtistIds] = useState<string[]>([]);
-  const [featuringDialogOpen, setFeaturingDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadPhase, setUploadPhase] = useState(false);
@@ -184,10 +175,6 @@ export default function NewReleasePage() {
         setArtistName(artist.name);
         setArtistSlug(artist.slug);
       })
-      .catch(() => undefined);
-
-    listArtists()
-      .then((response) => setRosterArtists(response.items))
       .catch(() => undefined);
 
     listArtistReleaseGroups(artistId)
@@ -367,8 +354,6 @@ export default function NewReleasePage() {
         primaryGenre: primaryGenre.trim() || undefined,
         languageCode: languageCode.trim() || undefined,
         labelName: labelName.trim() || undefined,
-        collaboratorArtistIds:
-          collaboratorArtistIds.length > 0 ? collaboratorArtistIds : undefined,
       });
 
       if (pendingCoverFile) {
@@ -466,12 +451,6 @@ export default function NewReleasePage() {
   const hasUploadErrors =
     uploadPhase &&
     tracks.some((track) => uploadByTrackKey[track.key]?.status === "error");
-
-  const collaboratorOptions = rosterArtists.filter((artist) => artist.id !== artistId);
-  const selectedCollaborators = useMemo(
-    () => rosterArtists.filter((artist) => collaboratorArtistIds.includes(artist.id)),
-    [rosterArtists, collaboratorArtistIds],
-  );
 
   if (!orgId) {
     return (
@@ -682,38 +661,6 @@ export default function NewReleasePage() {
                   />
                 </div>
               </div>
-
-              <div className="grid gap-2">
-                <Label>Featuring artists (optional)</Label>
-                <FeaturingArtistsSummary
-                  artists={selectedCollaborators}
-                  disabled={submitting}
-                  onRemove={(id) =>
-                    setCollaboratorArtistIds((current) =>
-                      current.filter((artistId) => artistId !== id),
-                    )
-                  }
-                />
-                {collaboratorOptions.length > 0 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-fit"
-                    disabled={submitting}
-                    onClick={() => setFeaturingDialogOpen(true)}
-                  >
-                    <Users />
-                    {selectedCollaborators.length > 0
-                      ? "Edit featuring artists"
-                      : "Add featuring artists"}
-                  </Button>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Add more artists to your roster to feature collaborators on this release.
-                  </p>
-                )}
-              </div>
             </CardContent>
           </Card>
 
@@ -907,14 +854,6 @@ export default function NewReleasePage() {
         </Card>
       )}
 
-      <FeaturingArtistsDialog
-        open={featuringDialogOpen}
-        onOpenChange={setFeaturingDialogOpen}
-        artists={collaboratorOptions}
-        primaryArtistName={artistName ?? "this artist"}
-        selectedIds={collaboratorArtistIds}
-        onSelectedIdsChange={setCollaboratorArtistIds}
-      />
     </div>
   );
 }

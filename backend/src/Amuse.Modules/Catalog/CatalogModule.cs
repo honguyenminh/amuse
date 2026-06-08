@@ -18,6 +18,7 @@ using Amuse.Modules.Catalog.Features.ManageReleaseCover;
 using Amuse.Modules.Catalog.Features.ManageReleaseGroups;
 using Amuse.Modules.Catalog.Features.ManageReleases;
 using Amuse.Modules.Catalog.Features.ManageTrackAudio;
+using Amuse.Modules.Catalog.Features.ManagePricing;
 using Amuse.Modules.Catalog.Features.ManageTracks;
 using Amuse.Modules.Catalog.Features.PublishRelease;
 using Amuse.Modules.Catalog.Features.RetryTrackTranscode;
@@ -28,6 +29,7 @@ using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Processing;
 using Amuse.Modules.Catalog.Services;
 using Amuse.Modules.Common.Persistence;
+using Amuse.Modules.Common.Time;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -59,6 +61,7 @@ public static class CatalogModule
         services.AddScoped<ICatalogOrganizationBootstrap, CatalogOrganizationBootstrap>();
         services.AddScoped<ICatalogManagedArtistVisibility, CatalogManagedArtistVisibility>();
         services.AddScoped<ICatalogDiscoveryReadModel, CatalogDiscoveryReadModel>();
+        services.AddScoped<ICatalogPurchaseReadModel, CatalogPurchaseReadModel>();
         services.AddScoped<CatalogAuditWriter>();
 
         services.AddScoped<BrowseHomeHandler>();
@@ -79,6 +82,7 @@ public static class CatalogModule
         services.AddScoped<CreateArtistHandler>();
         services.AddScoped<CheckArtistSlugAvailabilityHandler>();
         services.AddScoped<ListArtistsHandler>();
+        services.AddScoped<SearchCollaboratorArtistsHandler>();
         services.AddScoped<GetArtistHandler>();
         services.AddScoped<UpdateArtistHandler>();
 
@@ -91,6 +95,7 @@ public static class CatalogModule
 
         services.AddScoped<CreateTrackHandler>();
         services.AddScoped<UpdateTrackHandler>();
+        services.AddScoped<SetTrackCollaboratorsHandler>();
         services.AddScoped<DeleteTrackHandler>();
 
         services.AddScoped<ScheduledReleaseClaimService>();
@@ -110,6 +115,63 @@ public static class CatalogModule
         services.AddScoped<CompleteArtistCoverUploadHandler>();
 
         services.AddScoped<ListResourceAuditsHandler>();
+
+        services.AddScoped<SetTrackPricingHandler>();
+        services.AddScoped<SetReleasePricingHandler>();
+        services.AddScoped<SetTrackRoyaltySplitsHandler>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Audio transcoding worker hosts. Does not register HTTP handlers or cross-module read models.
+    /// </summary>
+    public static IServiceCollection AddCatalogTranscoderServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+        services.TryAddSingleton<IClock, SystemClock>();
+
+        services.AddDbContext<CatalogDbContext>((sp, options) =>
+        {
+            CatalogDbContextOptions.Configure(
+                (DbContextOptionsBuilder<CatalogDbContext>)options,
+                connectionString);
+            options.AddModuleInterceptors(sp);
+        });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Scheduled release publishing in worker hosts. Does not register HTTP handlers or audit dependencies.
+    /// </summary>
+    public static IServiceCollection AddCatalogSchedulerServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+        services.TryAddSingleton<IClock, SystemClock>();
+
+        services.AddDbContext<CatalogDbContext>((sp, options) =>
+        {
+            CatalogDbContextOptions.Configure(
+                (DbContextOptionsBuilder<CatalogDbContext>)options,
+                connectionString);
+            options.AddModuleInterceptors(sp);
+        });
+
+        services.AddScoped<ScheduledReleaseClaimService>();
+        services.AddScoped<PublishReleaseHandler>();
 
         return services;
     }
@@ -155,6 +217,7 @@ public static class CatalogModule
         endpoints.MapManageArtistAvatarEndpoint();
         endpoints.MapManageArtistCoverEndpoint();
         endpoints.MapGetResourceAuditEndpoint();
+        endpoints.MapManagePricingEndpoint();
 
         return endpoints;
     }

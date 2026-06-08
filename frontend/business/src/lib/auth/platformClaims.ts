@@ -8,6 +8,10 @@ export const PLATFORM_ROOT = "platform:root";
 export const PLATFORM_REVIEW_ORGANIZATIONS = "review:platform:organizations";
 export const PLATFORM_MANAGE_ORGANIZATIONS = "manage:platform:organizations";
 export const PLATFORM_MANAGE_ALL = "manage:platform:all";
+export const PLATFORM_READ_ACCOUNTING = "read:platform:accounting:all";
+export const PLATFORM_MANAGE_ACCOUNTING = "manage:platform:accounting:all";
+export const PLATFORM_MANAGE_PURCHASES = "manage:platform:purchases:all";
+export const PLATFORM_MANAGE_PAYOUTS = "manage:platform:payouts:all";
 export const PLATFORM_LEGACY_REVIEW = "platform:organizations:review";
 
 function claimSet(accessToken: string | null): Set<string> {
@@ -41,4 +45,39 @@ export function canManagePlatformOrganizations(accessToken: string | null): bool
     return true;
   }
   return hasClaim(accessToken, PLATFORM_MANAGE_ORGANIZATIONS);
+}
+
+/** View tax invoices, VAT summaries, and accounting exports. */
+export function canReadPlatformAccounting(accessToken: string | null): boolean {
+  if (isPlatformRoot(accessToken)) {
+    return true;
+  }
+  return (
+    hasClaim(accessToken, PLATFORM_READ_ACCOUNTING) ||
+    hasClaim(accessToken, PLATFORM_MANAGE_ACCOUNTING)
+  );
+}
+
+/** Issue credit notes, accounting adjustments, and FX overrides. */
+export function canManagePlatformAccounting(accessToken: string | null): boolean {
+  if (isPlatformRoot(accessToken)) {
+    return true;
+  }
+  return hasClaim(accessToken, PLATFORM_MANAGE_ACCOUNTING);
+}
+
+/** Refund any purchase and set refund fee bearer. */
+export function canManagePlatformPurchases(accessToken: string | null): boolean {
+  if (isPlatformRoot(accessToken)) {
+    return true;
+  }
+  return hasClaim(accessToken, PLATFORM_MANAGE_PURCHASES);
+}
+
+/** Approve or reject seller withdrawals above auto threshold. */
+export function canManagePlatformPayouts(accessToken: string | null): boolean {
+  if (isPlatformRoot(accessToken)) {
+    return true;
+  }
+  return hasClaim(accessToken, PLATFORM_MANAGE_PAYOUTS);
 }

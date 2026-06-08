@@ -2,11 +2,19 @@ using Amuse.Modules.Identity.Contracts;
 using Amuse.Modules.Common.Persistence;
 using Amuse.Modules.Platform.Contracts;
 using Amuse.Modules.Platform.Features.ApproveOrganization;
+using Amuse.Modules.Platform.Features.ApprovePayoutProfile;
 using Amuse.Modules.Platform.Features.ForceTransferOwnership;
+using Amuse.Modules.Platform.Features.ListAccountingInvoices;
 using Amuse.Modules.Platform.Features.ListClosedOrganizations;
 using Amuse.Modules.Platform.Features.ListOrganizationApplications;
+using Amuse.Modules.Platform.Features.GetAccountingVatSummary;
+using Amuse.Modules.Platform.Features.ListPurchases;
+using Amuse.Modules.Platform.Features.ListPayoutProfiles;
+using Amuse.Modules.Platform.Features.ManageFxRates;
+using Amuse.Modules.Platform.Features.ManageWithdrawals;
 using Amuse.Modules.Platform.Features.RecoverOrganization;
 using Amuse.Modules.Platform.Features.RejectOrganization;
+using Amuse.Modules.Platform.Features.RejectPayoutProfile;
 using Amuse.Modules.Platform.Options;
 using Amuse.Modules.Platform.Persistence;
 using Amuse.Modules.Platform.Services;
@@ -52,6 +60,18 @@ public static class PlatformModule
         services.AddScoped<RejectOrganizationHandler>();
         services.AddScoped<ForceTransferOwnershipHandler>();
         services.AddScoped<RecoverOrganizationHandler>();
+        services.AddScoped<ListAccountingInvoicesHandler>();
+        services.AddScoped<GetAccountingVatSummaryHandler>();
+        services.AddScoped<ListPlatformPurchasesHandler>();
+        services.AddScoped<ListPayoutProfilesHandler>();
+        services.AddScoped<ApprovePayoutProfileHandler>();
+        services.AddScoped<RejectPayoutProfileHandler>();
+        services.AddScoped<ListFxRatesHandler>();
+        services.AddScoped<PublishFxRateOverrideHandler>();
+        services.AddScoped<ListPlatformWithdrawalsHandler>();
+        services.AddScoped<ApproveWithdrawalHandler>();
+        services.AddScoped<CompleteWithdrawalHandler>();
+        services.AddScoped<FailWithdrawalHandler>();
 
         return services;
     }
@@ -65,6 +85,14 @@ public static class PlatformModule
         group.MapRejectOrganizationEndpoint();
         group.MapForceTransferOwnershipEndpoint();
         group.MapRecoverOrganizationEndpoint();
+        group.MapListAccountingInvoicesEndpoint();
+        group.MapManageFxRatesEndpoint();
+        group.MapGetAccountingVatSummaryEndpoint();
+        group.MapListPlatformPurchasesEndpoint();
+        group.MapListPayoutProfilesEndpoint();
+        group.MapApprovePayoutProfileEndpoint();
+        group.MapRejectPayoutProfileEndpoint();
+        group.MapManageWithdrawalsEndpoint();
         return endpoints;
     }
 }

@@ -197,9 +197,19 @@
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=amuse_development;Username=postgres;Password=postgres
       CatalogScheduler__PollIntervalSeconds: "60"
       CatalogScheduler__BatchSize: "50"
+      Media__Endpoint: http://minio:9000
+      Media__PublicBaseUrl: http://localhost:9000
+      Media__AccessKey: amuse
+      Media__SecretKey: amuse_dev_secret
+      Media__ForcePathStyle: "true"
+      Media__CoversBucket: amuse-covers
+      Media__AudioBucket: amuse-audio
+      Media__SignedUrlMinutes: "30"
     depends_on:
       postgres:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
 

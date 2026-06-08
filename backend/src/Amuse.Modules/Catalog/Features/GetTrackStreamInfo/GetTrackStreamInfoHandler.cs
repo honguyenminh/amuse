@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
+using Amuse.Modules.Billing.Contracts;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Common.Time;
+using Amuse.Modules.Discovery.Features.Common;
 using Amuse.Modules.Media.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -11,10 +14,14 @@ namespace Amuse.Modules.Catalog.Features.GetTrackStreamInfo;
 internal sealed class GetTrackStreamInfoHandler(
     CatalogDbContext db,
     IClock clock,
-    IOptions<MediaOptions> mediaOptions)
+    IOptions<MediaOptions> mediaOptions,
+    IEntitlementReadModel entitlements)
 {
+    internal const int PublicPreviewMaxBitrateKbps = 128;
+
     public async Task<Result<TrackStreamInfoResponse>> HandleAsync(
         Guid trackId,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
         if (trackId == Guid.Empty)
@@ -22,32 +29,51 @@ internal sealed class GetTrackStreamInfoHandler(
 
         var typedId = TrackId.From(trackId);
 
-        var track = await db.Tracks
-            .AsNoTracking()
-            .Where(t => t.Id == typedId)
-            .Select(t => new
+        var row = await (
+            from track in db.Tracks.AsNoTracking()
+            join release in db.Releases.AsNoTracking() on track.ReleaseId equals release.Id
+            where track.Id == typedId
+            select new
             {
-                t.Title,
-                t.Duration,
-                t.AudioMasterKey,
-                t.AudioStreamKey,
-                t.LoudnessProfile,
+                track.Title,
+                track.Duration,
+                track.AudioMasterKey,
+                track.AudioStreamKey,
+                track.LoudnessProfile,
+                track.LifecycleStatus,
+                ReleaseId = release.Id.Value,
+                ReleaseLifecycleStatus = release.LifecycleStatus,
             })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (track is null)
+        if (row is null)
             return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.TrackNotFound);
 
-        if (string.IsNullOrEmpty(track.AudioMasterKey))
+        if (string.IsNullOrEmpty(row.AudioMasterKey))
             return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.TrackHasNoAudio);
 
-        if (string.IsNullOrWhiteSpace(track.AudioStreamKey))
+        if (string.IsNullOrWhiteSpace(row.AudioStreamKey))
             return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.TrackStreamNotReady);
+
+        var accountId = DiscoveryPrincipal.ResolveAccountId(principal);
+        var isOwner = accountId is not null
+            && await entitlements.OwnsTrackAsync(
+                accountId.Value,
+                trackId,
+                row.ReleaseId,
+                cancellationToken);
+
+        var isPubliclyStreamable = IsPubliclyStreamable(
+            row.LifecycleStatus,
+            row.ReleaseLifecycleStatus);
+
+        if (!isOwner && !isPubliclyStreamable)
+            return Result<TrackStreamInfoResponse>.Failure(CatalogErrors.StreamPlaybackForbidden);
 
         var ttl = TimeSpan.FromMinutes(mediaOptions.Value.SignedUrlMinutes);
         var expiresAt = clock.UtcNow.Add(ttl);
 
-        var chosenKey = track.AudioStreamKey;
+        var chosenKey = row.AudioStreamKey;
         var contentType = ContentTypeForKey(chosenKey);
 
         if (!TryParseDashManifestKey(chosenKey, out var keyTrackId, out var manifestId) || keyTrackId != trackId)
@@ -63,27 +89,64 @@ internal sealed class GetTrackStreamInfoHandler(
             .ThenBy(r => r.BitrateKbps)
             .ToListAsync(cancellationToken);
 
-        var renditions = renditionRows.Count > 0
+        var allRenditions = renditionRows.Count > 0
             ? renditionRows.Select(ToDto).ToList()
             : [LegacyRendition()];
 
-        TrackStreamLoudnessDto? loudness = track.LoudnessProfile is null
+        var renditions = isOwner
+            ? allRenditions
+            : FilterRenditionsForPublicPreview(allRenditions);
+
+        TrackStreamLoudnessDto? loudness = row.LoudnessProfile is null
             ? null
             : new TrackStreamLoudnessDto(
-                track.LoudnessProfile.IntegratedLufs,
-                track.LoudnessProfile.TruePeakDbtp,
-                track.LoudnessProfile.TargetIntegratedLufs,
-                track.LoudnessProfile.TargetTruePeakDbtp,
-                track.LoudnessProfile.LinearGainLu);
+                row.LoudnessProfile.IntegratedLufs,
+                row.LoudnessProfile.TruePeakDbtp,
+                row.LoudnessProfile.TargetIntegratedLufs,
+                row.LoudnessProfile.TargetTruePeakDbtp,
+                row.LoudnessProfile.LinearGainLu);
 
         return Result<TrackStreamInfoResponse>.Success(new TrackStreamInfoResponse(
             trackId,
             url,
             contentType,
-            track.Duration.Milliseconds,
+            row.Duration.Milliseconds,
             expiresAt,
             loudness,
-            renditions));
+            renditions,
+            isOwner));
+    }
+
+    internal static bool IsPubliclyStreamable(
+        TrackLifecycleStatus trackStatus,
+        ReleaseLifecycleStatus releaseStatus) =>
+        trackStatus == TrackLifecycleStatus.Published
+        && releaseStatus == ReleaseLifecycleStatus.Published;
+
+    internal static IReadOnlyList<TrackStreamRenditionDto> FilterRenditionsForPublicPreview(
+        IReadOnlyList<TrackStreamRenditionDto> renditions)
+    {
+        var filtered = renditions.Where(IsPublicPreviewRendition).ToList();
+        return filtered.Count > 0 ? filtered : [LegacyRendition()];
+    }
+
+    internal static bool IsPublicPreviewRendition(TrackStreamRenditionDto rendition)
+    {
+        if (string.Equals(rendition.Codec, "flac", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (rendition.BitrateKbps is null or > PublicPreviewMaxBitrateKbps)
+            return false;
+
+        return true;
+    }
+
+    internal static bool IsPublicPreviewRendition(AudioCodec codec, int? bitrateKbps)
+    {
+        if (codec == AudioCodec.Flac)
+            return false;
+
+        return bitrateKbps is null or <= PublicPreviewMaxBitrateKbps;
     }
 
     private static TrackStreamRenditionDto ToDto(TrackAudioRendition row) =>
@@ -158,4 +221,5 @@ public sealed record TrackStreamInfoResponse(
     int DurationMs,
     DateTimeOffset ExpiresAt,
     TrackStreamLoudnessDto? Loudness,
-    IReadOnlyList<TrackStreamRenditionDto> Renditions);
+    IReadOnlyList<TrackStreamRenditionDto> Renditions,
+    bool IsOwner);

@@ -2,10 +2,6 @@
 
 import { CatalogTextEditor } from "@/components/catalog/CatalogTextEditor";
 import {
-  FeaturingArtistsDialog,
-  FeaturingArtistsSummary,
-} from "@/components/catalog/FeaturingArtistsDialog";
-import {
   ReleaseSlugField,
   releaseSlugReadyForSubmit,
   type ReleaseSlugStatus,
@@ -24,10 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   getArtist,
-  listArtists,
   listArtistReleaseGroups,
   updateRelease,
-  type ManageArtistSummaryResponse,
   type ManageReleaseDetailResponse,
   type ManageReleaseGroupResponse,
   type ReleaseType,
@@ -39,8 +33,7 @@ import {
   toReleaseDateIso,
 } from "@/lib/catalog/releaseDateTime";
 import { normalizeSlugInput } from "@/lib/catalog/slug";
-import { Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type EditReleaseMetadataDialogProps = {
   open: boolean;
@@ -83,12 +76,7 @@ export function EditReleaseMetadataDialog({
     release.originalReleaseDate ? toLocalDatetimeInput(release.originalReleaseDate) : "",
   );
   const [metadataComplete, setMetadataComplete] = useState(release.metadataComplete);
-  const [collaboratorArtistIds, setCollaboratorArtistIds] = useState<string[]>(
-    release.collaborators.map((c) => c.artistId),
-  );
   const [releaseGroups, setReleaseGroups] = useState<ManageReleaseGroupResponse[]>([]);
-  const [rosterArtists, setRosterArtists] = useState<ManageArtistSummaryResponse[]>([]);
-  const [featuringDialogOpen, setFeaturingDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +101,6 @@ export function EditReleaseMetadataDialog({
         release.originalReleaseDate ? toLocalDatetimeInput(release.originalReleaseDate) : "",
       );
       setMetadataComplete(release.metadataComplete);
-      setCollaboratorArtistIds(release.collaborators.map((c) => c.artistId));
       setError(null);
 
       getArtist(release.artistId)
@@ -122,17 +109,8 @@ export function EditReleaseMetadataDialog({
       listArtistReleaseGroups(release.artistId)
         .then((response) => setReleaseGroups(response.items))
         .catch(() => undefined);
-      listArtists()
-        .then((response) => setRosterArtists(response.items))
-        .catch(() => undefined);
     }
   }, [open, release]);
-
-  const selectedCollaborators = useMemo(
-    () =>
-      rosterArtists.filter((artist) => collaboratorArtistIds.includes(artist.id)),
-    [rosterArtists, collaboratorArtistIds],
-  );
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -172,7 +150,6 @@ export function EditReleaseMetadataDialog({
           ? toReleaseDateIso(originalReleaseDate)
           : null,
         metadataComplete,
-        collaboratorArtistIds,
       });
       onUpdated(updated);
       onOpenChange(false);
@@ -272,31 +249,6 @@ export function EditReleaseMetadataDialog({
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Featuring artists</Label>
-              <FeaturingArtistsSummary
-                artists={selectedCollaborators}
-                disabled={submitting}
-                onRemove={(id) =>
-                  setCollaboratorArtistIds((current) =>
-                    current.filter((artistId) => artistId !== id),
-                  )
-                }
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-fit"
-                onClick={() => setFeaturingDialogOpen(true)}
-                disabled={submitting}
-              >
-                <Users />
-                {selectedCollaborators.length > 0
-                  ? "Change featuring artists"
-                  : "Add featuring artists"}
-              </Button>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="release-description">Description</Label>
@@ -410,15 +362,6 @@ export function EditReleaseMetadataDialog({
           </form>
         </DialogContent>
       </Dialog>
-
-      <FeaturingArtistsDialog
-        open={featuringDialogOpen}
-        onOpenChange={setFeaturingDialogOpen}
-        artists={rosterArtists.filter((artist) => artist.id !== release.artistId)}
-        primaryArtistName={release.artistName}
-        selectedIds={collaboratorArtistIds}
-        onSelectedIdsChange={setCollaboratorArtistIds}
-      />
     </>
   );
 }

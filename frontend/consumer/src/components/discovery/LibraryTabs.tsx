@@ -5,6 +5,7 @@ import {
   libraryAlbumsPath,
   libraryLikedPath,
   libraryPlaylistsPath,
+  libraryPurchasesPath,
 } from "@/lib/discovery/paths";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
@@ -14,6 +15,7 @@ const tabs = [
   { href: libraryPlaylistsPath, label: "Playlists" },
   { href: libraryLikedPath, label: "Liked" },
   { href: libraryAlbumsPath, label: "Releases" },
+  { href: libraryPurchasesPath, label: "Purchases" },
 ] as const;
 
 export function LibraryTabs() {

@@ -19,7 +19,7 @@ export function readNavigatorConnection(): NetworkConnection | undefined {
 }
 
 export function getNetworkHints(
-  extras: Pick<NetworkHints, "throughputKbps" | "stallDowngradeSteps"> = {},
+  extras: Pick<NetworkHints, "throughputKbps" | "stallDowngradeSteps" | "isOwner"> = {},
 ): NetworkHints {
   const connection = readNavigatorConnection();
   return {
@@ -28,5 +28,6 @@ export function getNetworkHints(
     downlinkMbps: connection?.downlink,
     throughputKbps: extras.throughputKbps,
     stallDowngradeSteps: extras.stallDowngradeSteps,
+    isOwner: extras.isOwner,
   };
 }

@@ -26,7 +26,9 @@ internal sealed class UpdateListenerProfileHandler(
 
         var resolvedAccountId = accountId.Value;
         await ensureService.EnsureAsync(resolvedAccountId, cancellationToken);
-        var (profile, preference) = await profileService.GetForAccountAsync(resolvedAccountId, cancellationToken);
+        var (profile, preference) = await profileService.GetForAccountForUpdateAsync(
+            resolvedAccountId,
+            cancellationToken);
 
         if (request.DisplayName is not null)
         {

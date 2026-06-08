@@ -18,7 +18,17 @@ public sealed class OrganizationCapabilitiesTests
         Assert.True(capabilities.CanUpload);
         Assert.True(capabilities.CanWriteDraft);
         Assert.True(capabilities.CanPublishPublic);
-        Assert.False(capabilities.CanReadPayout);
+        Assert.True(capabilities.CanReadPayout);
+    }
+
+    [Fact]
+    public void Indie_group_active_allows_payout_read()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var capabilities = org.EvaluateCapabilities();
+
+        Assert.True(capabilities.CanReadPayout);
+        Assert.Contains("read:payout:all", capabilities.ToClaimStrings());
     }
 
     [Fact]

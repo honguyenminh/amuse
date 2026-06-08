@@ -74,6 +74,19 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
             .HasColumnName("audio_stream_key")
             .HasMaxLength(Track.MaxKeyLength);
 
+        builder.Property(t => t.IsForSale)
+            .HasColumnName("is_for_sale");
+
+        builder.Property(t => t.PriceFloorMinor)
+            .HasColumnName("price_floor_minor");
+
+        builder.Property(t => t.PriceCeilingMinor)
+            .HasColumnName("price_ceiling_minor");
+
+        builder.Property(t => t.PriceCurrency)
+            .HasColumnName("price_currency")
+            .HasMaxLength(CatalogPricing.CurrencyLength);
+
         builder.OwnsOne(t => t.LoudnessProfile, loudness =>
         {
             loudness.Property(p => p.IntegratedLufs)
@@ -96,5 +109,10 @@ internal sealed class TrackConfiguration : IEntityTypeConfiguration<Track>
 
         builder.HasIndex(t => new { t.ReleaseId, t.TrackNumber }).IsUnique();
         builder.HasIndex(t => new { t.OrganizationId, t.LifecycleStatus });
+
+        builder
+            .Metadata
+            .FindNavigation(nameof(Track.Collaborators))!
+            .SetPropertyAccessMode(PropertyAccessMode.Field);
     }
 }

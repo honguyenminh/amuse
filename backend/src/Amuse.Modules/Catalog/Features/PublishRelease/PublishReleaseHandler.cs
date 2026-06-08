@@ -3,8 +3,8 @@ using Amuse.Domain.Catalog;
 using Amuse.Domain.SharedKernel;
 using Amuse.Domain.Tenancy;
 using Amuse.Modules.Catalog.Features.Common;
+using Amuse.Modules.Catalog.Features.ManagePricing;
 using Amuse.Modules.Catalog.Features.ManageReleases;
-using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Common.Time;
 using Amuse.Modules.Media;
@@ -65,8 +65,13 @@ public sealed class PublishReleaseHandler(
         Release release,
         CancellationToken cancellationToken)
     {
+        var royaltySplits = await RoyaltySplitLoader.LoadForReleaseTracksAsync(
+            db,
+            release.Tracks,
+            cancellationToken);
+
         var now = clock.UtcNow;
-        var publishResult = release.Publish(now);
+        var publishResult = release.Publish(now, royaltySplits);
         if (!publishResult.IsSuccess)
             return Result<Release>.Failure(publishResult.Error!);
 
@@ -125,21 +130,26 @@ public sealed class PublishReleaseHandler(
             .Select(a => a.Name)
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
 
-        var collaborators = await ReleaseCollaboratorSync.LoadAsync(
+        var trackCollaborators = await TrackCollaboratorSync.LoadForTracksAsync(
             db,
-            release.Id,
+            release.Tracks.Select(t => t.Id).ToArray(),
             cancellationToken);
 
         var groupDisplay = await ReleaseGroupLookup.LoadDisplayAsync(db, release.ReleaseGroupId, cancellationToken);
+        var royaltySplits = await RoyaltySplitLoader.LoadForReleaseTracksAsync(
+            db,
+            release.Tracks,
+            cancellationToken);
 
         return Result<ManageReleaseDetailResponse>.Success(
             ReleaseMapper.ToDetail(
                 release,
                 artistName,
                 mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
-                collaborators,
+                trackCollaborators,
                 groupDisplay.Title,
-                groupDisplay.Slug));
+                groupDisplay.Slug,
+                royaltySplits));
     }
 
     private async Task<Result<ManageReleaseDetailResponse>> MapDetailAsync(

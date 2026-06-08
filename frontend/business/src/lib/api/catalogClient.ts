@@ -146,6 +146,36 @@ export type ManageReleaseListResponse = {
   items: ManageReleaseSummaryResponse[];
 };
 
+export type CatalogPricingResponse = {
+  isForSale: boolean;
+  priceFloorMinor: number;
+  priceCeilingMinor: number | null;
+  priceCurrency: string | null;
+};
+
+export type RoyaltySplitResponse = {
+  payeeOrganizationId: string;
+  shareBps: number;
+};
+
+export type SetTrackPricingRequest = {
+  isForSale: boolean;
+  priceFloorMinor: number;
+  priceCeilingMinor: number | null;
+  priceCurrency: string | null;
+};
+
+export type SetReleasePricingRequest = SetTrackPricingRequest;
+
+export type RoyaltySplitPayeeRequest = {
+  payeeOrganizationId: string;
+  shareBps: number;
+};
+
+export type SetTrackRoyaltySplitsRequest = {
+  splits: RoyaltySplitPayeeRequest[];
+};
+
 export type ManageTrackResponse = {
   id: string;
   title: string;
@@ -160,15 +190,24 @@ export type ManageTrackResponse = {
   lifecycleStatus: TrackLifecycleStatus;
   hasAudioMaster: boolean;
   hasAudioStream: boolean;
+  pricing: CatalogPricingResponse;
+  royaltySplits: RoyaltySplitResponse[];
+  collaborators: ManageTrackCollaboratorResponse[];
 };
 
-export type ReleaseCollaboratorRole = "featured";
+export type TrackCollaboratorRole = "featured";
 
-export type ManageReleaseCollaboratorResponse = {
-  artistId: string;
-  artistName: string;
-  role: ReleaseCollaboratorRole;
+export type ManageTrackCollaboratorResponse = {
+  artistId: string | null;
+  displayName: string;
+  isPlaceholder: boolean;
+  role: TrackCollaboratorRole;
   displayOrder: number;
+};
+
+export type TrackCollaboratorEntryRequest = {
+  artistId?: string | null;
+  displayName?: string | null;
 };
 
 export type ManageReleaseDetailResponse = {
@@ -197,7 +236,7 @@ export type ManageReleaseDetailResponse = {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  collaborators: ManageReleaseCollaboratorResponse[];
+  pricing: CatalogPricingResponse;
   tracks: ManageTrackResponse[];
 };
 
@@ -343,6 +382,22 @@ export function listArtists(): Promise<ManageArtistListResponse> {
   return authFetch<ManageArtistListResponse>("/api/v1/catalog/manage/artists");
 }
 
+export function searchCollaboratorArtists(
+  query: string,
+  options?: { limit?: number; excludingArtistId?: string },
+): Promise<ManageArtistListResponse> {
+  const params = new URLSearchParams({ q: query });
+  if (options?.limit) {
+    params.set("limit", String(options.limit));
+  }
+  if (options?.excludingArtistId) {
+    params.set("excludingArtistId", options.excludingArtistId);
+  }
+  return authFetch<ManageArtistListResponse>(
+    `/api/v1/catalog/manage/artists/collaborator-search?${params.toString()}`,
+  );
+}
+
 export function createArtist(body: {
   name: string;
   slug: string;
@@ -448,7 +503,6 @@ export function createRelease(
     cLine?: string | null;
     originalReleaseDate?: string | null;
     metadataComplete?: boolean;
-    collaboratorArtistIds?: string[];
   },
 ): Promise<ManageReleaseDetailResponse> {
   return authFetch<ManageReleaseDetailResponse>(
@@ -484,7 +538,6 @@ export function updateRelease(
     cLine?: string | null;
     originalReleaseDate?: string | null;
     metadataComplete?: boolean;
-    collaboratorArtistIds?: string[];
   },
 ): Promise<ManageReleaseDetailResponse> {
   return authFetch<ManageReleaseDetailResponse>(
@@ -494,6 +547,39 @@ export function updateRelease(
       body: JSON.stringify(body),
     },
   );
+}
+
+export function setTrackPricing(
+  trackId: string,
+  body: SetTrackPricingRequest,
+): Promise<ManageTrackResponse> {
+  return authFetch<ManageTrackResponse>(`/api/v1/catalog/tracks/${trackId}/pricing`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function setReleasePricing(
+  releaseId: string,
+  body: SetReleasePricingRequest,
+): Promise<ManageReleaseDetailResponse> {
+  return authFetch<ManageReleaseDetailResponse>(
+    `/api/v1/catalog/releases/${releaseId}/pricing`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function setTrackRoyaltySplits(
+  trackId: string,
+  body: SetTrackRoyaltySplitsRequest,
+): Promise<ManageTrackResponse> {
+  return authFetch<ManageTrackResponse>(`/api/v1/catalog/tracks/${trackId}/royalty-splits`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 }
 
 export function publishRelease(
@@ -544,6 +630,16 @@ export function createTrack(
       body: JSON.stringify(body),
     },
   );
+}
+
+export function setTrackCollaborators(
+  trackId: string,
+  body: { collaborators: TrackCollaboratorEntryRequest[] },
+): Promise<ManageTrackResponse> {
+  return authFetch<ManageTrackResponse>(`/api/v1/catalog/tracks/${trackId}/collaborators`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 }
 
 export function updateTrack(

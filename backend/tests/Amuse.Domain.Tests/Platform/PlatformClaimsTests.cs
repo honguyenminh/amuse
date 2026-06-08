@@ -13,6 +13,10 @@ public sealed class PlatformClaimsTests
         Assert.Contains(PlatformClaims.ManageOrganizations, effective);
         Assert.Contains(PlatformClaims.ReviewOrganizations, effective);
         Assert.Contains(PlatformClaims.ManageAll, effective);
+        Assert.Contains(PlatformClaims.ReadAccounting, effective);
+        Assert.Contains(PlatformClaims.ManageAccounting, effective);
+        Assert.Contains(PlatformClaims.ManagePurchases, effective);
+        Assert.Contains(PlatformClaims.ManagePayouts, effective);
     }
 
     [Fact]
@@ -22,6 +26,10 @@ public sealed class PlatformClaimsTests
         Assert.True(PlatformClaims.CanReviewOrganizations(["platform:root"]));
         Assert.True(PlatformClaims.CanAssumeAnyOrganizationPersona(["platform:root"]));
         Assert.True(PlatformClaims.CanInstantApproveOrganizationsOnCreate(["platform:root"]));
+        Assert.True(PlatformClaims.CanReadAccounting(["platform:root"]));
+        Assert.True(PlatformClaims.CanManageAccounting(["platform:root"]));
+        Assert.True(PlatformClaims.CanManagePurchases(["platform:root"]));
+        Assert.True(PlatformClaims.CanManagePayouts(["platform:root"]));
     }
 
     [Fact]
@@ -30,6 +38,7 @@ public sealed class PlatformClaimsTests
         Assert.True(PlatformClaims.CanReviewOrganizations(["review:platform:organizations"]));
         Assert.False(PlatformClaims.CanManageOrganizations(["review:platform:organizations"]));
         Assert.False(PlatformClaims.CanAssumeAnyOrganizationPersona(["review:platform:organizations"]));
+        Assert.False(PlatformClaims.CanReadAccounting(["review:platform:organizations"]));
     }
 
     [Fact]
@@ -38,5 +47,22 @@ public sealed class PlatformClaimsTests
         Assert.True(PlatformClaims.CanManageOrganizations(["manage:platform:organizations"]));
         Assert.True(PlatformClaims.CanReviewOrganizations(["manage:platform:organizations"]));
         Assert.True(PlatformClaims.CanAssumeAnyOrganizationPersona(["manage:platform:organizations"]));
+    }
+
+    [Fact]
+    public void Accounting_read_claim_does_not_imply_manage()
+    {
+        Assert.True(PlatformClaims.CanReadAccounting(["read:platform:accounting:all"]));
+        Assert.False(PlatformClaims.CanManageAccounting(["read:platform:accounting:all"]));
+    }
+
+    [Fact]
+    public void Manage_all_expands_accounting_and_payout_claims()
+    {
+        var effective = PlatformClaims.ExpandEffectiveClaims(["manage:platform:all"], isRootOperator: false);
+
+        Assert.Contains(PlatformClaims.ReadAccounting, effective);
+        Assert.Contains(PlatformClaims.ManagePurchases, effective);
+        Assert.Contains(PlatformClaims.ManagePayouts, effective);
     }
 }

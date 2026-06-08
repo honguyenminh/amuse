@@ -17,6 +17,11 @@ public static class OrgClaimPresets
         OrgClaim.ScopeWideClaim("read", "catalog"),
         OrgClaim.ScopeWideClaim("upload", "catalog"),
         OrgClaim.ScopeWideClaim("write_draft", "catalog"),
+        OrgClaim.ScopeSubClaim("manage", "catalog", "pricing"),
+        OrgClaim.ScopeSubClaim("manage", "purchase", "refund"),
+        OrgClaim.ScopeWideClaim("read", "payout"),
+        OrgClaim.ScopeSubClaim("manage", "payout", "profile"),
+        OrgClaim.ScopeSubClaim("manage", "payout", "withdraw"),
     ];
 
     public static readonly IReadOnlyList<string> MemberManager =
@@ -46,7 +51,7 @@ public static class OrgClaimPresets
         new(
             OwnerPresetLabel,
             "Administrator",
-            "Full organization administrator with settings, membership, and catalog access.",
+            "Full organization administrator with settings, membership, catalog, pricing, and payout access.",
             "shield-check",
             OwnerAdmin),
         new(

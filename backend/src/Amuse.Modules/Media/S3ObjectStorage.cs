@@ -93,7 +93,7 @@ internal sealed class S3ObjectStorage(
     }
 
     public string GetSignedUrl(MediaBucket bucket, string key, TimeSpan ttl) =>
-        GetPreSignedGetUrl(presignClient, bucket, key, ttl, _options.PublicBaseUrl);
+        GetPreSignedGetUrl(presignClient, bucket, key, ttl, _options.ResolvePresignBaseUrl());
 
     public string GetInternalSignedUrl(MediaBucket bucket, string key, TimeSpan ttl) =>
         GetPreSignedGetUrl(internalClient, bucket, key, ttl, _options.Endpoint);
@@ -130,7 +130,7 @@ internal sealed class S3ObjectStorage(
             ContentType = contentType,
         });
 
-        return RewriteToHttpIfNeeded(url, _options.PublicBaseUrl);
+        return RewriteToHttpIfNeeded(url, _options.ResolvePresignBaseUrl());
     }
 
     public async Task DeleteAsync(

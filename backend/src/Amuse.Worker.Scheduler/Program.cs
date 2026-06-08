@@ -1,9 +1,11 @@
 using Amuse.Domain.Catalog;
+using Amuse.Modules.Billing;
 using Amuse.Modules.Catalog;
 using Amuse.Modules.Catalog.Features.PublishRelease;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Catalog.Services;
 using Amuse.Modules.Common.Time;
+using Amuse.Modules.Media;
 using Amuse.Modules.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,8 +15,11 @@ using Microsoft.Extensions.Options;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddCatalogModule(builder.Configuration);
-builder.Services.AddTenancyModule(builder.Configuration);
+builder.Services.AddCatalogSchedulerServices(builder.Configuration);
+builder.Services.AddTenancyReadModels(builder.Configuration);
+builder.Services.AddMediaModule(builder.Configuration);
+builder.Services.AddBillingModule(builder.Configuration);
+builder.Services.AddBillingSchedulerWorkers();
 builder.Services.AddSingleton<IClock, SystemClock>();
 
 builder.Services

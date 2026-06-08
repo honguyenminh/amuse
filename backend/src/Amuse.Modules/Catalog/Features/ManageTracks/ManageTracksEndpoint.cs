@@ -65,6 +65,24 @@ public static class ManageTracksEndpoint
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        endpoints.MapPut("/api/v1/catalog/tracks/{trackId:guid}/collaborators", async (
+                Guid trackId,
+                SetTrackCollaboratorsRequest request,
+                SetTrackCollaboratorsHandler handler,
+                HttpContext httpContext,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleAsync(trackId, request, httpContext.User, cancellationToken);
+                return result.ToResult(Results.Ok);
+            })
+            .RequireAuthorization(OrgPolicies.WriteDraftCatalog)
+            .WithRequestValidation()
+            .WithName("SetCatalogTrackCollaborators")
+            .WithSummary("Replace featuring artists on a draft track, including cross-org roster artists and placeholder names.")
+            .Produces<ManageTrackResponse>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         return endpoints;
     }
 }

@@ -3,15 +3,18 @@ using Amuse.Domain.SharedKernel;
 using Amuse.Modules.Catalog.Features.BrowseHome;
 using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Features.GetReleaseGroupDetail;
-using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Catalog.Persistence;
 using Amuse.Modules.Media;
+using Amuse.Modules.Tenancy.Contracts;
 using Microsoft.EntityFrameworkCore;
 using CatalogSlugHelper = Amuse.Modules.Catalog.Features.Common.CatalogSlugHelper;
 
 namespace Amuse.Modules.Catalog.Features.GetReleaseDetail;
 
-internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
+internal sealed class GetReleaseDetailHandler(
+    CatalogDbContext db,
+    IMediaPublicUrlBuilder mediaUrls,
+    ITenancyOrganizationReadModel organizationReadModel)
 {
     public async Task<Result<GetReleaseDetailResponse>> HandleAsync(
         Guid releaseId,
@@ -89,7 +92,8 @@ internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IMediaPublicU
                 t.Title,
                 t.TrackNumber,
                 t.Duration.Milliseconds,
-                HasAudio: !string.IsNullOrEmpty(t.AudioMasterKey)))
+                HasAudio: !string.IsNullOrEmpty(t.AudioMasterKey),
+                CatalogPricingMapper.ToPublicResponse(t)))
             .ToArray();
 
         string? releaseGroupTitle = null;
@@ -126,6 +130,11 @@ internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IMediaPublicU
             }
         }
 
+        var trustTier = await CatalogOrganizationTrustResolver.ResolveTrustTierAsync(
+            organizationReadModel,
+            release.OrganizationId,
+            cancellationToken);
+
         var response = new GetReleaseDetailResponse(
             release.Id.Value,
             release.Slug.Value,
@@ -146,7 +155,9 @@ internal sealed class GetReleaseDetailHandler(CatalogDbContext db, IMediaPublicU
             release.LabelName,
             mediaUrls.BuildCoverArtUrl(release.CoverArtKey),
             tracks,
-            otherEditions);
+            otherEditions,
+            CatalogPricingMapper.ToPublicResponse(release),
+            trustTier);
 
         return Result<GetReleaseDetailResponse>.Success(response);
     }
@@ -172,4 +183,6 @@ public sealed record GetReleaseDetailResponse(
     string? LabelName,
     string? CoverArtUrl,
     IReadOnlyList<TrackResponse> Tracks,
-    IReadOnlyList<ReleaseEditionSummary> OtherEditions);
+    IReadOnlyList<ReleaseEditionSummary> OtherEditions,
+    CatalogPricingResponse? Pricing = null,
+    string TrustTier = "unverified");

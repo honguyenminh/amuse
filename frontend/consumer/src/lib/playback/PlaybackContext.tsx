@@ -160,6 +160,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const trackLoadChainRef = useRef(Promise.resolve());
   const lastLoadedTrackIdRef = useRef<string | null>(null);
   const streamRenditionsRef = useRef<TrackStreamRenditionDto[]>([]);
+  const streamIsOwnerRef = useRef(false);
   const [streamRenditions, setStreamRenditions] = useState<TrackStreamRenditionDto[]>([]);
   const [activeRendition, setActiveRendition] = useState<ActiveRenditionInfo | null>(null);
   const activeRenditionRef = useRef<ActiveRenditionInfo | null>(null);
@@ -195,6 +196,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const resetDashSession = useCallback(async () => {
     dashSessionRef.current = null;
     streamRenditionsRef.current = [];
+    streamIsOwnerRef.current = false;
     setStreamRenditions([]);
     setActiveRendition(null);
     const audio = audioRef.current;
@@ -492,6 +494,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     return getNetworkHints({
       throughputKbps: dashSession?.getThroughputKbps(),
       stallDowngradeSteps: autoStallDowngradesRef.current,
+      isOwner: streamIsOwnerRef.current,
     });
   }, []);
 
@@ -625,6 +628,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
             playbackUrl.toLowerCase().endsWith(".mpd");
 
           streamRenditionsRef.current = info.renditions ?? [];
+          streamIsOwnerRef.current = info.isOwner;
           setStreamRenditions(info.renditions ?? []);
           applyNormalizationGain(info.loudness);
 
@@ -632,7 +636,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
             if (isStaleLoad()) return;
 
             const settings = loadPlaybackSettings();
-            const chosen = selectRendition(info.renditions ?? [], settings, getNetworkHints());
+            const chosen = selectRendition(info.renditions ?? [], settings, {
+              ...getNetworkHints(),
+              isOwner: info.isOwner,
+            });
             const restoreMs = pendingRestorePositionMsRef.current;
             const startTimeSec =
               restoreMs !== null && restoreMs > 0 ? restoreMs / 1000 : 0;

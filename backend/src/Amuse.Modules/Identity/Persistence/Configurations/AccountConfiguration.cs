@@ -37,6 +37,10 @@ internal sealed class AccountConfiguration : IEntityTypeConfiguration<Account>
             .HasConversion<string>()
             .HasMaxLength(32);
 
+        builder.Property(a => a.BannedAt)
+            .HasColumnName("banned_at")
+            .HasColumnType("timestamptz");
+
         builder.HasIndex(a => new { a.IdpIssuer, a.IdpSubject })
             .IsUnique();
     }

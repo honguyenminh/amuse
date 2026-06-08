@@ -49,6 +49,8 @@ export type NetworkHints = {
   throughputKbps?: number;
   /** Number of quality tiers to step down after recent rebuffering. */
   stallDowngradeSteps?: number;
+  /** When false, unpaid preview cap (~128 kbps); omit or true for purchased owners. */
+  isOwner?: boolean;
 };
 
 export function hasNavigatorNetworkSignal(hints: NetworkHints): boolean {
@@ -202,7 +204,8 @@ export function selectRendition(
 ): TrackStreamRenditionDto | null {
   if (renditions.length === 0) return null;
 
-  const allowFlac = canPlayFlacInBrowser();
+  const isOwner = hints.isOwner !== false;
+  const allowFlac = isOwner && canPlayFlacInBrowser();
 
   if (settings.qualityMode === "manual" && settings.manualRenditionId) {
     const manual = renditions.find((r) => r.id === settings.manualRenditionId);
@@ -219,11 +222,16 @@ export function selectRendition(
   }
 
   let tier = settings.preferredQuality;
+  if (!isOwner) {
+    tier = minTier(tier, "medium");
+  }
   if (settings.qualityMode === "auto") {
     if (hasNavigatorNetworkSignal(hints)) {
       tier = minTier(tier, networkQualityCeiling(hints));
     }
-    tier = effectiveAutoTier(tier, hints);
+    if (isOwner) {
+      tier = effectiveAutoTier(tier, hints);
+    }
 
     if (hints.stallDowngradeSteps && hints.stallDowngradeSteps > 0) {
       tier = downgradeTier(tier, hints.stallDowngradeSteps);

@@ -129,6 +129,64 @@ internal sealed class ListArtistsHandler(CatalogDbContext db)
     }
 }
 
+internal sealed class SearchCollaboratorArtistsHandler(CatalogDbContext db)
+{
+    public async Task<Result<ManageArtistListResponse>> HandleAsync(
+        string? query,
+        int? limit,
+        Guid? excludingArtistId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var orgResult = CatalogPersonaAccessor.GetOrganizationId(principal);
+        if (!orgResult.IsSuccess)
+            return Result<ManageArtistListResponse>.Failure(orgResult.Error!);
+
+        var trimmed = query?.Trim() ?? string.Empty;
+        if (trimmed.Length < 2)
+            return Result<ManageArtistListResponse>.Success(new ManageArtistListResponse([]));
+
+        var take = Math.Clamp(limit ?? 30, 1, 50);
+        var pattern = $"%{trimmed}%";
+
+        var artistsQuery = db.Artists
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (excludingArtistId is { } excluded && excluded != Guid.Empty)
+        {
+            var excludedId = ArtistId.From(excluded);
+            artistsQuery = artistsQuery.Where(a => a.Id != excludedId);
+        }
+
+        if (Guid.TryParse(trimmed, out var parsedArtistId) && parsedArtistId != Guid.Empty)
+        {
+            var typedId = ArtistId.From(parsedArtistId);
+            artistsQuery = artistsQuery.Where(a => a.Id == typedId);
+        }
+        else
+        {
+            artistsQuery = artistsQuery.Where(a =>
+                EF.Functions.ILike(a.Name, pattern)
+                || EF.Functions.ILike(a.Slug.Value, pattern));
+        }
+
+        var items = await artistsQuery
+            .OrderBy(a => a.Name)
+            .Take(take)
+            .Select(a => new ManageArtistSummaryResponse(
+                a.Id.Value,
+                a.Slug.Value,
+                a.Name,
+                a.VisibilityTier,
+                a.CreatedAt))
+            .ToListAsync(cancellationToken);
+
+        return Result<ManageArtistListResponse>.Success(new ManageArtistListResponse(items));
+    }
+}
+
 internal sealed class GetArtistHandler(CatalogDbContext db, IMediaPublicUrlBuilder mediaUrls)
 {
     public async Task<Result<ManageArtistDetailResponse>> HandleAsync(

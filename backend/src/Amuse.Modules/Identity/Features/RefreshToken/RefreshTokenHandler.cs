@@ -37,7 +37,13 @@ internal sealed class RefreshTokenHandler(
             return Result<AuthTokenResponse>.Failure(IdentityErrors.InvalidRefreshToken);
 
         var account = await dbContext.Accounts.FirstOrDefaultAsync(a => a.Id == session.AccountId, cancellationToken);
-        if (account is null || !account.IsEnabled)
+        if (account is null)
+            return Result<AuthTokenResponse>.Failure(IdentityErrors.AccountDisabled);
+
+        if (account.IsBanned)
+            return Result<AuthTokenResponse>.Failure(IdentityErrors.AccountBanned);
+
+        if (!account.IsEnabled)
             return Result<AuthTokenResponse>.Failure(IdentityErrors.AccountDisabled);
 
         var personaResult = await PersonaContextBootstrap.ResolveAsync(

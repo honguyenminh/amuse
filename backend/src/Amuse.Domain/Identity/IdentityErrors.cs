@@ -10,6 +10,12 @@ public static class IdentityErrors
     public static readonly DomainError AccountDisabled =
         new("identity.account_disabled", "Account is disabled.");
 
+    public static readonly DomainError AccountBanned =
+        new("identity.account_banned", "Account is banned.");
+
+    public static readonly DomainError AccountNotFound =
+        new("identity.account.not_found", "Account was not found.");
+
     public static readonly DomainError InvalidRefreshToken =
         new("identity.invalid_refresh_token", "Refresh token is invalid or expired.");
 

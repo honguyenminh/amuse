@@ -73,8 +73,19 @@ public readonly record struct OrgClaim
             return true;
         }
 
-        var resourceKind = parts[2].ToLowerInvariant();
-        var resourceId = parts[3];
+        var third = parts[2].ToLowerInvariant();
+        var fourth = parts[3];
+
+        if (string.Equals(fourth, TargetAll, StringComparison.Ordinal)
+            && IsKnownScopeSubClaim(action, scope, third))
+        {
+            var subClaimValue = ScopeSubClaim(action, scope, third);
+            claim = new OrgClaim(action, scope, $"{third}:{TargetAll}", null, null, subClaimValue);
+            return true;
+        }
+
+        var resourceKind = third;
+        var resourceId = fourth;
         if (!IsKnownCatalogResourceKind(resourceKind) || !Guid.TryParse(resourceId, out _))
             return false;
 
@@ -87,6 +98,9 @@ public readonly record struct OrgClaim
 
     public static string ScopeWideClaim(string action, string scope) =>
         $"{action.ToLowerInvariant()}:{scope.ToLowerInvariant()}:{TargetAll}";
+
+    public static string ScopeSubClaim(string action, string scope, string subScope) =>
+        $"{action.ToLowerInvariant()}:{scope.ToLowerInvariant()}:{subScope.ToLowerInvariant()}:{TargetAll}";
 
     public static bool Matches(string requiredClaim, IReadOnlySet<string> grantedClaims)
     {
@@ -151,7 +165,17 @@ public readonly record struct OrgClaim
         action is "read" or "manage" or "upload" or "write_draft" or "publish_public" or "review";
 
     private static bool IsKnownScope(string scope) =>
-        scope is "org" or "membership" or "member_permissions" or "catalog" or "payout" or "platform";
+        scope is "org" or "membership" or "member_permissions" or "catalog" or "payout" or "purchase" or "platform";
+
+    private static bool IsKnownScopeSubClaim(string action, string scope, string subScope) =>
+        (action, scope, subScope) switch
+        {
+            ("manage", "catalog", "pricing") => true,
+            ("manage", "purchase", "refund") => true,
+            ("manage", "payout", "profile") => true,
+            ("manage", "payout", "withdraw") => true,
+            _ => false,
+        };
 
     private static bool IsKnownCatalogResourceKind(string kind) =>
         kind is "artist" or "release" or "track" or "release_group";

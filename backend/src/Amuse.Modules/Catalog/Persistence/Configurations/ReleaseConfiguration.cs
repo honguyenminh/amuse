@@ -109,6 +109,19 @@ internal sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
             .HasColumnName("updated_at")
             .HasColumnType("timestamptz");
 
+        builder.Property(r => r.IsForSale)
+            .HasColumnName("is_for_sale");
+
+        builder.Property(r => r.PriceFloorMinor)
+            .HasColumnName("price_floor_minor");
+
+        builder.Property(r => r.PriceCeilingMinor)
+            .HasColumnName("price_ceiling_minor");
+
+        builder.Property(r => r.PriceCurrency)
+            .HasColumnName("price_currency")
+            .HasMaxLength(CatalogPricing.CurrencyLength);
+
         builder.HasIndex(r => new { r.ArtistId, r.Slug }).IsUnique();
         builder.HasIndex(r => new { r.OrganizationId, r.LifecycleStatus, r.ReleaseDate });
         builder.HasIndex(r => r.ReleaseDate);
@@ -130,11 +143,6 @@ internal sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
         builder
             .Metadata
             .FindNavigation(nameof(Release.Tracks))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder
-            .Metadata
-            .FindNavigation(nameof(Release.Collaborators))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
     }
 }

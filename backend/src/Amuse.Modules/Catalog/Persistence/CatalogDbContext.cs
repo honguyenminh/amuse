@@ -23,11 +23,12 @@ public sealed class CatalogDbContext : ModuleDbContextBase
     public DbSet<ReleaseGroup> ReleaseGroups => Set<ReleaseGroup>();
     public DbSet<Release> Releases => Set<Release>();
     public DbSet<Track> Tracks => Set<Track>();
-    public DbSet<ReleaseCollaborator> ReleaseCollaborators => Set<ReleaseCollaborator>();
+    public DbSet<TrackCollaborator> TrackCollaborators => Set<TrackCollaborator>();
     public DbSet<AudioTranscodeJob> AudioTranscodeJobs => Set<AudioTranscodeJob>();
     public DbSet<AudioMasterUploadIntent> AudioMasterUploadIntents => Set<AudioMasterUploadIntent>();
     public DbSet<CatalogOutboxMessage> CatalogOutboxMessages => Set<CatalogOutboxMessage>();
     public DbSet<TrackAudioRendition> TrackAudioRenditions => Set<TrackAudioRendition>();
+    public DbSet<RoyaltySplit> RoyaltySplits => Set<RoyaltySplit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,7 +40,7 @@ public sealed class CatalogDbContext : ModuleDbContextBase
         modelBuilder.HasPostgresEnum<ArtistVisibilityTier>(schema: "catalog", name: "artist_visibility_tier");
         modelBuilder.HasPostgresEnum<ReleaseLifecycleStatus>(schema: "catalog", name: "release_lifecycle_status");
         modelBuilder.HasPostgresEnum<TrackLifecycleStatus>(schema: "catalog", name: "track_lifecycle_status");
-        modelBuilder.HasPostgresEnum<ReleaseCollaboratorRole>(schema: "catalog", name: "release_collaborator_role");
+        modelBuilder.HasPostgresEnum<TrackCollaboratorRole>(schema: "catalog", name: "track_collaborator_role");
         modelBuilder.HasPostgresEnum<AudioCodec>(schema: "catalog", name: "audio_codec");
 
         modelBuilder.ApplyConfigurationsFromNamespace(

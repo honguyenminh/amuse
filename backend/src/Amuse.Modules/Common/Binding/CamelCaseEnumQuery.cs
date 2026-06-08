@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Amuse.Domain.Billing;
 using Amuse.Domain.Tenancy;
 
 namespace Amuse.Modules.Common.Binding;
@@ -9,7 +10,21 @@ public static class CamelCaseEnumQuery
 
     public static bool TryParseOnboardingStatus(
         string? value,
-        out OrganizationOnboardingStatus? status)
+        out OrganizationOnboardingStatus? status) =>
+        TryParse(value, out status);
+
+    public static bool TryParsePayoutVerificationStatus(
+        string? value,
+        out PayoutVerificationStatus? status) =>
+        TryParse(value, out status);
+
+    public static bool TryParseWithdrawalStatus(
+        string? value,
+        out WithdrawalStatus? status) =>
+        TryParse(value, out status);
+
+    public static bool TryParse<TEnum>(string? value, out TEnum? status)
+        where TEnum : struct, Enum
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -17,7 +32,7 @@ public static class CamelCaseEnumQuery
             return true;
         }
 
-        foreach (OrganizationOnboardingStatus candidate in Enum.GetValues<OrganizationOnboardingStatus>())
+        foreach (TEnum candidate in Enum.GetValues<TEnum>())
         {
             var name = candidate.ToString();
             if (string.Equals(name, value, StringComparison.OrdinalIgnoreCase)

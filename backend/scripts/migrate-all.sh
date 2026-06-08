@@ -15,6 +15,7 @@ contexts=(
   CatalogDbContext
   DiscoveryDbContext
   IngestionDbContext
+  BillingDbContext
   AuditDbContext
 )
 

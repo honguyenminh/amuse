@@ -119,10 +119,10 @@ public sealed class CatalogEndpointsTests(AmuseApiFixture fixture)
 
         var response = await client.GetAsync(
             "/api/v1/catalog/tracks/00000000-0000-0000-0000-000000000099/stream-info");
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        Assert.Equal("catalog.track_not_found", problem.GetProperty("title").GetString());
+        Assert.Equal("catalog.track_not_found", problem.GetProperty("code").GetString());
     }
 
     private static async Task AuthorizeAsync(HttpClient client)

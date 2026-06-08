@@ -11,6 +11,10 @@ public static class PlatformClaims
     public const string ReviewOrganizations = "review:platform:organizations";
     public const string ManageOrganizations = "manage:platform:organizations";
     public const string ManageAll = "manage:platform:all";
+    public const string ReadAccounting = "read:platform:accounting:all";
+    public const string ManageAccounting = "manage:platform:accounting:all";
+    public const string ManagePurchases = "manage:platform:purchases:all";
+    public const string ManagePayouts = "manage:platform:payouts:all";
 
     private const string LegacyReviewOrganizations = "platform:organizations:review";
 
@@ -31,6 +35,10 @@ public static class PlatformClaims
             set.Add(ManageOrganizations);
             set.Add(ReviewOrganizations);
             set.Add(ManageAll);
+            set.Add(ReadAccounting);
+            set.Add(ManageAccounting);
+            set.Add(ManagePurchases);
+            set.Add(ManagePayouts);
         }
 
         return set.OrderBy(c => c, StringComparer.Ordinal).ToArray();
@@ -41,6 +49,18 @@ public static class PlatformClaims
 
     public static bool CanManageOrganizations(IReadOnlyList<string>? claims) =>
         HasAny(claims, Root, ManageOrganizations, ManageAll);
+
+    public static bool CanReadAccounting(IReadOnlyList<string>? claims) =>
+        HasAny(claims, Root, ManageAll, ReadAccounting, ManageAccounting);
+
+    public static bool CanManageAccounting(IReadOnlyList<string>? claims) =>
+        HasAny(claims, Root, ManageAll, ManageAccounting);
+
+    public static bool CanManagePurchases(IReadOnlyList<string>? claims) =>
+        HasAny(claims, Root, ManageAll, ManagePurchases);
+
+    public static bool CanManagePayouts(IReadOnlyList<string>? claims) =>
+        HasAny(claims, Root, ManageAll, ManagePayouts);
 
     public static bool CanInstantApproveOrganizationsOnCreate(IReadOnlyList<string>? claims) =>
         CanReviewOrganizations(claims);

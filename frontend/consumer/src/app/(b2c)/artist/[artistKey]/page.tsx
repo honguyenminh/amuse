@@ -35,6 +35,7 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
       <>
         {colorSeed ? <ThemeSeedStyles seed={colorSeed} /> : null}
         <ArtistPageClient
+          key={artistKey}
           artistKey={artistKey}
           initialArtist={artist}
           initialColorSeed={colorSeed}

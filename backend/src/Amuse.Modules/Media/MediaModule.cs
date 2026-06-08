@@ -32,10 +32,9 @@ public static class MediaModule
         services.AddKeyedSingleton<IAmazonS3>(PresignS3Client, (sp, _) =>
         {
             var opts = sp.GetRequiredService<IOptions<MediaOptions>>().Value;
-            // Browser-facing presigned URLs must be signed for PublicBaseUrl so the host
-            // is reachable from the client (localhost in dev, CDN in prod) — not the
-            // internal docker hostname (minio:9000).
-            return S3ClientFactory.Create(opts, opts.PublicBaseUrl);
+            // Presigned URLs must be signed for a browser-reachable S3 host (dev API proxy,
+            // R2 S3 API endpoint on stage). Covers may use a separate CDN host via PublicBaseUrl.
+            return S3ClientFactory.Create(opts, opts.ResolvePresignBaseUrl());
         });
 
         services.AddSingleton<IObjectStorage>(sp =>

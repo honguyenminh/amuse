@@ -7,7 +7,8 @@ public sealed record ArtistSummary(
     string Slug,
     string Name,
     string? AvatarUrl,
-    string? CoverUrl);
+    string? CoverUrl,
+    string TrustTier);
 
 public sealed record ReleaseSummary(
     Guid Id,
@@ -18,11 +19,13 @@ public sealed record ReleaseSummary(
     string ArtistSlug,
     ReleaseType ReleaseType,
     DateTimeOffset ReleaseDate,
-    string? CoverArtUrl);
+    string? CoverArtUrl,
+    string TrustTier);
 
 public sealed record TrackResponse(
     Guid Id,
     string Title,
     int TrackNumber,
     int DurationMs,
-    bool HasAudio);
+    bool HasAudio,
+    CatalogPricingResponse? Pricing = null);

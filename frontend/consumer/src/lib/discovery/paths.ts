@@ -7,6 +7,8 @@ export const libraryPlaylistsPath = "/library/playlists";
 export const libraryLikedPath = "/library/liked";
 export const libraryAlbumsPath = "/library/albums";
 
+export const libraryPurchasesPath = "/library/purchases";
+
 export function searchPath(query?: string): string {
   if (!query?.trim()) return "/search";
   return `/search?q=${encodeURIComponent(query.trim())}`;

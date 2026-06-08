@@ -13,6 +13,13 @@ public sealed class MediaOptions
     /// </summary>
     public string PublicBaseUrl { get; set; } = "http://localhost:9000";
 
+    /// <summary>
+    /// Host used to sign browser-facing presigned GET/PUT URLs (DASH segments, uploads).
+    /// When empty, <see cref="PublicBaseUrl"/> is used. Set to the R2 S3 API endpoint when
+    /// <see cref="PublicBaseUrl"/> is a CDN/custom domain for public covers only.
+    /// </summary>
+    public string PresignBaseUrl { get; set; } = string.Empty;
+
     public string AccessKey { get; set; } = string.Empty;
     public string SecretKey { get; set; } = string.Empty;
 
@@ -24,4 +31,12 @@ public sealed class MediaOptions
 
     /// <summary>TTL of presigned URLs handed out by the stream endpoint.</summary>
     public int SignedUrlMinutes { get; set; } = 30;
+
+    public string ResolvePresignBaseUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(PresignBaseUrl))
+            return PresignBaseUrl.Trim();
+
+        return PublicBaseUrl.Trim();
+    }
 }

@@ -216,8 +216,12 @@ export default function PlayingPage() {
           <Link
             href={
               currentTrack.artistSlug && currentTrack.releaseSlug
-                ? catalogReleaseHref(currentTrack.artistSlug, currentTrack.releaseSlug)
-                : catalogReleaseByIdHref(currentTrack.releaseId)
+                ? catalogReleaseHref(currentTrack.artistSlug, currentTrack.releaseSlug, {
+                    title: currentTrack.releaseTitle,
+                  })
+                : catalogReleaseByIdHref(currentTrack.releaseId, {
+                    title: currentTrack.releaseTitle,
+                  })
             }
           >
             <Text variant="title-small">{currentTrack.releaseTitle}</Text>

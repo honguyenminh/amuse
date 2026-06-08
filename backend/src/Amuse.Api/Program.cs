@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Amuse.Api;
 using Amuse.Modules.Audit;
+using Amuse.Modules.Billing;
 using Amuse.Modules.Catalog;
 using Amuse.Modules.Discovery;
 using Amuse.Modules.Catalog.Persistence;
@@ -57,6 +58,8 @@ builder.Services.AddIngestionModule(builder.Configuration);
 builder.Services.AddDiscoveryModule(builder.Configuration);
 builder.Services.AddMediaModule(builder.Configuration);
 builder.Services.AddAuditModule(builder.Configuration);
+builder.Services.AddBillingModule(builder.Configuration);
+builder.Services.AddBillingHandlers();
 
 builder.Services.Configure<RabbitMqOptions>(
     builder.Configuration.GetSection("RabbitMq"));
@@ -100,6 +103,7 @@ app.MapListenerModule();
 app.MapPlatformModule();
 app.MapCatalogModule();
 app.MapDiscoveryModule();
+app.MapBillingModule();
 app.MapGet("/demo", () => "Hello, World!").RequireAuthorization();
 
 app.Run();

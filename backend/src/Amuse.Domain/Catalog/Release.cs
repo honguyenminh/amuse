@@ -38,12 +38,13 @@ public sealed class Release
     public DateTimeOffset? PublishedAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+    public bool IsForSale { get; private set; }
+    public long PriceFloorMinor { get; private set; }
+    public long? PriceCeilingMinor { get; private set; }
+    public string? PriceCurrency { get; private set; }
 
     private readonly List<Track> _tracks = [];
     public IReadOnlyList<Track> Tracks => _tracks;
-
-    private readonly List<ReleaseCollaborator> _collaborators = [];
-    public IReadOnlyList<ReleaseCollaborator> Collaborators => _collaborators;
 
     private Release()
     {
@@ -277,7 +278,7 @@ public sealed class Release
         return Result.Success();
     }
 
-    public Result Publish(DateTimeOffset now)
+    public Result Publish(DateTimeOffset now, IReadOnlyList<RoyaltySplit>? royaltySplits = null)
     {
         if (LifecycleStatus is ReleaseLifecycleStatus.Published)
             return Result.Failure(CatalogErrors.InvalidLifecycleTransition);
@@ -291,6 +292,10 @@ public sealed class Release
         if (!AllTracksReadyForPublish())
             return Result.Failure(CatalogErrors.TracksNotReady);
 
+        var forSaleValidation = ValidatePublishForSale(royaltySplits ?? []);
+        if (!forSaleValidation.IsSuccess)
+            return forSaleValidation;
+
         foreach (var track in _tracks)
             track.Publish();
 
@@ -298,6 +303,62 @@ public sealed class Release
         PublishedAt = now;
         UpdatedAt = now;
         return Result.Success();
+    }
+
+    public Result SetPricing(
+        bool isForSale,
+        long priceFloorMinor,
+        long? priceCeilingMinor,
+        string? priceCurrency,
+        DateTimeOffset now)
+    {
+        var pricingResult = CatalogPricing.TryCreate(
+            isForSale,
+            priceFloorMinor,
+            priceCeilingMinor,
+            priceCurrency);
+
+        if (!pricingResult.IsSuccess)
+            return Result.Failure(pricingResult.Error!);
+
+        var pricing = pricingResult.Value!;
+        IsForSale = pricing.IsForSale;
+        PriceFloorMinor = pricing.PriceFloorMinor;
+        PriceCeilingMinor = pricing.PriceCeilingMinor;
+        PriceCurrency = pricing.PriceCurrency;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    public Result ValidatePublishForSale(IReadOnlyList<RoyaltySplit> royaltySplits)
+    {
+        if (!IsForSale && _tracks.All(track => !track.IsForSale))
+            return Result.Success();
+
+        var releasePricingResult = CatalogPricing.TryCreate(
+            IsForSale,
+            PriceFloorMinor,
+            PriceCeilingMinor,
+            PriceCurrency);
+
+        if (!releasePricingResult.IsSuccess)
+            return Result.Failure(releasePricingResult.Error!);
+
+        foreach (var track in _tracks)
+        {
+            var trackPricingResult = CatalogPublishForSaleValidation.ValidateTrackPricing(track);
+            if (!trackPricingResult.IsSuccess)
+                return trackPricingResult;
+
+            var splitResult = CatalogPublishForSaleValidation.ValidateRoyaltySplitsForTrack(
+                track,
+                royaltySplits);
+
+            if (!splitResult.IsSuccess)
+                return splitResult;
+        }
+
+        return CatalogPublishForSaleValidation.ValidateReleasePricingAgainstTracks(this);
     }
 
     public Result Hide(DateTimeOffset now)
@@ -333,6 +394,8 @@ public sealed class Release
         return Result<Track>.Success(track);
     }
 
+    public void MarkUpdated(DateTimeOffset now) => UpdatedAt = now;
+
     public Result<Track> UpdateTrack(
         TrackId trackId,
         string title,
@@ -367,38 +430,6 @@ public sealed class Release
 
         UpdatedAt = now;
         return Result<Track>.Success(track);
-    }
-
-    public Result ReplaceCollaborators(IReadOnlyList<ArtistId> collaboratorArtistIds)
-    {
-        var ids = collaboratorArtistIds
-            .Where(id => id.Value != Guid.Empty)
-            .Distinct()
-            .ToArray();
-
-        if (ids.Any(id => id == ArtistId))
-            return Result.Failure(CatalogErrors.InvalidCollaborator);
-
-        _collaborators.Clear();
-
-        var order = 1;
-        foreach (var artistId in ids)
-        {
-            var createResult = ReleaseCollaborator.Create(
-                Id,
-                artistId,
-                ArtistId,
-                ReleaseCollaboratorRole.Featured,
-                order);
-
-            if (!createResult.IsSuccess)
-                return Result.Failure(createResult.Error!);
-
-            _collaborators.Add(createResult.Value!);
-            order++;
-        }
-
-        return Result.Success();
     }
 
     public Result<Track> AddTrack(

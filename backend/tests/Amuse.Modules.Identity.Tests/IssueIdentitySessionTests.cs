@@ -52,6 +52,44 @@ public sealed class IssueIdentitySessionTests
         Assert.False(issue.IsSuccess);
     }
 
+    [Fact]
+    public async Task Issue_rejects_banned_account()
+    {
+        await using var identityDb = CreateIdentityDb();
+        await using var listenerDb = CreateListenerDb();
+        await using var tenancyDb = CreateTenancyDb();
+        await using var platformDb = CreatePlatformDb();
+
+        var account = Account.Create(IdpIssuer.From("local"), IdpSubject.From("user-1"));
+        Assert.True(account.Ban(DateTimeOffset.UtcNow).IsSuccess);
+        identityDb.Accounts.Add(account);
+        await identityDb.SaveChangesAsync();
+
+        var jwt = Microsoft.Extensions.Options.Options.Create(new JwtOptions
+        {
+            Issuer = "amuse",
+            Audience = "amuse-api",
+            SigningKey = "DEV_ONLY_CHANGE_ME_32_CHARS_MINIMUM_KEY",
+            AccessTokenMinutes = 15,
+            RefreshTokenDays = 14,
+        });
+
+        var issue = await IssueIdentitySession.IssueAsync(
+            identityDb,
+            new TokenIssuer(jwt),
+            new TenancyPersonaReadModel(tenancyDb, NullPlatformOperatorLookup.Instance),
+            new ListenerPersonaReadModel(listenerDb, new EnsureListenerProfileService(listenerDb, new SystemClock())),
+            new PlatformPersonaReadModel(platformDb),
+            jwt.Value,
+            account,
+            PersonaContext.ForListener(Guid.CreateVersion7()),
+            DateTimeOffset.UtcNow,
+            CancellationToken.None);
+
+        Assert.False(issue.IsSuccess);
+        Assert.Equal(IdentityErrors.AccountBanned, issue.Error);
+    }
+
     private static IdentityDbContext CreateIdentityDb()
     {
         var options = new DbContextOptionsBuilder<IdentityDbContext>()

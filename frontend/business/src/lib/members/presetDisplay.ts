@@ -24,7 +24,11 @@ const CLAIM_LABELS: Record<string, string> = {
   "upload:catalog:all": "Upload catalog masters",
   "write_draft:catalog:all": "Create and edit catalog drafts",
   "publish_public:catalog:all": "Publish catalog to the public",
-  "read:payout:all": "View payout statements",
+  "manage:catalog:pricing:all": "Set track and release pricing (pay what you want)",
+  "manage:purchase:refund:all": "Initiate refunds on purchases where the org is a payee",
+  "read:payout:all": "View payout balance and statements",
+  "manage:payout:profile:all": "Submit and update payout profile (Gate B KYC)",
+  "manage:payout:withdraw:all": "Request seller withdrawals",
 };
 
 export function getPresetIcon(iconName: string): LucideIcon {

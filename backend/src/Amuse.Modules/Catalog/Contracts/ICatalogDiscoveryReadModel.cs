@@ -19,6 +19,7 @@ public sealed record CatalogSearchItem(
     Guid? ArtistId,
     Guid? ReleaseId,
     string? CoverArtKey,
+    string TrustTier,
     bool IsVerified);
 
 public sealed record CatalogSearchResult(
@@ -36,6 +37,12 @@ public sealed record CatalogTrackPlayableRow(
     string ArtistName,
     string ArtistSlug,
     string ReleaseSlug);
+
+public sealed record CatalogTrackDownloadRow(
+    Guid TrackId,
+    Guid ReleaseId,
+    string AudioMasterKey,
+    string Title);
 
 public interface ICatalogDiscoveryReadModel
 {
@@ -59,6 +66,10 @@ public interface ICatalogDiscoveryReadModel
 
     Task<IReadOnlyDictionary<Guid, CatalogReleaseSummaryRow>> GetReleaseSummariesAsync(
         IEnumerable<Guid> releaseIds,
+        CancellationToken cancellationToken);
+
+    Task<CatalogTrackDownloadRow?> GetTrackDownloadRowAsync(
+        TrackId trackId,
         CancellationToken cancellationToken);
 }
 

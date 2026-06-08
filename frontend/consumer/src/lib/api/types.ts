@@ -64,12 +64,15 @@ export type EnsureListenerProfileResponse = {
 
 export type ReleaseType = "single" | "ep" | "album" | "compilation";
 
+export type OrganizationTrustTier = "unverified" | "identityVerified" | "platformVerified";
+
 export type ArtistSummary = {
   id: string;
   slug: string;
   name: string;
   avatarUrl: string | null;
   coverUrl: string | null;
+  trustTier: OrganizationTrustTier;
 };
 
 export type ReleaseSummary = {
@@ -82,6 +85,7 @@ export type ReleaseSummary = {
   releaseType: ReleaseType;
   releaseDate: string;
   coverArtUrl: string | null;
+  trustTier: OrganizationTrustTier;
 };
 
 export type TrackResponse = {
@@ -90,6 +94,14 @@ export type TrackResponse = {
   trackNumber: number;
   durationMs: number;
   hasAudio: boolean;
+  pricing?: CatalogPricingResponse | null;
+};
+
+export type CatalogPricingResponse = {
+  isForSale: boolean;
+  priceFloorMinor: number;
+  priceCeilingMinor: number | null;
+  priceCurrency: string | null;
 };
 
 export type TrackStreamRenditionDto = {
@@ -118,6 +130,7 @@ export type TrackStreamInfoResponse = {
   expiresAt: string;
   loudness: TrackStreamLoudness | null;
   renditions: TrackStreamRenditionDto[];
+  isOwner: boolean;
 };
 
 export type BrowseHomeResponse = {
@@ -132,6 +145,7 @@ export type GetArtistDetailResponse = {
   bio: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
+  trustTier: OrganizationTrustTier;
   releases: ReleaseSummary[];
 };
 
@@ -165,6 +179,8 @@ export type GetReleaseDetailResponse = {
   coverArtUrl: string | null;
   tracks: TrackResponse[];
   otherEditions: ReleaseEditionSummary[];
+  pricing?: CatalogPricingResponse | null;
+  trustTier: OrganizationTrustTier;
 };
 
 export type GetReleaseGroupDetailResponse = {
@@ -248,6 +264,7 @@ export type SearchItemDto = {
   artistId: string | null;
   releaseId: string | null;
   coverArtUrl: string | null;
+  trustTier: OrganizationTrustTier;
   isVerified: boolean;
 };
 

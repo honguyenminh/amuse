@@ -115,11 +115,19 @@ public sealed record ManageArtistDetailResponse(
     IReadOnlyList<ManageArtistTrackSummary> Tracks,
     IReadOnlyList<ManageReleaseGroupSummaryResponse> ReleaseGroups);
 
-public sealed record ManageReleaseCollaboratorResponse(
-    Guid ArtistId,
-    string ArtistName,
-    ReleaseCollaboratorRole Role,
+public sealed record ManageTrackCollaboratorResponse(
+    Guid? ArtistId,
+    string DisplayName,
+    bool IsPlaceholder,
+    TrackCollaboratorRole Role,
     int DisplayOrder);
+
+public sealed record TrackCollaboratorEntryRequest(
+    Guid? ArtistId,
+    string? DisplayName);
+
+public sealed record SetTrackCollaboratorsRequest(
+    IReadOnlyList<TrackCollaboratorEntryRequest> Collaborators);
 
 public sealed record CreateReleaseRequest(
     string Title,
@@ -136,8 +144,7 @@ public sealed record CreateReleaseRequest(
     string? PLine = null,
     string? CLine = null,
     DateTimeOffset? OriginalReleaseDate = null,
-    bool MetadataComplete = false,
-    IReadOnlyList<Guid>? CollaboratorArtistIds = null);
+    bool MetadataComplete = false);
 
 public sealed record UpdateReleaseRequest(
     string Title,
@@ -154,8 +161,7 @@ public sealed record UpdateReleaseRequest(
     string? PLine = null,
     string? CLine = null,
     DateTimeOffset? OriginalReleaseDate = null,
-    bool MetadataComplete = false,
-    IReadOnlyList<Guid>? CollaboratorArtistIds = null);
+    bool MetadataComplete = false);
 
 public sealed record ManageReleaseSummaryResponse(
     Guid Id,
@@ -186,6 +192,35 @@ public sealed record ManageReleaseSummaryResponse(
 public sealed record ManageReleaseListResponse(
     IReadOnlyList<ManageReleaseSummaryResponse> Items);
 
+public sealed record CatalogPricingResponse(
+    bool IsForSale,
+    long PriceFloorMinor,
+    long? PriceCeilingMinor,
+    string? PriceCurrency);
+
+public sealed record RoyaltySplitResponse(
+    Guid PayeeOrganizationId,
+    int ShareBps);
+
+public sealed record SetTrackPricingRequest(
+    bool IsForSale,
+    long PriceFloorMinor,
+    long? PriceCeilingMinor,
+    string? PriceCurrency);
+
+public sealed record SetReleasePricingRequest(
+    bool IsForSale,
+    long PriceFloorMinor,
+    long? PriceCeilingMinor,
+    string? PriceCurrency);
+
+public sealed record RoyaltySplitPayeeRequest(
+    Guid PayeeOrganizationId,
+    int ShareBps);
+
+public sealed record SetTrackRoyaltySplitsRequest(
+    IReadOnlyList<RoyaltySplitPayeeRequest> Splits);
+
 public sealed record ManageTrackResponse(
     Guid Id,
     string Title,
@@ -199,7 +234,10 @@ public sealed record ManageTrackResponse(
     string? ComposerCredits,
     TrackLifecycleStatus LifecycleStatus,
     bool HasAudioMaster,
-    bool HasAudioStream);
+    bool HasAudioStream,
+    CatalogPricingResponse Pricing,
+    IReadOnlyList<RoyaltySplitResponse> RoyaltySplits,
+    IReadOnlyList<ManageTrackCollaboratorResponse> Collaborators);
 
 public sealed record ManageReleaseDetailResponse(
     Guid Id,
@@ -227,7 +265,7 @@ public sealed record ManageReleaseDetailResponse(
     DateTimeOffset? PublishedAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<ManageReleaseCollaboratorResponse> Collaborators,
+    CatalogPricingResponse Pricing,
     IReadOnlyList<ManageTrackResponse> Tracks);
 
 public sealed record CreateTrackRequest(

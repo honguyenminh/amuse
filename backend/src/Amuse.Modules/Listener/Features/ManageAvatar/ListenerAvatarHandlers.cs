@@ -105,7 +105,9 @@ internal sealed class CompleteListenerAvatarUploadHandler(
             return Result<CompleteListenerAvatarUploadResponse>.Failure(ListenerErrors.AvatarObjectMissing);
 
         await ensureService.EnsureAsync(accountId.Value, cancellationToken);
-        var (profile, preference) = await profileService.GetForAccountAsync(accountId.Value, cancellationToken);
+        var (profile, _) = await profileService.GetForAccountForUpdateAsync(
+            accountId.Value,
+            cancellationToken);
 
         var updateResult = profile.SetAvatarObjectKey(request.Key, clock.UtcNow);
         if (!updateResult.IsSuccess)

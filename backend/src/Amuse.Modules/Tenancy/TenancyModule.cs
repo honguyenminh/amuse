@@ -93,6 +93,30 @@ public static class TenancyModule
         return services;
     }
 
+    /// <summary>
+    /// Organization read models for background workers. Does not register HTTP handlers or identity bridges.
+    /// </summary>
+    public static IServiceCollection AddTenancyReadModels(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+
+        services.AddModulePersistenceInfrastructure();
+        services.TryAddSingleton(_ => new AuditEntityRegistry());
+
+        services.AddDbContext<TenancyDbContext>((sp, options) =>
+        {
+            TenancyDbContextOptions.Configure(options, connectionString);
+            options.AddModuleInterceptors(sp);
+        });
+
+        services.AddScoped<ITenancyOrganizationReadModel, TenancyOrganizationReadModel>();
+
+        return services;
+    }
+
     public static IEndpointRouteBuilder MapTenancyModule(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/tenancy");

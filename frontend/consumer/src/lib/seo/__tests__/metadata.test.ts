@@ -21,6 +21,7 @@ describe("artistMetadata", () => {
       bio: "Bio text",
       avatarUrl: "https://cdn.example/avatar.jpg",
       coverUrl: null,
+      trustTier: "platformVerified",
       releases: [],
     };
 
@@ -56,6 +57,7 @@ describe("releaseMetadata", () => {
       coverArtUrl: "https://cdn.example/cover.jpg",
       tracks: [{ id: "t", title: "Track", trackNumber: 1, durationMs: 1000, hasAudio: true }],
       otherEditions: [],
+      trustTier: "platformVerified",
     };
 
     const metadata = releaseMetadata(release);
@@ -169,6 +171,7 @@ describe("excerpt truncation", () => {
       coverArtUrl: null,
       tracks: [],
       otherEditions: [],
+      trustTier: "unverified",
     };
 
     const metadata = releaseMetadata(release);

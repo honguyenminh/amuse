@@ -146,6 +146,25 @@ internal sealed class UpdateTrackRequestValidator : AbstractValidator<UpdateTrac
     }
 }
 
+internal sealed class SetTrackCollaboratorsRequestValidator : AbstractValidator<SetTrackCollaboratorsRequest>
+{
+    public SetTrackCollaboratorsRequestValidator()
+    {
+        RuleForEach(x => x.Collaborators).ChildRules(entry =>
+        {
+            entry.RuleFor(x => x.DisplayName)
+                .MaximumLength(TrackCollaborator.MaxDisplayNameLength)
+                .When(x => x.ArtistId is null);
+
+            entry.RuleFor(x => x)
+                .Must(x =>
+                    (x.ArtistId is not null && x.ArtistId != Guid.Empty)
+                    || !string.IsNullOrWhiteSpace(x.DisplayName))
+                .WithMessage("Each collaborator must reference an artist or provide a placeholder display name.");
+        });
+    }
+}
+
 internal sealed class PresignReleaseCoverUploadRequestValidator : AbstractValidator<PresignReleaseCoverUploadRequest>
 {
     public PresignReleaseCoverUploadRequestValidator()
@@ -194,5 +213,55 @@ internal sealed class CompleteArtistCoverUploadRequestValidator : AbstractValida
     public CompleteArtistCoverUploadRequestValidator()
     {
         RuleFor(x => x.Key).NotEmpty().MaximumLength(Artist.MaxKeyLength);
+    }
+}
+
+internal sealed class SetTrackPricingRequestValidator : AbstractValidator<SetTrackPricingRequest>
+{
+    public SetTrackPricingRequestValidator()
+    {
+        RuleFor(x => x.PriceFloorMinor).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.PriceCeilingMinor)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.PriceCeilingMinor.HasValue);
+        RuleFor(x => x.PriceCeilingMinor)
+            .GreaterThanOrEqualTo(x => x.PriceFloorMinor)
+            .When(x => x.PriceCeilingMinor.HasValue);
+        RuleFor(x => x.PriceCurrency)
+            .NotEmpty()
+            .Length(CatalogPricing.CurrencyLength)
+            .When(x => x.IsForSale);
+    }
+}
+
+internal sealed class SetReleasePricingRequestValidator : AbstractValidator<SetReleasePricingRequest>
+{
+    public SetReleasePricingRequestValidator()
+    {
+        RuleFor(x => x.PriceFloorMinor).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.PriceCeilingMinor)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.PriceCeilingMinor.HasValue);
+        RuleFor(x => x.PriceCeilingMinor)
+            .GreaterThanOrEqualTo(x => x.PriceFloorMinor)
+            .When(x => x.PriceCeilingMinor.HasValue);
+        RuleFor(x => x.PriceCurrency)
+            .NotEmpty()
+            .Length(CatalogPricing.CurrencyLength)
+            .When(x => x.IsForSale);
+    }
+}
+
+internal sealed class SetTrackRoyaltySplitsRequestValidator : AbstractValidator<SetTrackRoyaltySplitsRequest>
+{
+    public SetTrackRoyaltySplitsRequestValidator()
+    {
+        RuleForEach(x => x.Splits).ChildRules(split =>
+        {
+            split.RuleFor(x => x.PayeeOrganizationId).NotEmpty();
+            split.RuleFor(x => x.ShareBps)
+                .GreaterThan(0)
+                .LessThanOrEqualTo(RoyaltySplit.TotalShareBps);
+        });
     }
 }
