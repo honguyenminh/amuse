@@ -52,7 +52,12 @@ Per-resource catalog claims use kinds: `artist`, `release`, `track`, `release_gr
 
 Merged into the org persona JWT from `Organization.EvaluateCapabilities()`; not stored on `organization_member`:
 
-- Same strings as above where the org lifecycle/onboarding allows the capability.
+- `read:org:all`, `read:membership:all` when the org lifecycle allows those capabilities
+- `upload:catalog:all`, `write_draft:catalog:all`, `publish_public:catalog:all` when the org allows the matching catalog write capability
+
+**Not** capability-derived (must be assigned on the member or copied from a preset): `read:catalog:all`, per-resource catalog read claims, all catalog write/manage claims (`upload`, `write_draft`, `publish_public`, pricing), and all payout/purchase claims including `read:payout:all`.
+
+**Per-resource read inheritance:** `read:catalog:artist:{id}` grants read access to that artist and to release groups, releases, and tracks under that artist. `read:catalog:release_group:{id}` also grants read on releases in that group. `read:catalog:release:{id}` also grants read on tracks in that release.
 
 ## Preset labels (UI snapshots)
 

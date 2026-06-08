@@ -125,6 +125,12 @@ internal sealed class ListArtistsHandler(CatalogDbContext db)
                 a.CreatedAt))
             .ToListAsync(cancellationToken);
 
+        items = CatalogClaimGuard.FilterReadable(
+            principal,
+            items,
+            _ => "artist",
+            item => item.Id).ToList();
+
         return Result<ManageArtistListResponse>.Success(new ManageArtistListResponse(items));
     }
 }
@@ -213,6 +219,10 @@ internal sealed class GetArtistHandler(CatalogDbContext db, IMediaPublicUrlBuild
         if (!scopeResult.IsSuccess)
             return Result<ManageArtistDetailResponse>.Failure(scopeResult.Error!);
 
+        var readResult = CatalogClaimGuard.RequireRead(principal, "artist", artistId);
+        if (!readResult.IsSuccess)
+            return Result<ManageArtistDetailResponse>.Failure(readResult.Error!);
+
         var releaseRows = await db.Releases
             .AsNoTracking()
             .Where(r => r.ArtistId == typedId)
@@ -229,7 +239,10 @@ internal sealed class GetArtistHandler(CatalogDbContext db, IMediaPublicUrlBuild
             })
             .ToListAsync(cancellationToken);
 
-        var releases = releaseRows
+        var releases = CatalogClaimGuard.FilterReadable(
+            principal,
+            releaseRows,
+            r => new CatalogReadContext("release", r.Id.Value, ArtistId: artistId))
             .Select(r => new ManageArtistReleaseSummary(
                 r.Id.Value,
                 r.Slug.Value,
@@ -240,18 +253,33 @@ internal sealed class GetArtistHandler(CatalogDbContext db, IMediaPublicUrlBuild
                 mediaUrls.BuildCoverArtUrl(r.CoverArtKey)))
             .ToArray();
 
-        var tracks = await db.Tracks
+        var trackRows = await db.Tracks
             .AsNoTracking()
             .Where(t => t.OrganizationId == orgResult.Value! && db.Releases.Any(r => r.Id == t.ReleaseId && r.ArtistId == typedId))
             .OrderBy(t => t.TrackNumber)
-            .Select(t => new ManageArtistTrackSummary(
-                t.Id.Value,
-                t.Title,
-                t.TrackNumber,
-                t.Duration.Milliseconds,
-                t.ExplicitFlag,
-                t.LifecycleStatus))
+            .Select(t => new
+            {
+                Summary = new ManageArtistTrackSummary(
+                    t.Id.Value,
+                    t.Title,
+                    t.TrackNumber,
+                    t.Duration.Milliseconds,
+                    t.ExplicitFlag,
+                    t.LifecycleStatus),
+                ReleaseId = t.ReleaseId.Value,
+            })
             .ToListAsync(cancellationToken);
+
+        var tracks = trackRows
+            .Where(row => CatalogClaimGuard.CanRead(
+                principal,
+                new CatalogReadContext(
+                    "track",
+                    row.Summary.Id,
+                    ArtistId: artistId,
+                    ReleaseId: row.ReleaseId)))
+            .Select(row => row.Summary)
+            .ToList();
 
         var releaseGroups = await db.ReleaseGroups
             .AsNoTracking()
@@ -265,6 +293,11 @@ internal sealed class GetArtistHandler(CatalogDbContext db, IMediaPublicUrlBuild
                 db.Releases.Count(r => r.ReleaseGroupId == g.Id),
                 g.UpdatedAt))
             .ToListAsync(cancellationToken);
+
+        releaseGroups = CatalogClaimGuard.FilterReadable(
+            principal,
+            releaseGroups,
+            group => new CatalogReadContext("release_group", group.Id, ArtistId: artistId)).ToList();
 
         return Result<ManageArtistDetailResponse>.Success(
             new ManageArtistDetailResponse(

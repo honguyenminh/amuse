@@ -22,13 +22,45 @@ public sealed class OrganizationCapabilitiesTests
     }
 
     [Fact]
-    public void Indie_group_active_allows_payout_read()
+    public void Indie_group_active_allows_payout_capability_without_auto_merging_read_claim()
     {
         var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
         var capabilities = org.EvaluateCapabilities();
 
         Assert.True(capabilities.CanReadPayout);
-        Assert.Contains("read:payout:all", capabilities.ToClaimStrings());
+        Assert.DoesNotContain("read:payout:all", capabilities.ToClaimStrings());
+    }
+
+    [Fact]
+    public void FilterClaimsForCapabilities_does_not_merge_read_payout_for_members_without_assignment()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var memberClaims = new[]
+        {
+            "read:org:all",
+            $"read:catalog:artist:{Guid.CreateVersion7():D}",
+        };
+
+        var filtered = OrgCapabilities.FilterClaimsForCapabilities(
+            memberClaims,
+            org.EvaluateCapabilities());
+
+        Assert.DoesNotContain("read:payout:all", filtered);
+        Assert.DoesNotContain("upload:catalog:all", filtered);
+        Assert.DoesNotContain("write_draft:catalog:all", filtered);
+        Assert.Contains("read:org:all", filtered);
+    }
+
+    [Fact]
+    public void Indie_group_active_does_not_auto_merge_catalog_write_claims()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var capabilities = org.EvaluateCapabilities();
+
+        Assert.True(capabilities.CanUpload);
+        Assert.DoesNotContain("upload:catalog:all", capabilities.ToClaimStrings());
+        Assert.DoesNotContain("write_draft:catalog:all", capabilities.ToClaimStrings());
+        Assert.DoesNotContain("publish_public:catalog:all", capabilities.ToClaimStrings());
     }
 
     [Fact]
@@ -181,6 +213,39 @@ public sealed class OrganizationCapabilitiesTests
         Assert.DoesNotContain("upload:catalog:all", assignable);
         Assert.DoesNotContain("write_draft:catalog:all", assignable);
         Assert.True(assignable.Count < OrgClaimPresets.OwnerAdmin.Count);
+    }
+
+    [Fact]
+    public void FilterAssignableClaims_allows_per_resource_catalog_read()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var artistId = Guid.CreateVersion7();
+        var claim = $"read:catalog:artist:{artistId:D}";
+
+        var assignable = OrgCapabilities.FilterAssignableClaims([claim], org.EvaluateCapabilities());
+
+        Assert.Single(assignable);
+        Assert.Equal(claim, assignable[0]);
+    }
+
+    [Fact]
+    public void FilterAssignableClaims_rejects_per_resource_catalog_write()
+    {
+        var org = Organization.RegisterIndieGroup("Indie Band", Creator, Now).Value!;
+        var artistId = Guid.CreateVersion7();
+
+        var uploadClaim = $"upload:catalog:artist:{artistId:D}";
+        var draftClaim = $"write_draft:catalog:release:{artistId:D}";
+
+        var assignableUpload = OrgCapabilities.FilterAssignableClaims(
+            [uploadClaim],
+            org.EvaluateCapabilities());
+        var assignableDraft = OrgCapabilities.FilterAssignableClaims(
+            [draftClaim],
+            org.EvaluateCapabilities());
+
+        Assert.Empty(assignableUpload);
+        Assert.Empty(assignableDraft);
     }
 
     [Fact]

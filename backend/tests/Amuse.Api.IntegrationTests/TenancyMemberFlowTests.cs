@@ -3,7 +3,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using Amuse.Domain.Catalog;
 using Amuse.Domain.Tenancy;
+using Amuse.Modules.Catalog.Features.Common;
 using Amuse.Modules.Identity.Features.Common;
 using Amuse.Modules.Tenancy.Features.Common;
 using Microsoft.AspNetCore.WebUtilities;
@@ -13,7 +16,10 @@ namespace Amuse.Api.IntegrationTests;
 [Collection(AmuseApiCollection.Name)]
 public sealed class TenancyMemberFlowTests(AmuseApiFixture fixture)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
 
     [Fact]
     public async Task Invite_accept_and_org_persona_includes_member_claims()
@@ -516,6 +522,151 @@ public sealed class TenancyMemberFlowTests(AmuseApiFixture fixture)
             new { presetRoleLabel = OrgClaimPresets.ViewerPresetLabel, claims = (string[]?)null },
             JsonOptions);
         Assert.Equal(HttpStatusCode.Forbidden, update.StatusCode);
+    }
+
+    [Fact]
+    public async Task Invite_with_explicit_per_resource_catalog_claims_grants_scoped_access()
+    {
+        fixture.CaptureEmailSender.Reset();
+        using var client = fixture.CreateClient();
+        var ownerTokens = await LoginAsync(client, "root@amuse.local", "ChangeMe_Root123!");
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", ownerTokens.AccessToken);
+
+        var create = await client.PostAsJsonAsync(
+            "/api/v1/tenancy/organizations",
+            new
+            {
+                displayName = "Scoped Catalog Org",
+                orgClass = OrganizationClass.IndieGroup,
+                createDefaultArtist = true,
+            },
+            JsonOptions);
+        create.EnsureSuccessStatusCode();
+        var org = (await create.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions))!;
+
+        var orgTokens = await RefreshOrgPersonaAsync(client, ownerTokens.RefreshToken!, org.Id);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", orgTokens.AccessToken);
+
+        var artists = await client.GetFromJsonAsync<ManageArtistListResponse>(
+            "/api/v1/catalog/manage/artists",
+            JsonOptions);
+        Assert.NotNull(artists);
+        Assert.NotEmpty(artists.Items);
+        var allowedArtistId = artists.Items[0].Id;
+
+        var secondArtist = await client.PostAsJsonAsync(
+            "/api/v1/catalog/artists",
+            new
+            {
+                name = "Second Roster Artist",
+                slug = $"second-{Guid.CreateVersion7():N}",
+            },
+            JsonOptions);
+        secondArtist.EnsureSuccessStatusCode();
+        var deniedArtist = await secondArtist.Content.ReadFromJsonAsync<ManageArtistSummaryResponse>(JsonOptions);
+        Assert.NotNull(deniedArtist);
+
+        var createRelease = await client.PostAsJsonAsync(
+            $"/api/v1/catalog/artists/{allowedArtistId}/releases",
+            new
+            {
+                title = "Scoped Reader Single",
+                releaseType = ReleaseType.Single,
+                releaseDate = "2026-06-01T00:00:00Z",
+                metadataComplete = true,
+            },
+            JsonOptions);
+        createRelease.EnsureSuccessStatusCode();
+
+        var scopedClaims = new[]
+        {
+            "read:org:all",
+            $"read:catalog:artist:{allowedArtistId:D}",
+        };
+
+        var inviteeEmail = $"scoped-catalog-{Guid.CreateVersion7():N}@amuse.test";
+        var invite = await client.PostAsJsonAsync(
+            $"/api/v1/tenancy/organizations/{org.Id}/members/invites",
+            new
+            {
+                email = inviteeEmail,
+                presetRoleLabel = (string?)null,
+                claims = scopedClaims,
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, invite.StatusCode);
+
+        var inviteUri = new Uri(fixture.CaptureEmailSender.LastInviteUrl!);
+        var inviteToken = QueryHelpers.ParseQuery(inviteUri.Query)["token"].ToString();
+
+        const string inviteePassword = "Password1234!";
+        await client.PostAsJsonAsync(
+            "/api/v1/identity/register/password",
+            new { email = inviteeEmail, password = inviteePassword, portal = "business" },
+            JsonOptions);
+
+        var confirmUri = new Uri(fixture.CaptureEmailSender.LastConfirmUrl!);
+        var confirmQuery = QueryHelpers.ParseQuery(confirmUri.Query);
+        await client.PostAsJsonAsync(
+            "/api/v1/identity/confirm-email",
+            new
+            {
+                userId = Guid.Parse(confirmQuery["userId"]!),
+                token = Uri.UnescapeDataString(confirmQuery["token"]!),
+            },
+            JsonOptions);
+
+        var inviteeLogin = await LoginAsListenerAsync(client, inviteeEmail, inviteePassword);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", inviteeLogin.AccessToken);
+        await client.PostAsync(
+            $"/api/v1/tenancy/invites/{Uri.EscapeDataString(inviteToken)}/accept",
+            null);
+
+        var memberOrgTokens = await RefreshOrgPersonaAsync(
+            client,
+            inviteeLogin.RefreshToken!,
+            org.Id);
+
+        var jwtClaims = ReadJwtClaims(memberOrgTokens.AccessToken);
+        Assert.Contains($"read:catalog:artist:{allowedArtistId:D}", jwtClaims);
+        Assert.DoesNotContain("read:payout:all", jwtClaims);
+        Assert.DoesNotContain("upload:catalog:all", jwtClaims);
+        Assert.DoesNotContain("write_draft:catalog:all", jwtClaims);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", memberOrgTokens.AccessToken);
+
+        var balance = await client.GetAsync("/api/v1/billing/balance");
+        Assert.Equal(HttpStatusCode.Forbidden, balance.StatusCode);
+
+        var coverPresign = await client.PostAsJsonAsync(
+            $"/api/v1/catalog/artists/{allowedArtistId}/cover/presign-upload",
+            new { fileName = "cover.jpg", contentType = "image/jpeg" },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Forbidden, coverPresign.StatusCode);
+
+        var visibleArtists = await client.GetFromJsonAsync<ManageArtistListResponse>(
+            "/api/v1/catalog/manage/artists",
+            JsonOptions);
+        Assert.NotNull(visibleArtists);
+        Assert.Single(visibleArtists.Items);
+        Assert.Equal(allowedArtistId, visibleArtists.Items[0].Id);
+
+        var allowedDetail = await client.GetFromJsonAsync<ManageArtistDetailResponse>(
+            $"/api/v1/catalog/manage/artists/{allowedArtistId}",
+            JsonOptions);
+        Assert.NotNull(allowedDetail);
+        Assert.Single(allowedDetail.Releases);
+        Assert.Equal("Scoped Reader Single", allowedDetail.Releases[0].Title);
+        Assert.NotEmpty(allowedDetail.ReleaseGroups);
+
+        var deniedDetail = await client.GetAsync(
+            $"/api/v1/catalog/manage/artists/{deniedArtist.Id}");
+        Assert.Equal(HttpStatusCode.BadRequest, deniedDetail.StatusCode);
     }
 
     private static IReadOnlyList<string> ReadJwtClaims(string accessToken)

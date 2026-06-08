@@ -82,8 +82,10 @@ export default function PayoutSetupPage() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (canRead) {
+      void load();
+    }
+  }, [canRead, load]);
 
   const stepIndex = steps.indexOf(step);
   const documentObjectKeys = useMemo(

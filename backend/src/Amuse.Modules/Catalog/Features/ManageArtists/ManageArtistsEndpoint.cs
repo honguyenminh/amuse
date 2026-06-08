@@ -54,7 +54,7 @@ public static class ManageArtistsEndpoint
                 var result = await handler.HandleAsync(httpContext.User, cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization(OrgPolicies.ReadCatalog)
+            .RequireAuthorization(OrgPolicies.ReadCatalogEntry)
             .WithName("ListCatalogArtists")
             .WithSummary("List artists managed by the active organization.")
             .Produces<ManageArtistListResponse>()
@@ -91,7 +91,7 @@ public static class ManageArtistsEndpoint
                 var result = await handler.HandleAsync(artistId, httpContext.User, cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization(OrgPolicies.ReadCatalog)
+            .RequireAuthorization(OrgPolicies.ReadCatalogEntry)
             .WithName("GetCatalogArtistOrgView")
             .WithSummary("Get organization-scoped artist detail including release lifecycle and track explicit flags.")
             .Produces<ManageArtistDetailResponse>()

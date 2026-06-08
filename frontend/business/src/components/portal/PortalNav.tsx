@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { isPlatformPersonaActive } from "@/lib/auth/resolveBusinessPersonas";
-import { hasClaim } from "@/lib/auth/jwtClaims";
+import { hasAnyCatalogReadClaim, hasClaim } from "@/lib/auth/jwtClaims";
 import {
   canManagePlatformPayouts,
   canManagePlatformPurchases,
@@ -96,7 +96,7 @@ export function PortalNav() {
   const isPlatform = isPlatformPersonaActive(auth.activePersona);
   const token = getAccessToken();
   const canReadMembers = hasClaim(token, "read:membership:all");
-  const canReadCatalog = hasClaim(token, "read:catalog:all");
+  const canReadCatalog = hasAnyCatalogReadClaim(token);
   const canReadPayout = hasClaim(token, "read:payout:all");
   const orgNavItems = useMemo(() => {
     const items = [...orgNavBase];

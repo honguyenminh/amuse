@@ -10,6 +10,7 @@ public static class OrgAuthorizationExtensions
     {
         services.AddHttpContextAccessor();
         services.AddSingleton<IAuthorizationHandler, OrgClaimAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, OrgCatalogReadAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {
@@ -65,6 +66,13 @@ public static class OrgAuthorizationExtensions
                 policy.Requirements.Add(new OrgClaimRequirement(
                     [OrgClaim.ScopeWideClaim("read", "catalog")],
                     OrgClaimMatchMode.Any));
+            });
+
+            options.AddPolicy(OrgPolicies.ReadCatalogEntry, policy =>
+            {
+                policy.RequireClaim("ctx", "org");
+                policy.RequireClaim("org_id");
+                policy.Requirements.Add(new OrgCatalogReadRequirement());
             });
 
             options.AddPolicy(OrgPolicies.WriteDraftCatalog, policy =>

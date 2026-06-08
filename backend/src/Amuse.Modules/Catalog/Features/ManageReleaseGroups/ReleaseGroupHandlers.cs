@@ -106,6 +106,11 @@ internal sealed class ListReleaseGroupsHandler(CatalogDbContext db)
                 g.UpdatedAt))
             .ToListAsync(cancellationToken);
 
+        items = CatalogClaimGuard.FilterReadable(
+            principal,
+            items,
+            item => new CatalogReadContext("release_group", item.Id, ArtistId: artistId)).ToList();
+
         return Result<ManageReleaseGroupListResponse>.Success(new ManageReleaseGroupListResponse(items));
     }
 }
@@ -151,6 +156,13 @@ internal sealed class GetReleaseGroupDetailHandler(CatalogDbContext db, IMediaPu
             return Result<ManageReleaseGroupDetailResponse>.Failure(loadResult.Error!);
 
         var group = loadResult.Value!;
+
+        var readResult = CatalogClaimGuard.RequireRead(
+            principal,
+            new CatalogReadContext("release_group", releaseGroupId, ArtistId: artistId));
+        if (!readResult.IsSuccess)
+            return Result<ManageReleaseGroupDetailResponse>.Failure(readResult.Error!);
+
         var releases = await db.Releases
             .AsNoTracking()
             .Where(r => r.ReleaseGroupId == group.Id && r.ArtistId == typedArtistId)
@@ -164,6 +176,15 @@ internal sealed class GetReleaseGroupDetailHandler(CatalogDbContext db, IMediaPu
                 r.ReleaseDate,
                 mediaUrls.BuildCoverArtUrl(r.CoverArtKey)))
             .ToListAsync(cancellationToken);
+
+        releases = CatalogClaimGuard.FilterReadable(
+            principal,
+            releases,
+            release => new CatalogReadContext(
+                "release",
+                release.Id,
+                ArtistId: artistId,
+                ReleaseGroupId: releaseGroupId)).ToList();
 
         return Result<ManageReleaseGroupDetailResponse>.Success(
             new ManageReleaseGroupDetailResponse(
