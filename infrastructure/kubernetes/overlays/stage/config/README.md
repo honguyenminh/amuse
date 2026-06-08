@@ -1,6 +1,8 @@
 # Stage cluster host configuration
 
-Public hostnames and browser-facing URLs for the AKS stage overlay are defined in **`cluster.env`** (single source of truth).
+Public hostnames, Azure wiring, and browser-facing URLs for the AKS stage overlay are defined in **`cluster.env`** (single source of truth per cluster).
+
+**amuse-deploy:** copy [`cluster.env.example`](./cluster.env.example) to `cluster.env` in the deploy repo and fill Terraform outputs (`AMUSE_WORKLOAD_IDENTITY_CLIENT_ID`, `KEY_VAULT_URI`, `AGC_ALB_ARM_ID`, `AGC_ALB_FRONTEND`). CI sync from amuse does **not** overwrite `cluster.env`.
 
 Kustomize generates `amuse-cluster-config` and applies [`replacements.yaml`](./replacements.yaml) to:
 

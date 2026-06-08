@@ -9,3 +9,7 @@ output "gateway_class_name" {
 output "release_name" {
   value = helm_release.alb_controller.name
 }
+
+output "alb_controller_identity_client_id" {
+  value = azurerm_user_assigned_identity.alb_controller.client_id
+}

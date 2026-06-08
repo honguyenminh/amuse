@@ -1,3 +1,4 @@
+# AGC BYO: alb-id + frontend address come from config/cluster.env replacements.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -5,3 +6,6 @@ metadata:
   namespace: amuse
 spec:
   gatewayClassName: azure-alb-external
+  addresses:
+    - type: alb.networking.azure.io/alb-frontend
+      value: amuse-staging-fe

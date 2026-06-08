@@ -40,9 +40,25 @@ resource "helm_release" "alb_controller" {
   timeout = var.timeout
   wait    = true
 
+  # Gateway API CRDs are installed from the official release manifest above.
+  set {
+    name  = "albController.installGatewayApiCRDs"
+    value = "false"
+  }
+
+  set {
+    name  = "albController.podIdentity.clientID"
+    value = azurerm_user_assigned_identity.alb_controller.client_id
+  }
+
   depends_on = [
     kubernetes_namespace_v1.this,
     kubectl_manifest.gateway_api_crds,
+    azurerm_federated_identity_credential.alb_controller,
+    azurerm_role_assignment.alb_controller_config_manager_main_rg,
+    azurerm_role_assignment.alb_controller_config_manager_node_rg,
+    azurerm_role_assignment.alb_controller_reader_node_rg,
+    azurerm_role_assignment.alb_controller_network_contributor_subnet,
   ]
 }
 
@@ -57,11 +73,8 @@ resource "kubectl_manifest" "application_load_balancer" {
       namespace = var.namespace
     }
     spec = {
-      associations = [
-        {
-          albID = var.alb_id
-        }
-      ]
+      # Subnet resource IDs (strings), not ALB ARM IDs — see Microsoft AGC quickstart.
+      associations = [var.agc_subnet_id]
     }
   })
 

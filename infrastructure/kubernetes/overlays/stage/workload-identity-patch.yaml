@@ -4,7 +4,7 @@ metadata:
   name: amuse-api
   namespace: amuse
   annotations:
-    azure.workload.identity/client-id: "${AMUSE_WORKLOAD_IDENTITY_CLIENT_ID}"
+    azure.workload.identity/client-id: "REPLACE_ME"
   labels:
     azure.workload.identity/use: "true"
 ---
@@ -14,7 +14,7 @@ metadata:
   name: amuse-worker-transcoder
   namespace: amuse
   annotations:
-    azure.workload.identity/client-id: "${AMUSE_WORKLOAD_IDENTITY_CLIENT_ID}"
+    azure.workload.identity/client-id: "REPLACE_ME"
   labels:
     azure.workload.identity/use: "true"
 ---
@@ -24,6 +24,6 @@ metadata:
   name: amuse-worker-scheduler
   namespace: amuse
   annotations:
-    azure.workload.identity/client-id: "${AMUSE_WORKLOAD_IDENTITY_CLIENT_ID}"
+    azure.workload.identity/client-id: "REPLACE_ME"
   labels:
     azure.workload.identity/use: "true"

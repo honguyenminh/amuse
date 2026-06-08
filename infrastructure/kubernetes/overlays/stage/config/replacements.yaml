@@ -2,6 +2,66 @@
 - source:
     kind: ConfigMap
     name: amuse-cluster-config
+    fieldPath: data.AMUSE_WORKLOAD_IDENTITY_CLIENT_ID
+  targets:
+    - select:
+        kind: ServiceAccount
+        name: amuse-api
+      fieldPaths:
+        - metadata.annotations.[azure.workload.identity/client-id]
+      options:
+        create: true
+    - select:
+        kind: ServiceAccount
+        name: amuse-worker-transcoder
+      fieldPaths:
+        - metadata.annotations.[azure.workload.identity/client-id]
+      options:
+        create: true
+    - select:
+        kind: ServiceAccount
+        name: amuse-worker-scheduler
+      fieldPaths:
+        - metadata.annotations.[azure.workload.identity/client-id]
+      options:
+        create: true
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.KEY_VAULT_URI
+  targets:
+    - select:
+        kind: ClusterSecretStore
+        name: amuse-azure-kv
+      fieldPaths:
+        - spec.provider.azurekv.vaultUrl
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.AGC_ALB_ARM_ID
+  targets:
+    - select:
+        kind: Gateway
+        name: amuse-gateway
+      fieldPaths:
+        - metadata.annotations.[alb.networking.azure.io/alb-id]
+      options:
+        create: true
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
+    fieldPath: data.AGC_ALB_FRONTEND
+  targets:
+    - select:
+        kind: Gateway
+        name: amuse-gateway
+      fieldPaths:
+        - spec.addresses.0.value
+      options:
+        create: true
+- source:
+    kind: ConfigMap
+    name: amuse-cluster-config
     fieldPath: data.GATEWAY_WILDCARD_HOST
   targets:
     - select:

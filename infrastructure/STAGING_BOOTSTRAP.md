@@ -208,9 +208,16 @@ kubectl create secret tls amuse-tls -n amuse \
 
 ### Option B — cert-manager + Cloudflare DNS (recommended long-term)
 
-Install cert-manager on AKS, create a `ClusterIssuer` with Cloudflare API token, and a `Certificate` for `amuse.m8.io.vn` with DNS names `amuse.m8.io.vn`, `*.amuse.m8.io.vn`. Sync the issued secret name to `amuse-tls` (or patch the Gateway `certificateRefs`).
+Install cert-manager on AKS, create a `ClusterIssuer` with Cloudflare API token, and a `Certificate` in namespace `amuse` with `spec.secretName: amuse-tls` and DNS names `amuse.m8.io.vn`, `*.amuse.m8.io.vn`.
 
-(Detailed cert-manager manifests are environment-specific — use your existing `m8.io.vn` cert workflow if you already run one for K3s dev.)
+```bash
+kubectl create namespace amuse --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f amuse-certificate.yaml   # secretName: amuse-tls
+kubectl wait --for=condition=Ready certificate/amuse-tls-cert -n amuse --timeout=10m
+kubectl get secret amuse-tls -n amuse
+```
+
+The stage Gateway already references `amuse-tls` in both HTTPS listeners.
 
 ---
 
@@ -247,13 +254,16 @@ Or manually clone and copy if the workflow is not run yet.
 
 Clone **amuse-deploy** and set placeholders:
 
-**`overlays/stage/external-secrets/cluster-secret-store.yaml`**
+**`overlays/stage/config/cluster.env`** — copy from `cluster.env.example` and set (from Terraform outputs):
 
-```yaml
-vaultUrl: "https://<KEY_VAULT_NAME>.vault.azure.net"   # from terraform output key_vault_uri
-```
+| Key | Source |
+|-----|--------|
+| `AMUSE_WORKLOAD_IDENTITY_CLIENT_ID` | `terraform output -raw amuse_workload_identity_client_id` |
+| `KEY_VAULT_URI` | `terraform output -raw key_vault_uri` |
+| `AGC_ALB_ARM_ID` | `terraform output -raw agc_alb_id` |
+| `AGC_ALB_FRONTEND` | `agc_frontend_name` in tfvars (e.g. `amuse-staging-fe`) |
 
-**`overlays/stage/workload-identity-patch.yaml`** — replace `${AMUSE_WORKLOAD_IDENTITY_CLIENT_ID}` with Terraform `amuse_workload_identity_client_id` (literal UUID, no `${}`).
+Kustomize replacements inject these into ServiceAccounts, ClusterSecretStore, and Gateway. Do **not** edit `workload-identity-patch.yaml` by hand.
 
 **`overlays/stage/config/cluster.env`** — should match (already in amuse repo):
 
@@ -278,13 +288,24 @@ kubectl create secret docker-registry ghcr-pull -n amuse \
   --docker-password=<GITHUB_PAT_WITH_read:packages>
 ```
 
-### 5.4 Register Argo CD application
+### 5.4 Register Argo CD application (creates Gateway + HTTPRoutes)
+
+**The Gateway is not created by cert-manager or Terraform** — it comes from GitOps (`overlays/stage` in amuse-deploy). Until this step runs, `kubectl get gateway -A` is empty.
 
 ```bash
 git clone https://github.com/honguyenminh/amuse-deploy.git
 kubectl apply -f amuse-deploy/argocd/projects/amuse-project.yaml
 kubectl apply -f amuse-deploy/argocd/bootstrap/stage-application.yaml
 ```
+
+After sync:
+
+```bash
+kubectl -n argocd get applications
+kubectl -n amuse get gateway amuse-gateway,httproute
+```
+
+**AGC wiring:** `overlays/stage/config/cluster.env` must include `AGC_ALB_ARM_ID` (from `terraform output -raw agc_alb_id`) and `AGC_ALB_FRONTEND` (matches `agc_frontend_name` in tfvars). Terraform also provisions the ALB controller managed identity (`albController.podIdentity.clientID`).
 
 Watch sync:
 
@@ -300,7 +321,27 @@ ExternalSecrets should reach `SecretSynced`. If not, check Workload Identity cli
 
 ## Phase 6 — Build and deploy application images
 
-Stage images are tagged `staging` from the **`staging` branch** (create it if missing).
+Stage manifests reference GHCR tags **`staging`** for all six images (`amuse-api`, workers, `amuse-migrate`, `amuse-consumer`, `amuse-business`). **Argo sync will fail** (ImagePullBackOff / migrate hook errors) until every one of those tags exists in the registry.
+
+Stage images are published from the **`staging` branch** (create it if missing).
+
+### 6.0 Create the `staging` branch (first time only)
+
+If `staging` does not exist on GitHub yet:
+
+```bash
+git fetch origin master
+git checkout -b staging origin/master
+git push -u origin staging
+```
+
+**Alternative (no branch yet):** run each publish workflow via **workflow_dispatch** on **amuse** with `image_tag` = `staging` (builds from the branch you select when starting the run):
+
+- Backend Publish
+- Frontend Consumer Publish
+- Frontend Business Publish
+
+Confirm packages exist under `ghcr.io/honguyenminh/amuse-*` with a `staging` tag before expecting Argo to succeed.
 
 ### 6.1 Publish images
 
@@ -314,14 +355,16 @@ Consumer/business images bake `NEXT_PUBLIC_API_BASE_URL=https://api.amuse.m8.io.
 
 ### 6.2 Bump live tags in amuse-deploy
 
-**Automatic only for dev** — stage requires manual workflow:
+Pushes to **`staging`** auto-bump the matching image(s) in `amuse-deploy/overlays/stage/images-tags/` after each publish workflow (same pattern as dev).
 
-GitHub → **amuse** → Actions → **Backend Deploy** → Run workflow:
+**One-shot (all six images):** GitHub → **amuse** → Actions → **Backend Deploy** → Run workflow:
 
 - Environment: `staging`
 - (optional) image tag override: `staging`
 
-This commits new digests/tags to `amuse-deploy/overlays/stage/images-tags/`. Argo auto-sync rolls the cluster and runs the **migrate Sync hook**.
+Use this after the first bootstrap publish pass, or to re-point every workload at the same tag.
+
+Argo auto-sync rolls the cluster and runs the **migrate Sync hook** when `amuse-deploy` changes.
 
 ---
 
@@ -381,6 +424,7 @@ If segments fail with CORS, re-check Phase 1.4. If 403 on presign, check `Media_
 | Covers broken, playback OK | `MEDIA_PUBLIC_BASE_URL` vs API cover URLs; R2 public domain on `amuse-covers` |
 | `track_stream_not_ready` | Transcoder logs; R2 credentials; Postgres connectivity |
 | Argo keeps old images | Run **Backend Deploy** workflow for `staging` |
+| Sync fails / ImagePullBackOff on `:staging` | `staging` branch missing or publish not finished — complete **Phase 6.0–6.1**; verify GHCR has all six `staging` tags |
 
 ---
 

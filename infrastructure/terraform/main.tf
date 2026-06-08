@@ -121,10 +121,15 @@ module "agc_controller" {
   }
 
   namespace          = var.agc_controller_namespace
-  alb_id             = module.app-gw.alb_id
+  agc_subnet_id      = module.networking.agc-subnet-id
   frontend_name      = var.agc_frontend_name
   gateway_class_name = var.agc_gateway_class_name
   alb_resource_name  = "${var.resource_prefix}-alb"
+  resource_group_name = local.rg_name
+  location            = local.rg_location
+  resource_prefix     = var.resource_prefix
+  oidc_issuer_url     = module.aks.oidc_issuer_url
+  node_resource_group = module.aks.node_resource_group
 
   depends_on = [module.aks, module.app-gw]
 }

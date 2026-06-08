@@ -9,8 +9,9 @@ variable "release_name" {
 }
 
 variable "chart_version" {
-  type    = string
-  default = "1.2.9"
+  description = "ALB Controller chart version — see https://learn.microsoft.com/azure/application-gateway/for-containers/alb-controller-release-notes"
+  type        = string
+  default     = "1.10.28"
 }
 
 variable "gateway_api_version" {
@@ -24,8 +25,8 @@ variable "timeout" {
   default = 600
 }
 
-variable "alb_id" {
-  description = "Azure resource ID of the Application Load Balancer"
+variable "agc_subnet_id" {
+  description = "Azure resource ID of the delegated AGC subnet (Microsoft.ServiceNetworking/trafficControllers)."
   type        = string
 }
 
@@ -42,4 +43,36 @@ variable "gateway_class_name" {
 variable "frontend_name" {
   description = "AGC frontend name (used by GitOps Gateway resource)"
   type        = string
+}
+
+variable "resource_group_name" {
+  type = string
+}
+
+variable "location" {
+  type = string
+}
+
+variable "resource_prefix" {
+  type = string
+}
+
+variable "oidc_issuer_url" {
+  type = string
+}
+
+variable "node_resource_group" {
+  description = "AKS node resource group (MC_*), required for ALB controller RBAC."
+  type        = string
+}
+
+variable "alb_controller_sa_namespace" {
+  description = "Namespace of the ALB controller service account installed by the Helm chart."
+  type        = string
+  default     = "azure-alb-system"
+}
+
+variable "alb_controller_sa_name" {
+  type    = string
+  default = "alb-controller-sa"
 }

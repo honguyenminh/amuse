@@ -42,6 +42,8 @@ Application images are built and published to **GHCR** by GitHub Actions — not
 
 **Gateway API Helm `404` on index.yaml** — Expected; use the pinned `gateway_api_version` (default `1.2.1`) HTTP install instead.
 
+**ALB controller chart `1.2.9: not found`** — Chart versions track ALB Controller releases (e.g. `1.10.28`), not Gateway API. See [release notes](https://learn.microsoft.com/azure/application-gateway/for-containers/alb-controller-release-notes).
+
 ## Prerequisites
 
 - Azure CLI + Terraform >= 1.11

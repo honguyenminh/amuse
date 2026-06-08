@@ -59,9 +59,11 @@ Do **not** apply `dev-application.yaml` on AKS.
 
 ## 6. Deploy images to stage
 
-Publishing to the `staging` branch builds GHCR images tagged `staging`, but **does not** auto-update amuse-deploy.
+Publishing to the `staging` branch builds GHCR images tagged `staging` and auto-updates matching tags in `amuse-deploy` (same as dev on `master`).
 
-Run **Backend Deploy** workflow (`workflow_dispatch`, environment `staging`) on the amuse repo after publish.
+Before first Argo sync, ensure the **`staging` branch exists** and all six publish workflows have completed — otherwise manifests reference `:staging` images that are not in GHCR yet.
+
+One-shot: run **Backend Deploy** (`workflow_dispatch`, environment `staging`) to bump every image tag after bootstrap.
 
 ## 7. Smoke test
 
