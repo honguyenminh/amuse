@@ -79,7 +79,7 @@ public static class ManageReleasesEndpoint
                 var result = await handler.HandleAsync(parsedStatus, httpContext.User, cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization(OrgPolicies.ReadCatalog)
+            .RequireAuthorization(OrgPolicies.ReadCatalogEntry)
             .WithName("ListCatalogReleases")
             .WithSummary("List releases for the active organization, optionally filtered by lifecycle status.")
             .Produces<ManageReleaseListResponse>()
@@ -94,7 +94,7 @@ public static class ManageReleasesEndpoint
                 var result = await handler.HandleAsync(releaseId, httpContext.User, cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization(OrgPolicies.ReadCatalog)
+            .RequireAuthorization(OrgPolicies.ReadCatalogEntry)
             .WithName("GetCatalogReleaseOrgView")
             .WithSummary("Get organization-scoped release detail with track lifecycle metadata.")
             .Produces<ManageReleaseDetailResponse>()

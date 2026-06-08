@@ -19,7 +19,7 @@ import {
 } from "@/lib/api/catalogClient";
 import { formatReleaseDateTime } from "@/lib/catalog/releaseDateTime";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasClaim } from "@/lib/auth/jwtClaims";
+import { canReadCatalogResource, hasClaim } from "@/lib/auth/jwtClaims";
 import { getAccessToken } from "@/lib/auth/sessionStore";
 import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
@@ -45,7 +45,10 @@ export default function ArtistReleaseGroupDetailPage() {
   const auth = useAuth();
   const orgId = auth.activePersona?.type === "org" ? auth.activePersona.orgId : null;
   const token = getAccessToken();
-  const canRead = hasClaim(token, "read:catalog:all");
+  const canRead =
+    groupId && artistId
+      ? canReadCatalogResource(token, "release_group", groupId, { artistId })
+      : false;
   const canWrite = hasClaim(token, "write_draft:catalog:all");
 
   const [group, setGroup] = useState<ManageReleaseGroupDetailResponse | null>(null);

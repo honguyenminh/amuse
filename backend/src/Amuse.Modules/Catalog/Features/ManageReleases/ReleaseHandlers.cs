@@ -193,6 +193,15 @@ internal sealed class ListReleasesHandler(CatalogDbContext db, IMediaPublicUrlBu
             })
             .ToList();
 
+        items = CatalogClaimGuard.FilterReadable(
+            principal,
+            items,
+            item => new CatalogReadContext(
+                "release",
+                item.Id,
+                ArtistId: item.ArtistId,
+                ReleaseGroupId: item.ReleaseGroupId)).ToList();
+
         return Result<ManageReleaseListResponse>.Success(new ManageReleaseListResponse(items));
     }
 }
@@ -223,6 +232,16 @@ internal sealed class GetReleaseHandler(CatalogDbContext db, IMediaPublicUrlBuil
         var scopeResult = CatalogScopeGuard.EnsureOrganizationScope(orgResult.Value!, release.OrganizationId);
         if (!scopeResult.IsSuccess)
             return Result<ManageReleaseDetailResponse>.Failure(scopeResult.Error!);
+
+        var readResult = CatalogClaimGuard.RequireRead(
+            principal,
+            new CatalogReadContext(
+                "release",
+                releaseId,
+                ArtistId: release.ArtistId.Value,
+                ReleaseGroupId: release.ReleaseGroupId?.Value));
+        if (!readResult.IsSuccess)
+            return Result<ManageReleaseDetailResponse>.Failure(readResult.Error!);
 
         var artistName = await db.Artists
             .AsNoTracking()

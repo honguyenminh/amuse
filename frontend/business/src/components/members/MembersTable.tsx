@@ -14,8 +14,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type {
   ClaimPresetResponse,
+  OrganizationCapabilities,
   OrganizationMemberResponse,
 } from "@/lib/api/tenancyClient";
+import {
+  selectionFromMember,
+  type PermissionSelection,
+} from "@/lib/members/permissionSelection";
 import { getPresetDisplayName } from "@/lib/members/presetDisplay";
 import { formatTableDateTimeParts } from "@/lib/format/dateTime";
 import { cn } from "@/lib/utils";
@@ -31,6 +36,7 @@ type PendingDestructiveAction =
 type MembersTableProps = {
   members: OrganizationMemberResponse[];
   presets: ClaimPresetResponse[];
+  capabilities: OrganizationCapabilities | null;
   sortBy: MembersSortKey;
   sortDirection: "asc" | "desc";
   currentAccountId: string | null;
@@ -39,7 +45,7 @@ type MembersTableProps = {
   canTransfer: boolean;
   busy: boolean;
   onSort: (column: MembersSortKey) => void;
-  onApplyPreset: (memberId: string, presetLabel: string) => Promise<void>;
+  onApplyPermissions: (memberId: string, selection: PermissionSelection) => Promise<void>;
   onTransferOwnership: (memberId: string) => Promise<void>;
   onRemove: (memberId: string) => Promise<void>;
 };
@@ -101,6 +107,7 @@ function memberPrimaryLine(member: OrganizationMemberResponse): string {
 export function MembersTable({
   members,
   presets,
+  capabilities,
   sortBy,
   sortDirection,
   currentAccountId,
@@ -109,7 +116,7 @@ export function MembersTable({
   canTransfer,
   busy,
   onSort,
-  onApplyPreset,
+  onApplyPermissions,
   onTransferOwnership,
   onRemove,
 }: MembersTableProps) {
@@ -357,15 +364,26 @@ export function MembersTable({
 
       <MemberRoleDialog
         key={roleMember?.id ?? "closed"}
+        mode="edit"
+        open={roleMember !== null}
         member={roleMember}
         presets={presets}
+        capabilities={capabilities}
+        initialSelection={
+          roleMember ? selectionFromMember(presets, roleMember) : { claims: [], presetLabel: null }
+        }
         busy={busy}
         onOpenChange={(open) => {
           if (!open) {
             setRoleMember(null);
           }
         }}
-        onApplyPreset={onApplyPreset}
+        onConfirm={async (selection) => {
+          if (!roleMember) {
+            return;
+          }
+          await onApplyPermissions(roleMember.id, selection);
+        }}
       />
 
       <ConfirmDialog

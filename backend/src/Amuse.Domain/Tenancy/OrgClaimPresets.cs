@@ -17,6 +17,8 @@ public static class OrgClaimPresets
         OrgClaim.ScopeWideClaim("read", "catalog"),
         OrgClaim.ScopeWideClaim("upload", "catalog"),
         OrgClaim.ScopeWideClaim("write_draft", "catalog"),
+        // Publishing is a member-assigned permission. Org capabilities should not grant this implicitly.
+        OrgClaim.ScopeWideClaim("publish_public", "catalog"),
         OrgClaim.ScopeSubClaim("manage", "catalog", "pricing"),
         OrgClaim.ScopeSubClaim("manage", "purchase", "refund"),
         OrgClaim.ScopeWideClaim("read", "payout"),

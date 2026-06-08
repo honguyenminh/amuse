@@ -42,7 +42,7 @@ import {
   uploadTrackAudioMaster,
 } from "@/lib/catalog/audioUpload";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasClaim } from "@/lib/auth/jwtClaims";
+import { hasAnyCatalogReadClaim, hasClaim } from "@/lib/auth/jwtClaims";
 import { getAccessToken } from "@/lib/auth/sessionStore";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -105,7 +105,7 @@ export default function ReleaseDetailPage() {
   const auth = useAuth();
   const orgId = auth.activePersona?.type === "org" ? auth.activePersona.orgId : null;
   const token = getAccessToken();
-  const canRead = hasClaim(token, "read:catalog:all");
+  const canRead = hasAnyCatalogReadClaim(token);
   const canWrite = hasClaim(token, "write_draft:catalog:all");
   const canUpload = hasClaim(token, "upload:catalog:all");
   const canPublish = hasClaim(token, "publish_public:catalog:all");

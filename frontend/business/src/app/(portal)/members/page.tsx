@@ -1,5 +1,6 @@
 "use client";
 
+import { MemberRoleDialog } from "@/components/members/MemberRoleDialog";
 import { MembersInvitePanel } from "@/components/members/MembersInvitePanel";
 import { MembersTable, type MembersSortKey } from "@/components/members/MembersTable";
 import { Button } from "@/components/ui/button";
@@ -9,14 +10,21 @@ import { hasClaim } from "@/lib/auth/jwtClaims";
 import { getAccessToken } from "@/lib/auth/sessionStore";
 import {
   createOrganizationInvite,
+  getOrganization,
   listClaimPresets,
   listOrganizationMembers,
   removeOrganizationMember,
   transferOrganizationOwnership,
   updateOrganizationMember,
   type ClaimPresetResponse,
+  type OrganizationCapabilities,
   type OrganizationMemberResponse,
 } from "@/lib/api/tenancyClient";
+import {
+  buildPermissionPayload,
+  defaultInviteSelection,
+  type PermissionSelection,
+} from "@/lib/members/permissionSelection";
 import { ChevronRight, MailPlus, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -50,6 +58,7 @@ export default function OrganizationMembersPage() {
 
   const [members, setMembers] = useState<OrganizationMemberResponse[]>([]);
   const [presets, setPresets] = useState<ClaimPresetResponse[]>([]);
+  const [capabilities, setCapabilities] = useState<OrganizationCapabilities | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -59,7 +68,11 @@ export default function OrganizationMembersPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [invitePanelOpen, setInvitePanelOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [invitePreset, setInvitePreset] = useState("member_manager");
+  const [inviteSelection, setInviteSelection] = useState<PermissionSelection>({
+    claims: [],
+    presetLabel: "member_manager",
+  });
+  const [invitePermissionsOpen, setInvitePermissionsOpen] = useState(false);
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -108,13 +121,26 @@ export default function OrganizationMembersPage() {
   );
 
   useEffect(() => {
-    void listClaimPresets().then(setPresets).catch(() => undefined);
+    void listClaimPresets()
+      .then((loadedPresets) => {
+        setPresets(loadedPresets);
+        setInviteSelection((current) =>
+          current.claims.length > 0 ? current : defaultInviteSelection(loadedPresets),
+        );
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    setPage(1);
-    setMembers([]);
-  }, [debouncedSearch, sortBy, sortDirection, orgId]);
+    if (!orgId) {
+      setCapabilities(null);
+      return;
+    }
+
+    void getOrganization(orgId)
+      .then((organization) => setCapabilities(organization.capabilities))
+      .catch(() => setCapabilities(null));
+  }, [orgId]);
 
   useEffect(() => {
     void loadPage(page, page > 1);
@@ -161,7 +187,7 @@ export default function OrganizationMembersPage() {
       const email = inviteEmail.trim();
       await createOrganizationInvite(orgId, {
         email,
-        presetRoleLabel: invitePreset,
+        ...buildPermissionPayload(inviteSelection),
       });
       setLastInvitedEmail(email);
       setInviteEmail("");
@@ -247,11 +273,11 @@ export default function OrganizationMembersPage() {
             open={invitePanelOpen}
             presets={presets}
             inviteEmail={inviteEmail}
-            invitePreset={invitePreset}
+            permissionSelection={inviteSelection}
             busy={busy}
             lastInvitedEmail={lastInvitedEmail}
             onEmailChange={setInviteEmail}
-            onPresetChange={setInvitePreset}
+            onChangePermissions={() => setInvitePermissionsOpen(true)}
             onSubmit={onInvite}
           />
         ) : null}
@@ -259,6 +285,7 @@ export default function OrganizationMembersPage() {
         <MembersTable
           members={members}
           presets={presets}
+          capabilities={capabilities}
           sortBy={sortBy}
           sortDirection={sortDirection}
           currentAccountId={auth.account?.accountId ?? null}
@@ -267,11 +294,11 @@ export default function OrganizationMembersPage() {
           canTransfer={canTransfer}
           busy={busy}
           onSort={onSort}
-          onApplyPreset={async (memberId, presetLabel) => {
+          onApplyPermissions={async (memberId, selection) => {
             if (!orgId) return;
             setBusy(true);
             try {
-              await updateOrganizationMember(orgId, memberId, { presetRoleLabel: presetLabel });
+              await updateOrganizationMember(orgId, memberId, buildPermissionPayload(selection));
               await reload();
             } catch (e) {
               setError(e instanceof Error ? e.message : "Failed to update member.");
@@ -322,6 +349,20 @@ export default function OrganizationMembersPage() {
                 : null}
         </div>
       </div>
+
+      <MemberRoleDialog
+        mode="invite"
+        open={invitePermissionsOpen}
+        member={null}
+        presets={presets}
+        capabilities={capabilities}
+        initialSelection={inviteSelection}
+        busy={busy}
+        onOpenChange={setInvitePermissionsOpen}
+        onConfirm={async (selection) => {
+          setInviteSelection(selection);
+        }}
+      />
     </div>
   );
 }

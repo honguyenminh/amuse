@@ -1,5 +1,9 @@
 import type { ClaimPresetResponse } from "@/lib/api/tenancyClient";
 import {
+  catalogResourceKindLabel,
+  parseCatalogReadClaim,
+} from "@/lib/members/catalogResourceClaims";
+import {
   Disc3,
   Eye,
   ShieldCheck,
@@ -55,6 +59,20 @@ export function getPresetDisplayName(
   return findPreset(presets, label)?.displayName ?? label;
 }
 
-export function describeClaim(claim: string): string {
+export function describeClaim(
+  claim: string,
+  resourceLabels?: Record<string, string>,
+): string {
+  const catalogResource = parseCatalogReadClaim(claim);
+  if (catalogResource) {
+    const labelKey = `${catalogResource.kind}:${catalogResource.id}`;
+    const name = resourceLabels?.[labelKey];
+    const kindLabel = catalogResourceKindLabel(catalogResource.kind);
+    if (name) {
+      return `View ${kindLabel.toLowerCase()}: ${name}`;
+    }
+    return `View ${kindLabel.toLowerCase()} (${catalogResource.id.slice(0, 8)}…)`;
+  }
+
   return CLAIM_LABELS[claim] ?? claim;
 }

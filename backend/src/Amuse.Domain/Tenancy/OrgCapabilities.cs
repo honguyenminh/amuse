@@ -13,10 +13,6 @@ public sealed record OrgCapabilities(
         var claims = new List<string>();
         if (CanReadOrg) claims.Add(OrgClaim.ScopeWideClaim("read", "org"));
         if (CanReadMembership) claims.Add(OrgClaim.ScopeWideClaim("read", "membership"));
-        if (CanUpload) claims.Add(OrgClaim.ScopeWideClaim("upload", "catalog"));
-        if (CanWriteDraft) claims.Add(OrgClaim.ScopeWideClaim("write_draft", "catalog"));
-        if (CanPublishPublic) claims.Add(OrgClaim.ScopeWideClaim("publish_public", "catalog"));
-        if (CanReadPayout) claims.Add(OrgClaim.ScopeWideClaim("read", "payout"));
         return claims;
     }
 
@@ -69,6 +65,9 @@ public sealed record OrgCapabilities(
     private static bool IsAllowedForCapabilities(string claim, OrgCapabilities capabilities)
     {
         if (!OrgClaim.TryParse(claim, out var parsed))
+            return false;
+
+        if (parsed.ResourceKind is not null && !string.Equals(parsed.Action, "read", StringComparison.Ordinal))
             return false;
 
         return parsed.Scope switch

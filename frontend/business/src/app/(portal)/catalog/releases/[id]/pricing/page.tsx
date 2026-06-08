@@ -6,7 +6,7 @@ import {
 } from "@/components/catalog/ReleasePricingPanel";
 import { getRelease, type ManageReleaseDetailResponse } from "@/lib/api/catalogClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasClaim } from "@/lib/auth/jwtClaims";
+import { hasAnyCatalogReadClaim, hasClaim } from "@/lib/auth/jwtClaims";
 import { getAccessToken } from "@/lib/auth/sessionStore";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -18,7 +18,7 @@ export default function ReleasePricingPage() {
   const auth = useAuth();
   const orgId = auth.activePersona?.type === "org" ? auth.activePersona.orgId : null;
   const token = getAccessToken();
-  const canRead = hasClaim(token, "read:catalog:all");
+  const canRead = hasAnyCatalogReadClaim(token);
   const canManagePricing = hasClaim(token, "manage:catalog:pricing:all");
 
   const [release, setRelease] = useState<ManageReleaseDetailResponse | null>(null);

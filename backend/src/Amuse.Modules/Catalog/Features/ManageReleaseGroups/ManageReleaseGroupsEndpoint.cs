@@ -42,7 +42,7 @@ public static class ManageReleaseGroupsEndpoint
                 var result = await handler.HandleAsync(artistId, httpContext.User, cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization(OrgPolicies.ReadCatalog)
+            .RequireAuthorization(OrgPolicies.ReadCatalogEntry)
             .WithName("ListCatalogArtistReleaseGroups")
             .WithSummary("List release groups for an artist.")
             .Produces<ManageReleaseGroupListResponse>()
@@ -62,7 +62,7 @@ public static class ManageReleaseGroupsEndpoint
                     cancellationToken);
                 return result.ToResult(Results.Ok);
             })
-            .RequireAuthorization(OrgPolicies.ReadCatalog)
+            .RequireAuthorization(OrgPolicies.ReadCatalogEntry)
             .WithName("GetCatalogArtistReleaseGroupDetail")
             .WithSummary("Get a release group with member releases for catalog management.")
             .Produces<ManageReleaseGroupDetailResponse>()

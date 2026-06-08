@@ -11,17 +11,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ClaimPresetResponse } from "@/lib/api/tenancyClient";
+import { summarizePermissionSelection, type PermissionSelection } from "@/lib/members/permissionSelection";
 import { cn } from "@/lib/utils";
+import { Shield } from "lucide-react";
 
 type MembersInvitePanelProps = {
   open: boolean;
   presets: ClaimPresetResponse[];
   inviteEmail: string;
-  invitePreset: string;
+  permissionSelection: PermissionSelection;
   busy: boolean;
   lastInvitedEmail: string | null;
   onEmailChange: (value: string) => void;
-  onPresetChange: (value: string) => void;
+  onChangePermissions: () => void;
   onSubmit: (event: React.FormEvent) => void;
 };
 
@@ -29,13 +31,15 @@ export function MembersInvitePanel({
   open,
   presets,
   inviteEmail,
-  invitePreset,
+  permissionSelection,
   busy,
   lastInvitedEmail,
   onEmailChange,
-  onPresetChange,
+  onChangePermissions,
   onSubmit,
 }: MembersInvitePanelProps) {
+  const summary = summarizePermissionSelection(presets, permissionSelection);
+
   return (
     <div
       className={cn(
@@ -68,19 +72,25 @@ export function MembersInvitePanel({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="invite-preset">Permission preset</Label>
-                  <select
-                    id="invite-preset"
-                    className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                    value={invitePreset}
-                    onChange={(e) => onPresetChange(e.target.value)}
-                  >
-                    {presets.map((preset) => (
-                      <option key={preset.label} value={preset.label}>
-                        {preset.displayName} — {preset.description}
-                      </option>
-                    ))}
-                  </select>
+                  <Label>Permissions</Label>
+                  <div className="flex min-h-9 flex-wrap items-center gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                    <Shield className="size-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{summary.title}</p>
+                      {summary.detail ? (
+                        <p className="text-xs text-muted-foreground">{summary.detail}</p>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={onChangePermissions}
+                    >
+                      Change permissions
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
