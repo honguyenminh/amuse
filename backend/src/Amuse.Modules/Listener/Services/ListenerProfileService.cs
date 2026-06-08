@@ -9,6 +9,7 @@ namespace Amuse.Modules.Listener.Services;
 
 internal sealed class ListenerProfileService(ListenerDbContext dbContext, IClock clock)
 {
+    /// <summary>Read-only load. Do not mutate returned entities.</summary>
     public async Task<Result<(ListenerProfile Profile, ListenerPreference? Preference)>> TryGetForAccountAsync(
         AccountId accountId,
         CancellationToken cancellationToken)
@@ -27,17 +28,7 @@ internal sealed class ListenerProfileService(ListenerDbContext dbContext, IClock
         return Result<(ListenerProfile, ListenerPreference?)>.Success((profile, preference));
     }
 
-    public async Task<(ListenerProfile Profile, ListenerPreference? Preference)> GetForAccountAsync(
-        AccountId accountId,
-        CancellationToken cancellationToken)
-    {
-        var result = await TryGetForAccountAsync(accountId, cancellationToken);
-        if (!result.IsSuccess)
-            throw new InvalidOperationException(result.Error!.Message);
-
-        return result.Value!;
-    }
-
+    /// <summary>Tracked load for handlers that mutate profile or preference.</summary>
     public async Task<(ListenerProfile Profile, ListenerPreference? Preference)> GetForAccountForUpdateAsync(
         AccountId accountId,
         CancellationToken cancellationToken)
